@@ -21,8 +21,7 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{
   min-height:100vh;background:var(--nero);
-  color:var(--warm-white);font-family:var(--sans);
-  font-weight:300;
+  color:var(--warm-white);font-family:var(--sans);font-weight:300;
 }
 
 /* ── HEADER ── */
@@ -40,13 +39,10 @@ header{
 header nav{font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:var(--stone)}
 
 /* ── HERO ── */
-.hero{
-  text-align:center;padding:5rem 2rem 3rem;
-}
+.hero{text-align:center;padding:4rem 2rem 2.5rem}
 .hero h1{
-  font-family:var(--serif);font-size:clamp(2.2rem,5vw,3.5rem);
-  font-weight:300;color:var(--warm-white);line-height:1.15;
-  margin-bottom:1rem;
+  font-family:var(--serif);font-size:clamp(2rem,5vw,3.2rem);
+  font-weight:300;color:var(--warm-white);line-height:1.15;margin-bottom:.8rem;
 }
 .hero h1 em{color:var(--gold);font-style:italic}
 .hero p{
@@ -54,10 +50,29 @@ header nav{font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:v
   color:var(--stone);max-width:480px;margin:0 auto;line-height:1.8;
 }
 
-/* ── MAIN CARD ── */
-main{
-  max-width:680px;margin:0 auto;padding:0 1.5rem 6rem;
+/* ── TABS ── */
+.tabs{
+  display:flex;gap:0;max-width:680px;margin:2rem auto 0;padding:0 1.5rem;
 }
+.tab-btn{
+  flex:1;padding:.9rem 1rem;background:var(--card);border:1px solid #222;
+  color:var(--stone);font-family:var(--sans);font-size:.7rem;font-weight:500;
+  letter-spacing:.15em;text-transform:uppercase;cursor:pointer;
+  transition:all .25s;
+}
+.tab-btn:first-child{border-radius:3px 0 0 3px;border-right:none}
+.tab-btn:last-child{border-radius:0 3px 3px 0}
+.tab-btn.active{
+  background:#1a1610;border-color:var(--gold);color:var(--gold);
+}
+.tab-btn:not(.active):hover{color:var(--warm-white);border-color:#444}
+
+/* ── MAIN ── */
+main{max-width:680px;margin:0 auto;padding:0 1.5rem 6rem}
+
+/* ── PANELS ── */
+.panel{display:none;margin-top:1.5rem}
+.panel.active{display:block}
 
 /* ── DROP ZONE ── */
 #drop-zone{
@@ -67,104 +82,82 @@ main{
   transition:border-color .25s,background .25s;
   margin-bottom:1.5rem;
 }
-#drop-zone:hover,#drop-zone.dragover{
-  border-color:var(--gold);background:#1a1610;
-}
-#drop-zone .icon{
-  font-size:2.5rem;margin-bottom:1rem;opacity:.5;
-  transition:opacity .25s,transform .25s;
-}
-#drop-zone:hover .icon,#drop-zone.dragover .icon{
-  opacity:.8;transform:scale(1.08);
-}
+#drop-zone:hover,#drop-zone.dragover{border-color:var(--gold);background:#1a1610}
+#drop-zone .icon{font-size:2.5rem;margin-bottom:1rem;opacity:.5;transition:opacity .25s,transform .25s}
+#drop-zone:hover .icon,#drop-zone.dragover .icon{opacity:.8;transform:scale(1.08)}
 #drop-zone p.label{
   font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;
   color:var(--stone);line-height:1.8;
 }
-#drop-zone p.sub{
-  font-size:.7rem;color:#444;margin-top:.5rem;
-}
+#drop-zone p.sub{font-size:.7rem;color:#444;margin-top:.5rem}
 #file-input{display:none}
 
-/* ── FILE SELECTED ── */
+/* ── FILE BADGE ── */
 #file-badge{
-  display:none;
-  align-items:center;gap:.75rem;
+  display:none;align-items:center;gap:.75rem;
   background:#1a1a1a;border:1px solid #2a2a2a;
-  border-radius:3px;padding:.85rem 1.1rem;
-  margin-bottom:1.5rem;
+  border-radius:3px;padding:.85rem 1.1rem;margin-bottom:1.5rem;
 }
 #file-badge .pdf-icon{font-size:1.4rem;opacity:.7}
-#file-badge .name{
-  flex:1;font-size:.8rem;color:var(--warm-white);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-}
+#file-badge .name{flex:1;font-size:.8rem;color:var(--warm-white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #file-badge .remove{
   background:none;border:none;color:var(--stone);
-  cursor:pointer;font-size:1.1rem;padding:.2rem .3rem;
-  transition:color .2s;
+  cursor:pointer;font-size:1.1rem;padding:.2rem .3rem;transition:color .2s;
 }
-#file-badge .remove:hover{color:#e44;}
+#file-badge .remove:hover{color:#e44}
 
-/* ── GENERATE BUTTON ── */
-#btn-generate{
+/* ── SUPPLIER INPUT ── */
+.supplier-field{margin-bottom:1.5rem}
+.supplier-field label{
+  display:block;font-size:.68rem;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--stone);margin-bottom:.6rem;
+}
+.supplier-field input{
+  width:100%;padding:.95rem 1.1rem;
+  background:var(--card);border:1.5px solid #2a2a2a;
+  color:var(--warm-white);font-family:var(--sans);font-size:.88rem;
+  border-radius:3px;transition:border-color .2s;outline:none;
+}
+.supplier-field input::placeholder{color:#444}
+.supplier-field input:focus{border-color:var(--gold)}
+.supplier-hint{
+  font-size:.67rem;letter-spacing:.08em;color:#444;margin-top:.5rem;line-height:1.6;
+}
+
+/* ── BUTTONS ── */
+.btn-generate{
   width:100%;padding:1.1rem;background:var(--gold);
   color:var(--nero);border:none;cursor:pointer;
   font-family:var(--sans);font-size:.72rem;font-weight:500;
   letter-spacing:.2em;text-transform:uppercase;
   border-radius:3px;transition:background .25s,transform .1s;
 }
-#btn-generate:hover:not(:disabled){background:var(--gold-dim);color:#fff}
-#btn-generate:active:not(:disabled){transform:scale(.98)}
-#btn-generate:disabled{opacity:.35;cursor:not-allowed}
+.btn-generate:hover:not(:disabled){background:var(--gold-dim);color:#fff}
+.btn-generate:active:not(:disabled){transform:scale(.98)}
+.btn-generate:disabled{opacity:.35;cursor:not-allowed}
 
 /* ── PROGRESS ── */
-#progress{
-  display:none;padding:2rem 0;
-}
+#progress{display:none;padding:2rem 0}
 .step{
-  display:flex;align-items:center;gap:1rem;
-  padding:.6rem 0;
+  display:flex;align-items:center;gap:1rem;padding:.6rem 0;
   font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;
   color:#555;transition:color .4s;
 }
 .step.active{color:var(--warm-white)}
 .step.done{color:var(--gold)}
-.step .dot{
-  width:8px;height:8px;border-radius:50%;
-  background:currentColor;flex-shrink:0;
-  transition:background .4s;
-}
-.step.active .dot{
-  animation:pulse 1.2s ease-in-out infinite;
-}
-@keyframes pulse{
-  0%,100%{transform:scale(1);opacity:1}
-  50%{transform:scale(1.5);opacity:.5}
-}
+.step .dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0;transition:background .4s}
+.step.active .dot{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.5}}
 .step .label{flex:1}
 .step .check{opacity:0;transition:opacity .3s}
 .step.done .check{opacity:1}
-
-#progress-note{
-  margin-top:1.5rem;font-size:.68rem;color:#444;
-  letter-spacing:.08em;text-align:center;
-}
+#progress-note{margin-top:1.5rem;font-size:.68rem;color:#444;letter-spacing:.08em;text-align:center}
 
 /* ── RESULT ── */
-#result{
-  display:none;
-  text-align:center;padding:2.5rem 0;
-}
+#result{display:none;text-align:center;padding:2.5rem 0}
 #result .success-icon{font-size:2rem;margin-bottom:1rem}
-#result h3{
-  font-family:var(--serif);font-size:1.6rem;font-weight:300;
-  color:var(--warm-white);margin-bottom:.5rem;
-}
-#result p{
-  font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--stone);margin-bottom:2rem;
-}
+#result h3{font-family:var(--serif);font-size:1.6rem;font-weight:300;color:var(--warm-white);margin-bottom:.5rem}
+#result p{font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--stone);margin-bottom:2rem}
 #btn-download{
   display:inline-block;padding:.9rem 2.5rem;
   background:transparent;color:var(--gold);
@@ -188,8 +181,7 @@ main{
 #btn-new{
   display:block;margin:1.5rem auto 0;background:none;border:none;
   color:var(--stone);font-family:var(--sans);font-size:.68rem;
-  letter-spacing:.12em;text-transform:uppercase;cursor:pointer;
-  transition:color .2s;
+  letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:color .2s;
 }
 #btn-new:hover{color:var(--warm-white)}
 
@@ -209,17 +201,13 @@ footer{
 }
 
 /* ── PREVIEW OVERLAY ── */
-#preview-overlay{
-  display:none;position:fixed;inset:0;z-index:1000;
-  background:rgba(0,0,0,.9);
-}
+#preview-overlay{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.9)}
 #preview-overlay iframe{width:100%;height:100%;border:none}
 #close-preview{
   position:fixed;top:1.2rem;right:1.5rem;z-index:1001;
   background:rgba(0,0,0,.8);border:1px solid #444;
   color:var(--warm-white);font-size:.9rem;padding:.5rem 1rem;
-  cursor:pointer;border-radius:3px;font-family:var(--sans);
-  letter-spacing:.1em;
+  cursor:pointer;border-radius:3px;font-family:var(--sans);letter-spacing:.1em;
 }
 </style>
 </head>
@@ -234,43 +222,64 @@ footer{
 </header>
 
 <div class="hero">
-  <h1>Genera una <em>presentazione</em><br>dal preventivo</h1>
-  <p>Carica il PDF del preventivo · l'AI estrae i dati · ottieni la presentazione pronta in 30 secondi</p>
+  <h1>Genera una <em>presentazione</em></h1>
+  <p>Dal preventivo PDF · oppure scheda dedicata per un fornitore</p>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="preventivo">📄 Da Preventivo</button>
+  <button class="tab-btn" data-tab="fornitore">✦ Scheda Fornitore</button>
 </div>
 
 <main>
 
-  <!-- Drop zone -->
-  <div id="drop-zone">
-    <div class="icon">📄</div>
-    <p class="label">Trascina qui il PDF del preventivo<br>oppure clicca per scegliere il file</p>
-    <p class="sub">Solo file PDF · max 20 MB</p>
-    <input type="file" id="file-input" accept=".pdf,application/pdf"/>
+  <!-- ── PANEL: PREVENTIVO ─────────────────────────────────────── -->
+  <div class="panel active" id="panel-preventivo">
+
+    <div id="drop-zone">
+      <div class="icon">📄</div>
+      <p class="label">Trascina qui il PDF del preventivo<br>oppure clicca per scegliere il file</p>
+      <p class="sub">Solo file PDF · max 20 MB</p>
+      <input type="file" id="file-input" accept=".pdf,application/pdf"/>
+    </div>
+
+    <div id="file-badge">
+      <span class="pdf-icon">📄</span>
+      <span class="name" id="file-name">preventivo.pdf</span>
+      <button class="remove" id="btn-remove" title="Rimuovi file">✕</button>
+    </div>
+
+    <button class="btn-generate" id="btn-generate-pdf" disabled>Genera Presentazione</button>
+
   </div>
 
-  <!-- File badge (after selection) -->
-  <div id="file-badge">
-    <span class="pdf-icon">📄</span>
-    <span class="name" id="file-name">preventivo.pdf</span>
-    <button class="remove" id="btn-remove" title="Rimuovi file">✕</button>
+  <!-- ── PANEL: FORNITORE ──────────────────────────────────────── -->
+  <div class="panel" id="panel-fornitore">
+
+    <div class="supplier-field">
+      <label for="supplier-input">Nome del fornitore</label>
+      <input type="text" id="supplier-input" placeholder="es. Rimessa Roscioli, Golf Cart Tour…" autocomplete="off"/>
+      <p class="supplier-hint">Se il fornitore è nel database verrà usata la scheda ufficiale con foto reali.<br>Altrimenti l'AI genererà la presentazione automaticamente.</p>
+    </div>
+
+    <button class="btn-generate" id="btn-generate-supplier" disabled>Genera Scheda Fornitore</button>
+
   </div>
 
-  <!-- Generate button -->
-  <button id="btn-generate" disabled>Genera Presentazione</button>
+  <!-- ── SHARED: Error, Progress, Result ───────────────────────── -->
 
-  <!-- Error -->
   <div id="error-msg"></div>
 
-  <!-- Progress -->
   <div id="progress">
     <div class="step" id="step-1">
       <div class="dot"></div>
-      <span class="label">Lettura preventivo</span>
+      <span class="label" id="step-1-label">Lettura preventivo</span>
       <span class="check">✓</span>
     </div>
     <div class="step" id="step-2">
       <div class="dot"></div>
-      <span class="label">Analisi AI del programma</span>
+      <span class="label" id="step-2-label">Analisi AI del programma</span>
       <span class="check">✓</span>
     </div>
     <div class="step" id="step-3">
@@ -286,10 +295,9 @@ footer{
     <p id="progress-note">La generazione richiede circa 20–40 secondi…</p>
   </div>
 
-  <!-- Result -->
   <div id="result">
     <div class="success-icon">✦</div>
-    <h3>Presentazione pronta</h3>
+    <h3 id="result-title">Presentazione pronta</h3>
     <p id="result-info">Pronta per il download</p>
     <a id="btn-download" href="#" download>⬇ Scarica HTML</a>
     <a id="btn-preview" href="#">⊡ Anteprima</a>
@@ -300,44 +308,58 @@ footer{
 
 <footer>Love IT DMC · Strumento interno · Solo uso professionale</footer>
 
-<!-- Preview overlay -->
 <div id="preview-overlay">
   <button id="close-preview">✕ Chiudi anteprima</button>
   <iframe id="preview-frame" src="about:blank"></iframe>
 </div>
 
 <script>
-// ─── STATE ──────────────────────────────────────────────────────────────────
-let selectedFile = null;
-let generatedHtml = null;
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let selectedFile    = null;
+let generatedHtml   = null;
 let generatedFilename = null;
+let activeTab       = 'preventivo';
 
 // ─── ELEMENTS ────────────────────────────────────────────────────────────────
-const dropZone     = document.getElementById('drop-zone');
-const fileInput    = document.getElementById('file-input');
-const fileBadge    = document.getElementById('file-badge');
-const fileName     = document.getElementById('file-name');
-const btnRemove    = document.getElementById('btn-remove');
-const btnGenerate  = document.getElementById('btn-generate');
-const errorMsg     = document.getElementById('error-msg');
-const progressEl   = document.getElementById('progress');
-const resultEl     = document.getElementById('result');
-const resultInfo   = document.getElementById('result-info');
-const btnDownload  = document.getElementById('btn-download');
-const btnPreview   = document.getElementById('btn-preview');
-const btnNew       = document.getElementById('btn-new');
-const previewOverlay = document.getElementById('preview-overlay');
-const previewFrame = document.getElementById('preview-frame');
-const closePreview = document.getElementById('close-preview');
+const dropZone        = document.getElementById('drop-zone');
+const fileInput       = document.getElementById('file-input');
+const fileBadge       = document.getElementById('file-badge');
+const fileNameEl      = document.getElementById('file-name');
+const btnRemove       = document.getElementById('btn-remove');
+const btnGeneratePdf  = document.getElementById('btn-generate-pdf');
+const supplierInput   = document.getElementById('supplier-input');
+const btnGenerateSup  = document.getElementById('btn-generate-supplier');
+const errorMsg        = document.getElementById('error-msg');
+const progressEl      = document.getElementById('progress');
+const resultEl        = document.getElementById('result');
+const resultTitle     = document.getElementById('result-title');
+const resultInfo      = document.getElementById('result-info');
+const btnDownload     = document.getElementById('btn-download');
+const btnPreview      = document.getElementById('btn-preview');
+const btnNew          = document.getElementById('btn-new');
+const previewOverlay  = document.getElementById('preview-overlay');
+const previewFrame    = document.getElementById('preview-frame');
+const closePreview    = document.getElementById('close-preview');
 
-// ─── FILE HANDLING ───────────────────────────────────────────────────────────
+// ─── TABS ────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeTab = btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + activeTab).classList.add('active');
+    hideError();
+    resetResult();
+    resetProgress();
+  });
+});
+
+// ─── PDF HANDLING ────────────────────────────────────────────────────────────
 dropZone.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
 
-dropZone.addEventListener('dragover', e => {
-  e.preventDefault();
-  dropZone.classList.add('dragover');
-});
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
 dropZone.addEventListener('drop', e => {
   e.preventDefault();
@@ -352,15 +374,12 @@ dropZone.addEventListener('drop', e => {
 
 function setFile(file) {
   if (!file) return;
-  if (file.size > 20 * 1024 * 1024) {
-    showError('File troppo grande. Massimo 20 MB.');
-    return;
-  }
+  if (file.size > 20 * 1024 * 1024) { showError('File troppo grande. Massimo 20 MB.'); return; }
   selectedFile = file;
-  fileName.textContent = file.name;
+  fileNameEl.textContent = file.name;
   fileBadge.style.display = 'flex';
   dropZone.style.display = 'none';
-  btnGenerate.disabled = false;
+  btnGeneratePdf.disabled = false;
   hideError();
   resetResult();
 }
@@ -370,39 +389,41 @@ btnRemove.addEventListener('click', () => {
   fileInput.value = '';
   fileBadge.style.display = 'none';
   dropZone.style.display = 'block';
-  btnGenerate.disabled = true;
+  btnGeneratePdf.disabled = true;
   hideError();
   resetResult();
 });
 
-// ─── GENERATE ────────────────────────────────────────────────────────────────
-btnGenerate.addEventListener('click', generate);
+// ─── SUPPLIER INPUT ──────────────────────────────────────────────────────────
+supplierInput.addEventListener('input', () => {
+  btnGenerateSup.disabled = !supplierInput.value.trim();
+});
+supplierInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !btnGenerateSup.disabled) generateSupplier();
+});
 
-async function generate() {
+// ─── GENERATE: PDF ───────────────────────────────────────────────────────────
+btnGeneratePdf.addEventListener('click', generatePdf);
+
+async function generatePdf() {
   if (!selectedFile) return;
 
-  // UI: show progress
-  btnGenerate.disabled = true;
-  hideError();
-  resetResult();
+  setStepLabels('pdf');
+  btnGeneratePdf.disabled = true;
+  hideError(); resetResult();
   progressEl.style.display = 'block';
   setStep(1);
 
   let pdfBase64;
   try {
     pdfBase64 = await toBase64(selectedFile);
-    // Strip the data URL prefix
     pdfBase64 = pdfBase64.replace(/^data:application\/pdf;base64,/, '');
   } catch (e) {
     showError('Errore nella lettura del file: ' + e.message);
-    resetProgress();
-    btnGenerate.disabled = false;
-    return;
+    resetProgress(); btnGeneratePdf.disabled = false; return;
   }
 
   setStep(2);
-
-  // Simulate sub-steps while waiting for the API
   const stepTimer = setTimeout(() => setStep(3), 8000);
 
   let data;
@@ -412,86 +433,123 @@ async function generate() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pdf: pdfBase64, filename: selectedFile.name }),
     });
-
     clearTimeout(stepTimer);
     setStep(4);
-
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
       throw new Error(err.error ?? `Errore server: ${resp.status}`);
     }
-
     data = await resp.json();
   } catch (e) {
     clearTimeout(stepTimer);
     showError('Errore durante la generazione:\n' + e.message);
-    resetProgress();
-    btnGenerate.disabled = false;
-    return;
+    resetProgress(); btnGeneratePdf.disabled = false; return;
   }
 
-  // Success
+  showResult(data, 'Presentazione pronta');
+}
+
+// ─── GENERATE: SUPPLIER ──────────────────────────────────────────────────────
+btnGenerateSup.addEventListener('click', generateSupplier);
+
+async function generateSupplier() {
+  const name = supplierInput.value.trim();
+  if (!name) return;
+
+  setStepLabels('supplier');
+  btnGenerateSup.disabled = true;
+  hideError(); resetResult();
+  progressEl.style.display = 'block';
+  setStep(1);
+
+  const stepTimer = setTimeout(() => setStep(2), 3000);
+
+  let data;
+  try {
+    const resp = await fetch('/api/supplier', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ supplier: name }),
+    });
+    clearTimeout(stepTimer);
+    setStep(4);
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
+      throw new Error(err.error ?? `Errore server: ${resp.status}`);
+    }
+    data = await resp.json();
+  } catch (e) {
+    clearTimeout(stepTimer);
+    showError('Errore durante la generazione:\n' + e.message);
+    resetProgress(); btnGenerateSup.disabled = !supplierInput.value.trim(); return;
+  }
+
+  const badge = data.fromAirtable ? ' · database ✓' : ' · generata con AI';
+  showResult(data, 'Scheda fornitore pronta', badge);
+}
+
+// ─── SHOW RESULT ─────────────────────────────────────────────────────────────
+function showResult(data, title, badge = '') {
   generatedHtml = data.html;
   generatedFilename = data.filename ?? 'presentazione.html';
 
-  // Build download link
   const blob = new Blob([generatedHtml], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  btnDownload.href = url;
+  btnDownload.href = URL.createObjectURL(blob);
   btnDownload.download = generatedFilename;
 
-  // Update result info
-  const clientName = data.client ? ` · ${data.client}` : '';
-  const dest = data.destination ? ` · ${data.destination}` : '';
-  resultInfo.textContent = generatedFilename + clientName + dest;
+  const info = [generatedFilename, data.client || data.supplier || '', data.city || data.destination || '']
+    .filter(Boolean).join(' · ') + badge;
+  resultTitle.textContent = title;
+  resultInfo.textContent = info;
 
-  // Show result
   doneAllSteps();
-  setTimeout(() => {
-    progressEl.style.display = 'none';
-    resultEl.style.display = 'block';
-  }, 600);
+  setTimeout(() => { progressEl.style.display = 'none'; resultEl.style.display = 'block'; }, 600);
+}
+
+// ─── STEP LABELS ─────────────────────────────────────────────────────────────
+function setStepLabels(mode) {
+  if (mode === 'supplier') {
+    document.getElementById('step-1-label').textContent = 'Ricerca nel database';
+    document.getElementById('step-2-label').textContent = 'Generazione con AI';
+    document.getElementById('progress-note').textContent = 'La generazione richiede circa 10–20 secondi…';
+  } else {
+    document.getElementById('step-1-label').textContent = 'Lettura preventivo';
+    document.getElementById('step-2-label').textContent = 'Analisi AI del programma';
+    document.getElementById('progress-note').textContent = 'La generazione richiede circa 20–40 secondi…';
+  }
 }
 
 // ─── PREVIEW ─────────────────────────────────────────────────────────────────
-btnPreview.addEventListener('click', (e) => {
+btnPreview.addEventListener('click', e => {
   e.preventDefault();
   if (!generatedHtml) return;
-  const blob = new Blob([generatedHtml], { type: 'text/html' });
-  previewFrame.src = URL.createObjectURL(blob);
+  previewFrame.src = URL.createObjectURL(new Blob([generatedHtml], { type: 'text/html' }));
   previewOverlay.style.display = 'block';
 });
-
 closePreview.addEventListener('click', () => {
   previewOverlay.style.display = 'none';
   previewFrame.src = 'about:blank';
 });
 
-// ─── RESET ───────────────────────────────────────────────────────────────────
+// ─── RESET / NEW ─────────────────────────────────────────────────────────────
 btnNew.addEventListener('click', () => {
-  generatedHtml = null;
-  generatedFilename = null;
-  selectedFile = null;
-  fileInput.value = '';
+  generatedHtml = null; generatedFilename = null;
+  selectedFile = null; fileInput.value = '';
   fileBadge.style.display = 'none';
   dropZone.style.display = 'block';
-  btnGenerate.disabled = true;
-  resetProgress();
-  resetResult();
-  hideError();
+  btnGeneratePdf.disabled = true;
+  supplierInput.value = '';
+  btnGenerateSup.disabled = true;
+  resetProgress(); resetResult(); hideError();
 });
 
 function resetResult() {
   resultEl.style.display = 'none';
-  generatedHtml = null;
-  generatedFilename = null;
+  generatedHtml = null; generatedFilename = null;
 }
-
 function resetProgress() {
   progressEl.style.display = 'none';
-  document.querySelectorAll('.step').forEach(s => {
-    s.classList.remove('active','done');
-  });
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active','done'));
 }
 
 // ─── STEP HELPERS ────────────────────────────────────────────────────────────
@@ -502,22 +560,13 @@ function setStep(n) {
     if (i + 1 === n) s.classList.add('active');
   });
 }
-
 function doneAllSteps() {
-  document.querySelectorAll('.step').forEach(s => {
-    s.classList.remove('active');
-    s.classList.add('done');
-  });
+  document.querySelectorAll('.step').forEach(s => { s.classList.remove('active'); s.classList.add('done'); });
 }
 
 // ─── ERROR ───────────────────────────────────────────────────────────────────
-function showError(msg) {
-  errorMsg.textContent = msg;
-  errorMsg.style.display = 'block';
-}
-function hideError() {
-  errorMsg.style.display = 'none';
-}
+function showError(msg) { errorMsg.textContent = msg; errorMsg.style.display = 'block'; }
+function hideError() { errorMsg.style.display = 'none'; }
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
 function toBase64(file) {
