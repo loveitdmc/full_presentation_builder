@@ -80,7 +80,6 @@ async function searchAirtable(supplierName) {
 
   if (!token || !baseId || !supplierName) return null;
 
-  // Case-insensitive partial match on the Name field
   const safeName = supplierName.replace(/"/g, '\\"').toLowerCase();
   const formula  = encodeURIComponent(`SEARCH("${safeName}", LOWER({Name}))>0`);
   const url = `https://api.airtable.com/v0/${baseId}/${tableId}?filterByFormula=${formula}&maxRecords=1`;
@@ -110,7 +109,6 @@ async function searchAirtable(supplierName) {
   }
 }
 
-// Walk TRIP object and enrich activities with Airtable data
 async function enrichFromAirtable(tripObj) {
   if (!tripObj.days) return tripObj;
 
@@ -144,19 +142,14 @@ async function enrichFromAirtable(tripObj) {
   return { ...tripObj, days: enrichedDays };
 }
 
-// ─── UNSPLASH SEARCH ─────────────────────────────────────────────────────────
+// ─── UNSPLASH ────────────────────────────────────────────────────────────────
 
 const FALLBACK_PHOTOS = [
-  "1552832230-c0197dd311b5",
-  "1515542706656-8e1a346fdbe0",
-  "1529154036614-a60975f5c760",
-  "1489824904134-891ab64532f1",
-  "1566073771259-470de1bed4f7",
-  "1571003123894-1f0594d2b5d9",
-  "1530482817083-29ae4b92ff15",
-  "1436491865332-7a61a109cc05",
-  "1523906834658-6e3a11a37e89",
-  "1568454537842-d933259bb258",
+  "1552832230-c0197dd311b5","1515542706656-8e1a346fdbe0",
+  "1529154036614-a60975f5c760","1489824904134-891ab64532f1",
+  "1566073771259-470de1bed4f7","1571003123894-1f0594d2b5d9",
+  "1530482817083-29ae4b92ff15","1436491865332-7a61a109cc05",
+  "1523906834658-6e3a11a37e89","1568454537842-d933259bb258",
 ];
 let fallbackIndex = 0;
 function nextFallback() {
@@ -184,8 +177,6 @@ async function unsplashSearch(query) {
   }
 }
 
-// Walk TRIP and resolve any remaining photo keywords to Unsplash URLs.
-// Already-resolved URLs (from Airtable) start with "http" and are kept as-is.
 async function resolvePhotos(obj) {
   if (typeof obj === "string") return obj;
   if (Array.isArray(obj)) return Promise.all(obj.map((item) => resolvePhotos(item)));
@@ -195,7 +186,7 @@ async function resolvePhotos(obj) {
   const result = {};
 
   for (const [key, value] of Object.entries(obj)) {
-    if (key === "_airtable") continue; // strip internal flag
+    if (key === "_airtable") continue;
 
     if (photoKeys.includes(key) && typeof value === "string" && value.trim()) {
       result[key] = value.startsWith("http") ? value : await unsplashSearch(value);
@@ -279,7 +270,6 @@ export default async function handler(req, res) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "Missing ANTHROPIC_API_KEY" });
 
-  // Load template
   const templatePath = path.resolve(process.cwd(), "template", "loveit_template.html");
   let template;
   try {
@@ -288,7 +278,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Template file not found" });
   }
 
-  // ── Step 1: Claude reads PDF and extracts TRIP data ──────────────────────────
+  // Step 1: Claude reads PDF
   const client = new Anthropic({ apiKey });
   let tripJson;
   try {
@@ -318,7 +308,7 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: `Claude API error: ${e.message}` });
   }
 
-  // ── Step 2: Parse JSON ───────────────────────────────────────────────────────
+  // Step 2: Parse JSON
   let tripObj;
   try {
     tripObj = JSON.parse(tripJson);
@@ -327,14 +317,14 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: "Claude returned invalid JSON. Try again.", raw: tripJson.slice(0, 500) });
   }
 
-  // ── Step 3: Enrich with Airtable supplier data ───────────────────────────────
+  // Step 3: Enrich with Airtable
   const enrichedTrip = await enrichFromAirtable(tripObj);
 
-  // ── Step 4: Resolve remaining Unsplash keywords to URLs ──────────────────────
+  // Step 4: Resolve Unsplash keywords
   fallbackIndex = 0;
   const resolvedTrip = await resolvePhotos(enrichedTrip);
 
-  // ── Step 5: Inject into template ─────────────────────────────────────────────
+  // Step 5: Inject into template
   let finalHtml;
   try {
     finalHtml = injectTrip(template, resolvedTrip);
@@ -342,7 +332,6 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: `Template error: ${e.message}` });
   }
 
-  // ── Step 6: Return ───────────────────────────────────────────────────────────
   const safeFilename = (filename ?? "presentazione")
     .replace(/\.pdf$/i, "")
     .replace(/[^a-zA-Z0-9_\-]/g, "_")

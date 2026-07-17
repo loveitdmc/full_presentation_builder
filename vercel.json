@@ -5,8 +5,8 @@
     "api/supplier.js": { "maxDuration": 30 }
   },
   "rewrites": [
-    { "source": "/api/generate",  "destination": "/api/generate" },
-    { "source": "/api/supplier",  "destination": "/api/supplier" },
+    { "source": "/api/generate", "destination": "/api/generate" },
+    { "source": "/api/supplier", "destination": "/api/supplier" },
     { "source": "/(.*)", "destination": "/public/index.html" }
   ],
   "headers": [

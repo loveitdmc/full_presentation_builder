@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// ─── AIRTABLE LOOKUP ─────────────────────────────────────────────────────────
+// ─── AIRTABLE ────────────────────────────────────────────────────────────────
 
 async function searchAirtable(supplierName) {
   const token   = process.env.AIRTABLE_TOKEN;
@@ -82,7 +82,6 @@ async function resolvePhotos(obj) {
 
   for (const [key, value] of Object.entries(obj)) {
     if (key === "_airtable") continue;
-
     if (photoKeys.includes(key) && typeof value === "string" && value.trim()) {
       result[key] = value.startsWith("http") ? value : await unsplashSearch(value);
     } else if (key === "photos" && Array.isArray(value)) {
@@ -105,10 +104,8 @@ function findTripBounds(html) {
   const marker = "const TRIP = {";
   const start = html.indexOf(marker);
   if (start === -1) throw new Error("TRIP marker not found in template");
-
   let i = start + "const TRIP = ".length;
   let depth = 0;
-
   while (i < html.length) {
     const ch = html[i];
     if (ch === '"' || ch === "'" || ch === "`") {
@@ -124,9 +121,8 @@ function findTripBounds(html) {
       i += 2;
       while (i < html.length && !(html[i] === "*" && html[i+1] === "/")) i++;
       i++;
-    } else if (ch === "{") {
-      depth++;
-    } else if (ch === "}") {
+    } else if (ch === "{") { depth++; }
+    else if (ch === "}") {
       depth--;
       if (depth === 0) {
         let end = i + 1;
@@ -142,8 +138,7 @@ function findTripBounds(html) {
 
 function injectTrip(template, tripObj) {
   const { start, end } = findTripBounds(template);
-  const newBlock = `const TRIP = ${JSON.stringify(tripObj, null, 2)};`;
-  return template.slice(0, start) + newBlock + template.slice(end);
+  return template.slice(0, start) + `const TRIP = ${JSON.stringify(tripObj, null, 2)};` + template.slice(end);
 }
 
 // ─── AI FALLBACK ─────────────────────────────────────────────────────────────
@@ -153,15 +148,15 @@ Given a supplier or venue name, return ONLY a valid JSON object.
 No markdown, no code fences. Start with { and end with }.
 
 {
-  "city":          string,  // city where the supplier is located, in English
-  "country":       string,  // country in English
-  "type":          string,  // "restaurant" | "activity" | "hotel" | "venue" | "experience"
-  "description":   string,  // 3 sentences luxury copywriting in English
-  "tagline":       string,  // evocative 6-8 word phrase
-  "photo":         string,  // Unsplash search keyword for main slide photo
-  "photoPosition": string,  // CSS background-position e.g. "center 40%"
-  "photos":        [string, string, string],  // 3 Unsplash keywords for gallery
-  "cityPhoto":     string   // Unsplash keyword for city aerial/landmark photo
+  "city":          string,
+  "country":       string,
+  "type":          string,
+  "description":   string,
+  "tagline":       string,
+  "photo":         string,
+  "photoPosition": string,
+  "photos":        [string, string, string],
+  "cityPhoto":     string
 }`;
 
 async function generateWithAI(supplierName, apiKey) {
@@ -170,10 +165,7 @@ async function generateWithAI(supplierName, apiKey) {
     model: "claude-haiku-4-5-20251001",
     max_tokens: 1024,
     system: AI_PROMPT,
-    messages: [{
-      role: "user",
-      content: `Supplier name: "${supplierName}"\n\nReturn the JSON profile.`,
-    }],
+    messages: [{ role: "user", content: `Supplier name: "${supplierName}"\n\nReturn the JSON profile.` }],
   });
   const text = resp.content[0].text.trim()
     .replace(/^```(?:json)?\s*/i, "")
@@ -205,7 +197,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Template file not found" });
   }
 
-  // ── Step 1: Airtable lookup ──────────────────────────────────────────────────
+  // Step 1: Airtable lookup
   const airtableData = await searchAirtable(supplier.trim());
 
   let profile;
@@ -217,14 +209,14 @@ export default async function handler(req, res) {
       type:          airtableData.type || "activity",
       description:   airtableData.description,
       tagline:       `An exclusive experience in ${cityName}`,
-      photo:         airtableData.photos?.[0]          || null,  // URL from Airtable
+      photo:         airtableData.photos?.[0] || null,
       photoPosition: "center center",
-      photos:        airtableData.photos?.slice(1, 4)  || [],    // URLs from Airtable
+      photos:        airtableData.photos?.slice(1, 4) || [],
       cityPhoto:     `${cityName.toLowerCase()} italy aerial landmark`,
       fromAirtable:  true,
     };
   } else {
-    // ── Step 2: AI generation ──────────────────────────────────────────────────
+    // Step 2: AI generation
     try {
       const ai = await generateWithAI(supplier.trim(), apiKey);
       profile = {
@@ -233,36 +225,35 @@ export default async function handler(req, res) {
         type:          ai.type || "activity",
         description:   ai.description,
         tagline:       ai.tagline,
-        photo:         ai.photo,          // keyword → Unsplash
+        photo:         ai.photo,
         photoPosition: ai.photoPosition || "center center",
-        photos:        ai.photos || [],   // keywords → Unsplash
-        cityPhoto:     ai.cityPhoto,      // keyword → Unsplash
+        photos:        ai.photos || [],
+        cityPhoto:     ai.cityPhoto,
         fromAirtable:  false,
       };
     } catch (e) {
-      console.error("AI generation failed:", e);
       return res.status(502).json({ error: `AI generation failed: ${e.message}` });
     }
   }
 
-  // ── Step 3: Build TRIP JSON ──────────────────────────────────────────────────
+  // Step 3: Build TRIP JSON
   const supplierName = supplier.trim();
   const tripObj = {
-    client:          "",
-    projectRef:      "",
-    title:           supplierName,
-    destination:     profile.city,
-    country:         profile.country,
-    dates:           "",
-    nights:          0,
-    pax:             0,
-    tagline:         profile.tagline,
-    cityPhoto:       profile.cityPhoto,
+    client:            "",
+    projectRef:        "",
+    title:             supplierName,
+    destination:       profile.city,
+    country:           profile.country,
+    dates:             "",
+    nights:            0,
+    pax:               0,
+    tagline:           profile.tagline,
+    cityPhoto:         profile.cityPhoto,
     cityPhotoPosition: "center center",
     days: [{
-      number:   1,
-      date:     "",
-      label:    supplierName,
+      number: 1,
+      date:   "",
+      label:  supplierName,
       activities: [{
         showSlide:    true,
         type:         profile.type,
@@ -285,11 +276,11 @@ export default async function handler(req, res) {
     },
   };
 
-  // ── Step 4: Resolve photo keywords → URLs ───────────────────────────────────
+  // Step 4: Resolve photos
   fallbackIndex = 0;
   const resolvedTrip = await resolvePhotos(tripObj);
 
-  // ── Step 5: Inject into template ────────────────────────────────────────────
+  // Step 5: Inject template
   let finalHtml;
   try {
     finalHtml = injectTrip(template, resolvedTrip);
@@ -300,10 +291,10 @@ export default async function handler(req, res) {
   const safeFilename = supplierName.replace(/[^a-zA-Z0-9_\-]/g, "_").slice(0, 60);
 
   return res.status(200).json({
-    html:        finalHtml,
-    filename:    `${safeFilename}_scheda.html`,
-    supplier:    supplierName,
-    city:        profile.city,
+    html:         finalHtml,
+    filename:     `${safeFilename}_scheda.html`,
+    supplier:     supplierName,
+    city:         profile.city,
     fromAirtable: profile.fromAirtable,
   });
 }
