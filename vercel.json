@@ -1,12 +1,12 @@
 {
   "version": 2,
   "functions": {
-    "api/generate.js": {
-      "maxDuration": 60
-    }
+    "api/generate.js": { "maxDuration": 60 },
+    "api/supplier.js": { "maxDuration": 30 }
   },
   "rewrites": [
-    { "source": "/api/generate", "destination": "/api/generate" },
+    { "source": "/api/generate",  "destination": "/api/generate" },
+    { "source": "/api/supplier",  "destination": "/api/supplier" },
     { "source": "/(.*)", "destination": "/public/index.html" }
   ],
   "headers": [
