@@ -290,7 +290,7 @@ export default async function handler(req, res) {
 
   // Step 6: Hide slides not needed in supplier mode (overview + closing)
   const supplierCss = `<style>
-    .slide-overview, .slide-closing { display: none !important; }
+    .slide-cover, .slide-overview, .slide-closing { display: none !important; }
   </style>`;
   finalHtml = finalHtml.replace('</head>', supplierCss + '\n</head>');
 
