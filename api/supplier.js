@@ -288,6 +288,12 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: `Template error: ${e.message}` });
   }
 
+  // Step 6: Hide slides not needed in supplier mode (overview + closing)
+  const supplierCss = `<style>
+    .slide-overview, .slide-closing { display: none !important; }
+  </style>`;
+  finalHtml = finalHtml.replace('</head>', supplierCss + '\n</head>');
+
   const safeFilename = supplierName.replace(/[^a-zA-Z0-9_\-]/g, "_").slice(0, 60);
 
   return res.status(200).json({
