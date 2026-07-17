@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Love IT DMC · Genera Presentazione</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --nero:#0a0a0a;
+  --notte:#111;
+  --card:#161616;
+  --warm-white:#f5f0e8;
+  --gold:#c9a96e;
+  --gold-dim:#8a6d42;
+  --stone:#6a6058;
+  --serif:'Cormorant Garamond',Georgia,serif;
+  --sans:'Montserrat',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{
+  min-height:100vh;background:var(--nero);
+  color:var(--warm-white);font-family:var(--sans);
+  font-weight:300;
+}
+
+/* ── HEADER ── */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:2rem 3rem;border-bottom:1px solid #222;
+}
+.logo{display:flex;align-items:center;gap:.75rem}
+.logo-mark{
+  width:36px;height:36px;border:1.5px solid var(--gold);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--serif);font-size:1.1rem;color:var(--gold);
+}
+.logo-text{font-size:.75rem;letter-spacing:.2em;text-transform:uppercase;color:var(--stone)}
+header nav{font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:var(--stone)}
+
+/* ── HERO ── */
+.hero{
+  text-align:center;padding:5rem 2rem 3rem;
+}
+.hero h1{
+  font-family:var(--serif);font-size:clamp(2.2rem,5vw,3.5rem);
+  font-weight:300;color:var(--warm-white);line-height:1.15;
+  margin-bottom:1rem;
+}
+.hero h1 em{color:var(--gold);font-style:italic}
+.hero p{
+  font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--stone);max-width:480px;margin:0 auto;line-height:1.8;
+}
+
+/* ── MAIN CARD ── */
+main{
+  max-width:680px;margin:0 auto;padding:0 1.5rem 6rem;
+}
+
+/* ── DROP ZONE ── */
+#drop-zone{
+  border:1.5px dashed #333;background:var(--card);
+  border-radius:4px;padding:3.5rem 2rem;
+  text-align:center;cursor:pointer;
+  transition:border-color .25s,background .25s;
+  margin-bottom:1.5rem;
+}
+#drop-zone:hover,#drop-zone.dragover{
+  border-color:var(--gold);background:#1a1610;
+}
+#drop-zone .icon{
+  font-size:2.5rem;margin-bottom:1rem;opacity:.5;
+  transition:opacity .25s,transform .25s;
+}
+#drop-zone:hover .icon,#drop-zone.dragover .icon{
+  opacity:.8;transform:scale(1.08);
+}
+#drop-zone p.label{
+  font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--stone);line-height:1.8;
+}
+#drop-zone p.sub{
+  font-size:.7rem;color:#444;margin-top:.5rem;
+}
+#file-input{display:none}
+
+/* ── FILE SELECTED ── */
+#file-badge{
+  display:none;
+  align-items:center;gap:.75rem;
+  background:#1a1a1a;border:1px solid #2a2a2a;
+  border-radius:3px;padding:.85rem 1.1rem;
+  margin-bottom:1.5rem;
+}
+#file-badge .pdf-icon{font-size:1.4rem;opacity:.7}
+#file-badge .name{
+  flex:1;font-size:.8rem;color:var(--warm-white);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+#file-badge .remove{
+  background:none;border:none;color:var(--stone);
+  cursor:pointer;font-size:1.1rem;padding:.2rem .3rem;
+  transition:color .2s;
+}
+#file-badge .remove:hover{color:#e44;}
+
+/* ── GENERATE BUTTON ── */
+#btn-generate{
+  width:100%;padding:1.1rem;background:var(--gold);
+  color:var(--nero);border:none;cursor:pointer;
+  font-family:var(--sans);font-size:.72rem;font-weight:500;
+  letter-spacing:.2em;text-transform:uppercase;
+  border-radius:3px;transition:background .25s,transform .1s;
+}
+#btn-generate:hover:not(:disabled){background:var(--gold-dim);color:#fff}
+#btn-generate:active:not(:disabled){transform:scale(.98)}
+#btn-generate:disabled{opacity:.35;cursor:not-allowed}
+
+/* ── PROGRESS ── */
+#progress{
+  display:none;padding:2rem 0;
+}
+.step{
+  display:flex;align-items:center;gap:1rem;
+  padding:.6rem 0;
+  font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;
+  color:#555;transition:color .4s;
+}
+.step.active{color:var(--warm-white)}
+.step.done{color:var(--gold)}
+.step .dot{
+  width:8px;height:8px;border-radius:50%;
+  background:currentColor;flex-shrink:0;
+  transition:background .4s;
+}
+.step.active .dot{
+  animation:pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse{
+  0%,100%{transform:scale(1);opacity:1}
+  50%{transform:scale(1.5);opacity:.5}
+}
+.step .label{flex:1}
+.step .check{opacity:0;transition:opacity .3s}
+.step.done .check{opacity:1}
+
+#progress-note{
+  margin-top:1.5rem;font-size:.68rem;color:#444;
+  letter-spacing:.08em;text-align:center;
+}
+
+/* ── RESULT ── */
+#result{
+  display:none;
+  text-align:center;padding:2.5rem 0;
+}
+#result .success-icon{font-size:2rem;margin-bottom:1rem}
+#result h3{
+  font-family:var(--serif);font-size:1.6rem;font-weight:300;
+  color:var(--warm-white);margin-bottom:.5rem;
+}
+#result p{
+  font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--stone);margin-bottom:2rem;
+}
+#btn-download{
+  display:inline-block;padding:.9rem 2.5rem;
+  background:transparent;color:var(--gold);
+  border:1.5px solid var(--gold);cursor:pointer;
+  font-family:var(--sans);font-size:.72rem;font-weight:500;
+  letter-spacing:.2em;text-transform:uppercase;
+  border-radius:3px;text-decoration:none;
+  transition:background .25s,color .25s;margin-right:.75rem;
+}
+#btn-download:hover{background:var(--gold);color:var(--nero)}
+#btn-preview{
+  display:inline-block;padding:.9rem 2rem;
+  background:transparent;color:var(--stone);
+  border:1.5px solid #333;cursor:pointer;
+  font-family:var(--sans);font-size:.72rem;font-weight:500;
+  letter-spacing:.2em;text-transform:uppercase;
+  border-radius:3px;text-decoration:none;
+  transition:border-color .25s,color .25s;
+}
+#btn-preview:hover{border-color:var(--stone);color:var(--warm-white)}
+#btn-new{
+  display:block;margin:1.5rem auto 0;background:none;border:none;
+  color:var(--stone);font-family:var(--sans);font-size:.68rem;
+  letter-spacing:.12em;text-transform:uppercase;cursor:pointer;
+  transition:color .2s;
+}
+#btn-new:hover{color:var(--warm-white)}
+
+/* ── ERROR ── */
+#error-msg{
+  display:none;margin-top:1.5rem;
+  background:#1a0a0a;border:1px solid #5a1a1a;
+  border-radius:3px;padding:1rem 1.2rem;
+  font-size:.75rem;color:#e88;line-height:1.6;
+}
+
+/* ── FOOTER ── */
+footer{
+  text-align:center;padding:2rem;
+  font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;
+  color:#333;border-top:1px solid #1a1a1a;
+}
+
+/* ── PREVIEW OVERLAY ── */
+#preview-overlay{
+  display:none;position:fixed;inset:0;z-index:1000;
+  background:rgba(0,0,0,.9);
+}
+#preview-overlay iframe{width:100%;height:100%;border:none}
+#close-preview{
+  position:fixed;top:1.2rem;right:1.5rem;z-index:1001;
+  background:rgba(0,0,0,.8);border:1px solid #444;
+  color:var(--warm-white);font-size:.9rem;padding:.5rem 1rem;
+  cursor:pointer;border-radius:3px;font-family:var(--sans);
+  letter-spacing:.1em;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">L</div>
+    <div class="logo-text">Love IT DMC</div>
+  </div>
+  <nav>Presenta</nav>
+</header>
+
+<div class="hero">
+  <h1>Genera una <em>presentazione</em><br>dal preventivo</h1>
+  <p>Carica il PDF del preventivo · l'AI estrae i dati · ottieni la presentazione pronta in 30 secondi</p>
+</div>
+
+<main>
+
+  <!-- Drop zone -->
+  <div id="drop-zone">
+    <div class="icon">📄</div>
+    <p class="label">Trascina qui il PDF del preventivo<br>oppure clicca per scegliere il file</p>
+    <p class="sub">Solo file PDF · max 20 MB</p>
+    <input type="file" id="file-input" accept=".pdf,application/pdf"/>
+  </div>
+
+  <!-- File badge (after selection) -->
+  <div id="file-badge">
+    <span class="pdf-icon">📄</span>
+    <span class="name" id="file-name">preventivo.pdf</span>
+    <button class="remove" id="btn-remove" title="Rimuovi file">✕</button>
+  </div>
+
+  <!-- Generate button -->
+  <button id="btn-generate" disabled>Genera Presentazione</button>
+
+  <!-- Error -->
+  <div id="error-msg"></div>
+
+  <!-- Progress -->
+  <div id="progress">
+    <div class="step" id="step-1">
+      <div class="dot"></div>
+      <span class="label">Lettura preventivo</span>
+      <span class="check">✓</span>
+    </div>
+    <div class="step" id="step-2">
+      <div class="dot"></div>
+      <span class="label">Analisi AI del programma</span>
+      <span class="check">✓</span>
+    </div>
+    <div class="step" id="step-3">
+      <div class="dot"></div>
+      <span class="label">Ricerca foto per le slide</span>
+      <span class="check">✓</span>
+    </div>
+    <div class="step" id="step-4">
+      <div class="dot"></div>
+      <span class="label">Composizione presentazione</span>
+      <span class="check">✓</span>
+    </div>
+    <p id="progress-note">La generazione richiede circa 20–40 secondi…</p>
+  </div>
+
+  <!-- Result -->
+  <div id="result">
+    <div class="success-icon">✦</div>
+    <h3>Presentazione pronta</h3>
+    <p id="result-info">Pronta per il download</p>
+    <a id="btn-download" href="#" download>⬇ Scarica HTML</a>
+    <a id="btn-preview" href="#">⊡ Anteprima</a>
+    <button id="btn-new">Genera un'altra presentazione</button>
+  </div>
+
+</main>
+
+<footer>Love IT DMC · Strumento interno · Solo uso professionale</footer>
+
+<!-- Preview overlay -->
+<div id="preview-overlay">
+  <button id="close-preview">✕ Chiudi anteprima</button>
+  <iframe id="preview-frame" src="about:blank"></iframe>
+</div>
+
+<script>
+// ─── STATE ──────────────────────────────────────────────────────────────────
+let selectedFile = null;
+let generatedHtml = null;
+let generatedFilename = null;
+
+// ─── ELEMENTS ────────────────────────────────────────────────────────────────
+const dropZone     = document.getElementById('drop-zone');
+const fileInput    = document.getElementById('file-input');
+const fileBadge    = document.getElementById('file-badge');
+const fileName     = document.getElementById('file-name');
+const btnRemove    = document.getElementById('btn-remove');
+const btnGenerate  = document.getElementById('btn-generate');
+const errorMsg     = document.getElementById('error-msg');
+const progressEl   = document.getElementById('progress');
+const resultEl     = document.getElementById('result');
+const resultInfo   = document.getElementById('result-info');
+const btnDownload  = document.getElementById('btn-download');
+const btnPreview   = document.getElementById('btn-preview');
+const btnNew       = document.getElementById('btn-new');
+const previewOverlay = document.getElementById('preview-overlay');
+const previewFrame = document.getElementById('preview-frame');
+const closePreview = document.getElementById('close-preview');
+
+// ─── FILE HANDLING ───────────────────────────────────────────────────────────
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
+
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropZone.classList.add('dragover');
+});
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file?.type === 'application/pdf' || file?.name.endsWith('.pdf')) {
+    setFile(file);
+  } else {
+    showError('Per favore carica un file PDF.');
+  }
+});
+
+function setFile(file) {
+  if (!file) return;
+  if (file.size > 20 * 1024 * 1024) {
+    showError('File troppo grande. Massimo 20 MB.');
+    return;
+  }
+  selectedFile = file;
+  fileName.textContent = file.name;
+  fileBadge.style.display = 'flex';
+  dropZone.style.display = 'none';
+  btnGenerate.disabled = false;
+  hideError();
+  resetResult();
+}
+
+btnRemove.addEventListener('click', () => {
+  selectedFile = null;
+  fileInput.value = '';
+  fileBadge.style.display = 'none';
+  dropZone.style.display = 'block';
+  btnGenerate.disabled = true;
+  hideError();
+  resetResult();
+});
+
+// ─── GENERATE ────────────────────────────────────────────────────────────────
+btnGenerate.addEventListener('click', generate);
+
+async function generate() {
+  if (!selectedFile) return;
+
+  // UI: show progress
+  btnGenerate.disabled = true;
+  hideError();
+  resetResult();
+  progressEl.style.display = 'block';
+  setStep(1);
+
+  let pdfBase64;
+  try {
+    pdfBase64 = await toBase64(selectedFile);
+    // Strip the data URL prefix
+    pdfBase64 = pdfBase64.replace(/^data:application\/pdf;base64,/, '');
+  } catch (e) {
+    showError('Errore nella lettura del file: ' + e.message);
+    resetProgress();
+    btnGenerate.disabled = false;
+    return;
+  }
+
+  setStep(2);
+
+  // Simulate sub-steps while waiting for the API
+  const stepTimer = setTimeout(() => setStep(3), 8000);
+
+  let data;
+  try {
+    const resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pdf: pdfBase64, filename: selectedFile.name }),
+    });
+
+    clearTimeout(stepTimer);
+    setStep(4);
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
+      throw new Error(err.error ?? `Errore server: ${resp.status}`);
+    }
+
+    data = await resp.json();
+  } catch (e) {
+    clearTimeout(stepTimer);
+    showError('Errore durante la generazione:\n' + e.message);
+    resetProgress();
+    btnGenerate.disabled = false;
+    return;
+  }
+
+  // Success
+  generatedHtml = data.html;
+  generatedFilename = data.filename ?? 'presentazione.html';
+
+  // Build download link
+  const blob = new Blob([generatedHtml], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  btnDownload.href = url;
+  btnDownload.download = generatedFilename;
+
+  // Update result info
+  const clientName = data.client ? ` · ${data.client}` : '';
+  const dest = data.destination ? ` · ${data.destination}` : '';
+  resultInfo.textContent = generatedFilename + clientName + dest;
+
+  // Show result
+  doneAllSteps();
+  setTimeout(() => {
+    progressEl.style.display = 'none';
+    resultEl.style.display = 'block';
+  }, 600);
+}
+
+// ─── PREVIEW ─────────────────────────────────────────────────────────────────
+btnPreview.addEventListener('click', (e) => {
+  e.preventDefault();
+  if (!generatedHtml) return;
+  const blob = new Blob([generatedHtml], { type: 'text/html' });
+  previewFrame.src = URL.createObjectURL(blob);
+  previewOverlay.style.display = 'block';
+});
+
+closePreview.addEventListener('click', () => {
+  previewOverlay.style.display = 'none';
+  previewFrame.src = 'about:blank';
+});
+
+// ─── RESET ───────────────────────────────────────────────────────────────────
+btnNew.addEventListener('click', () => {
+  generatedHtml = null;
+  generatedFilename = null;
+  selectedFile = null;
+  fileInput.value = '';
+  fileBadge.style.display = 'none';
+  dropZone.style.display = 'block';
+  btnGenerate.disabled = true;
+  resetProgress();
+  resetResult();
+  hideError();
+});
+
+function resetResult() {
+  resultEl.style.display = 'none';
+  generatedHtml = null;
+  generatedFilename = null;
+}
+
+function resetProgress() {
+  progressEl.style.display = 'none';
+  document.querySelectorAll('.step').forEach(s => {
+    s.classList.remove('active','done');
+  });
+}
+
+// ─── STEP HELPERS ────────────────────────────────────────────────────────────
+function setStep(n) {
+  document.querySelectorAll('.step').forEach((s, i) => {
+    s.classList.remove('active','done');
+    if (i + 1 < n) s.classList.add('done');
+    if (i + 1 === n) s.classList.add('active');
+  });
+}
+
+function doneAllSteps() {
+  document.querySelectorAll('.step').forEach(s => {
+    s.classList.remove('active');
+    s.classList.add('done');
+  });
+}
+
+// ─── ERROR ───────────────────────────────────────────────────────────────────
+function showError(msg) {
+  errorMsg.textContent = msg;
+  errorMsg.style.display = 'block';
+}
+function hideError() {
+  errorMsg.style.display = 'none';
+}
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+function toBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+</script>
+</body>
+</html>

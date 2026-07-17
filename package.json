@@ -1,0 +1,13 @@
+{
+  "name": "loveit-presenta",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Love IT DMC – Generatore di presentazioni AI",
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

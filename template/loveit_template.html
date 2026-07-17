@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Love IT DMC – Presentation Template</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+
+<script>
+// ─── PHOTO LIBRARY ─────────────────────────────────────────────────────────
+// Drive photos: lh3.googleusercontent.com/d/[fileId]  (requires Google login)
+// Unsplash:     images.unsplash.com/photo-[id]?w=1920&q=80  (public, no login)
+
+const D = id => `https://lh3.googleusercontent.com/d/${id}`;
+const U = id => `https://images.unsplash.com/photo-${id}?w=1920&q=80`;
+
+// ─── TRIP DATA — Claude replaces this block with data from the quote PDF ────
+const TRIP = {
+
+  /* ── Identity ──────────────────────────────────────────────── */
+  client:      "ACME Corporation",
+  projectRef:  "202607002",
+  quoteRef:    "202607002-Q",
+
+  /* ── Trip basics ─────────────────────────────────────────── */
+  title:       "Incentive Trip",
+  destination: "Rome",
+  country:     "Italy",
+  dates:       "23 – 27 February 2027",
+  nights:      4,
+  pax:         120,
+
+  /* ── Cover slide ─────────────────────────────────────────── */
+  // cityPhoto: iconic aerial/landmark photo (Unsplash or Drive URL)
+  cityPhoto:          "",
+  cityPhotoPosition:  "center center",
+  tagline: "La Dolce Vita, reimagined for your team.",
+
+  /* ── Days ────────────────────────────────────────────────── */
+  /*
+     showSlide: false  →  no slide (transfers, etc.)
+     type: "transfer" | "activity" | "dinner" | "hotel" | "gala" | "free"
+     photos: [url1,url2,url3]  →  gallery slide (large left + 2 stacked right)
+  */
+  days: [
+    {
+      number: 1,
+      date:   "23 February 2027",
+      label:  "Arrival",
+      activities: [{
+        showSlide:     false,
+        type:          "transfer",
+        title:         "Airport Arrival Transfers",
+        description:   "Dedicated Love IT staff and premium vehicles welcome your guests from touchdown to hotel check-in.",
+        photo:         "", photoPosition: "center center",
+        photos: [], options: [], supplierName: ""
+      }]
+    },
+    {
+      number: 2,
+      date:   "24 February 2027",
+      label:  "The Eternal City",
+      activities: [{
+        showSlide:     true,
+        type:          "activity",
+        title:         "Private Colosseum Visit",
+        description:   "After closing time, the Colosseum is entirely yours — 120 guests guided by experts in absolute silence.",
+        photo:         "", photoPosition: "center 40%",
+        photos: [],
+        options: [
+          { label: "Option A", title: "Exclusive after-hours private visit" },
+          { label: "Option B", title: "Expert-guided group tour" }
+        ],
+        supplierName: "Colosseum"
+      }]
+    }
+  ],
+
+  /* ── Closing slide ───────────────────────────────────────── */
+  closing: {
+    photo: "", photoPosition: "center center",
+    headline: "Let's make it happen.",
+    subline:  "Your dedicated Love IT team is ready to bring every detail to life.",
+    contact:  "marco@loveit-dmc.com"
+  }
+
+};
+</script>
+
+<style>
+:root{
+  --nero:#0a0a0a;
+  --notte:#111111;
+  --warm-white:#f5f0e8;
+  --gold:#c9a96e;
+  --gold-light:#e0c898;
+  --stone:#8a8070;
+  --serif:'Cormorant Garamond',Georgia,serif;
+  --sans:'Montserrat',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--nero)}
+
+#scroll{
+  height:100vh;
+  overflow-y:scroll;
+  scroll-snap-type:y mandatory;
+  -webkit-overflow-scrolling:touch;
+}
+#scroll::-webkit-scrollbar{display:none}
+
+section{
+  position:relative;
+  width:100%;
+  height:100vh;
+  scroll-snap-align:start;
+  overflow:hidden;
+  display:flex;
+  align-items:flex-end;
+}
+
+.bg{
+  position:absolute;
+  inset:0;
+  background-size:cover;
+  background-repeat:no-repeat;
+  transition:transform .6s ease;
+}
+section:hover .bg{transform:scale(1.02)}
+
+.ov-dark{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.82) 0%,rgba(0,0,0,.35) 55%,rgba(0,0,0,.15) 100%)}
+.ov-full{position:absolute;inset:0;background:rgba(0,0,0,.70)}
+
+.content{
+  position:relative;
+  z-index:2;
+  padding:3.5rem 5vw 5rem;
+  max-width:860px;
+  color:var(--warm-white);
+}
+.content-center{
+  position:relative;
+  z-index:2;
+  width:100%;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:3rem 5vw;
+  color:var(--warm-white);
+}
+.content-dark{
+  position:relative;
+  z-index:2;
+  width:100%;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:3.5rem 6vw;
+  color:var(--warm-white);
+}
+
+.eyebrow{
+  font-family:var(--sans);
+  font-size:.8rem;
+  font-weight:500;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--gold);
+  margin-bottom:1rem;
+}
+.display{
+  font-family:var(--serif);
+  font-size:clamp(2.8rem,6vw,5.5rem);
+  font-weight:300;
+  line-height:1.08;
+  letter-spacing:-.01em;
+}
+.display em{font-style:italic;color:var(--gold-light)}
+.headline{
+  font-family:var(--serif);
+  font-size:clamp(2rem,4.5vw,3.8rem);
+  font-weight:300;
+  line-height:1.12;
+}
+.headline em{font-style:italic;color:var(--gold-light)}
+.body-text{
+  font-family:var(--sans);
+  font-size:.96rem;
+  font-weight:300;
+  line-height:1.75;
+  color:rgba(245,240,232,.82);
+  margin-top:1.4rem;
+  max-width:560px;
+}
+.rule{
+  width:48px;height:1px;
+  background:var(--gold);
+  margin:1.4rem 0;
+}
+
+.meta-row{
+  display:flex;gap:.6rem;flex-wrap:wrap;
+  margin-top:1.8rem;
+}
+.meta-pill{
+  font-family:var(--sans);
+  font-size:.8rem;
+  font-weight:500;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  border:1px solid rgba(201,169,110,.5);
+  color:var(--gold-light);
+  padding:.38rem .9rem;
+  border-radius:2px;
+}
+
+.options-row{
+  display:flex;
+  gap:.5rem;
+  flex-wrap:wrap;
+  margin-top:1.6rem;
+}
+.opt-badge{
+  display:flex;
+  align-items:center;
+  gap:.5rem;
+  background:rgba(201,169,110,.12);
+  border:1px solid rgba(201,169,110,.35);
+  border-radius:2px;
+  padding:.4rem .8rem;
+}
+.opt-label{
+  font-family:var(--sans);
+  font-size:.72rem;
+  font-weight:600;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--gold);
+}
+.opt-title{
+  font-family:var(--sans);
+  font-size:.84rem;
+  font-weight:300;
+  color:var(--warm-white);
+}
+
+.counter{
+  position:absolute;
+  bottom:2.2rem;right:2.8rem;
+  font-family:var(--sans);
+  font-size:.65rem;
+  font-weight:500;
+  letter-spacing:.18em;
+  color:rgba(245,240,232,.45);
+  z-index:10;
+}
+
+#dots{
+  position:fixed;
+  right:1.5rem;top:50%;
+  transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:.45rem;
+  z-index:100;
+}
+.dot{
+  width:5px;height:5px;
+  border-radius:50%;
+  background:rgba(201,169,110,.3);
+  cursor:pointer;
+  border:none;
+  transition:background .3s,transform .3s;
+}
+.dot.active{
+  background:var(--gold);
+  transform:scale(1.5);
+}
+
+.logo-bar{
+  position:fixed;
+  top:1.8rem;left:2.8rem;
+  z-index:100;
+}
+.wordmark{
+  font-family:var(--sans);
+  font-size:.7rem;
+  font-weight:600;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  color:var(--gold);
+  opacity:.9;
+}
+
+.slide-cover .tagline{
+  font-family:var(--sans);
+  font-size:.9rem;
+  font-weight:300;
+  letter-spacing:.12em;
+  color:rgba(245,240,232,.65);
+  margin-top:1rem;
+}
+
+.slide-overview{background:var(--notte)}
+.days-table{
+  margin-top:2rem;
+  width:100%;
+  max-width:700px;
+  border-collapse:collapse;
+}
+.days-table tr{border-bottom:1px solid rgba(201,169,110,.15)}
+.days-table td{
+  padding:.75rem 0;
+  font-family:var(--sans);
+  font-size:.9rem;
+  font-weight:300;
+  color:rgba(245,240,232,.8);
+  vertical-align:top;
+}
+.days-table td:first-child{
+  width:200px;
+  color:var(--gold);
+  font-size:.78rem;
+  font-weight:500;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  padding-right:1.5rem;
+}
+.days-table td.day-label-col{
+  font-family:var(--serif);
+  font-size:1.2rem;
+  font-style:italic;
+  color:var(--warm-white);
+  font-weight:300;
+}
+
+/* ── GALLERY SLIDE ── */
+.slide-gallery{position:relative;}
+.gallery-grid{
+  position:absolute;
+  inset:0;
+  display:grid;
+  gap:3px;
+  background:var(--nero);
+}
+.grid-2{grid-template-columns:1fr 1fr;}
+.grid-3{
+  grid-template-columns:3fr 2fr;
+  grid-template-rows:1fr 1fr;
+}
+.grid-3 .gallery-cell:first-child{grid-row:1 / 3;}
+.grid-4{
+  grid-template-columns:1fr 1fr;
+  grid-template-rows:1fr 1fr;
+}
+.gallery-cell{
+  background-size:cover;
+  background-position:center;
+  overflow:hidden;
+  transition:transform .5s ease;
+}
+.gallery-cell:hover{transform:scale(1.03);}
+.gallery-header{
+  position:absolute;
+  top:0;left:0;right:0;
+  z-index:5;
+  padding:1.4rem 2.8rem;
+  background:linear-gradient(to bottom,rgba(0,0,0,.65) 0%,transparent 100%);
+  pointer-events:none;
+  display:flex;
+  align-items:center;
+  gap:1rem;
+}
+.gallery-label{
+  font-family:var(--sans);
+  font-size:.75rem;
+  font-weight:500;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--gold);
+}
+.gallery-title-small{
+  font-family:var(--serif);
+  font-size:1.15rem;
+  font-weight:300;
+  font-style:italic;
+  color:var(--warm-white);
+  opacity:.85;
+}
+
+.slide-closing .contact{
+  font-family:var(--sans);
+  font-size:.88rem;
+  font-weight:400;
+  letter-spacing:.12em;
+  color:var(--gold);
+  margin-top:1.8rem;
+  text-transform:lowercase;
+}
+
+@media print{
+  #dots,.logo-bar{display:none}
+  section{page-break-after:always}
+}
+</style>
+</head>
+
+<body>
+
+<div class="logo-bar">
+  <span class="wordmark">Love&thinsp;IT&thinsp;DMC</span>
+</div>
+
+<nav id="dots"></nav>
+<div id="scroll"></div>
+
+<script>
+(function(){
+
+  function bgStyle(photo, pos){
+    if(!photo) return 'background:#1a1a1a;';
+    return `background-image:url('${photo}');background-position:${pos||'center center'};background-size:cover;`;
+  }
+
+  function optionBadges(options){
+    if(!options || !options.length) return '';
+    return `<div class="options-row">
+      ${options.map(o=>`
+        <div class="opt-badge">
+          <span class="opt-label">${o.label}</span>
+          <span class="opt-title">${o.title}</span>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  // ── Slide builders ────────────────────────────────────────────────────────
+
+  function buildCover(trip, num, total){
+    const cPhoto = trip.cityPhoto || trip.coverPhoto || '';
+    const cPos   = trip.cityPhoto ? (trip.cityPhotoPosition||'center center') : (trip.coverPhotoPosition||'center center');
+    return `
+    <section class="slide-cover">
+      <div class="bg" style="${bgStyle(cPhoto, cPos)}"></div>
+      <div class="ov-dark"></div>
+      <div class="content-center">
+        <div class="eyebrow">${trip.client || 'Private Proposal'}</div>
+        <h1 class="display">${trip.title}<br><em>${trip.destination}</em></h1>
+        <p class="tagline">${trip.tagline || ''}</p>
+        <div class="meta-row">
+          <span class="meta-pill">${trip.dates}</span>
+          <span class="meta-pill">${trip.pax} guests</span>
+          <span class="meta-pill">${trip.country}</span>
+        </div>
+      </div>
+      <span class="counter">01 / ${String(total).padStart(2,'0')}</span>
+    </section>`;
+  }
+
+  function buildOverview(trip, num, total){
+    const rows = trip.days.map(d => `
+      <tr>
+        <td>Day ${d.number} · ${d.date}</td>
+        <td class="day-label-col">${d.label}</td>
+      </tr>`).join('');
+    return `
+    <section class="slide-overview">
+      <div class="content-dark">
+        <div class="eyebrow">The Programme</div>
+        <h2 class="headline">Your journey<br><em>at a glance</em></h2>
+        <div class="rule"></div>
+        <table class="days-table">${rows}</table>
+      </div>
+      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
+    </section>`;
+  }
+
+  function buildActivity(act, day, num, total){
+    const hasPhoto = !!act.photo;
+    const ovClass  = hasPhoto ? 'ov-dark' : 'ov-full';
+    return `
+    <section>
+      <div class="bg" style="${bgStyle(act.photo, act.photoPosition)}"></div>
+      <div class="${ovClass}"></div>
+      <div class="content">
+        <div class="eyebrow">Day ${day.number} · ${day.date}</div>
+        <h2 class="headline">${act.title}</h2>
+        <p class="body-text">${act.description}</p>
+        ${optionBadges(act.options)}
+      </div>
+      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
+    </section>`;
+  }
+
+  function buildGallery(act, day, num, total){
+    const photos = (act.photos || []).filter(Boolean);
+    if(!photos.length) return '';
+    // Always use 3-photo grid-3 layout (large left + 2 stacked right)
+    const slots = [photos[0]||'', photos[1]||'', photos[2]||''];
+    const cells = slots.map(url =>
+      `<div class="gallery-cell"${url ? ` style="background-image:url('${url}')"` : ''}></div>`
+    ).join('');
+    return `
+    <section class="slide-gallery">
+      <div class="gallery-grid grid-3">${cells}</div>
+      <div class="gallery-header">
+        <span class="gallery-label">Day ${day.number}</span>
+        <span class="gallery-title-small">${act.title}</span>
+      </div>
+      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
+    </section>`;
+  }
+
+  function buildClosing(trip, num, total){
+    const c = trip.closing || {};
+    return `
+    <section class="slide-closing">
+      <div class="bg" style="${bgStyle(c.photo, c.photoPosition)}"></div>
+      <div class="ov-dark"></div>
+      <div class="content">
+        <div class="eyebrow">Love IT DMC · ${trip.projectRef || ''}</div>
+        <h2 class="headline">${c.headline || "Let's make it happen."}</h2>
+        <p class="body-text">${c.subline || 'Your dedicated Love IT team is ready.'}</p>
+        ${c.contact ? `<p class="contact">${c.contact}</p>` : ''}
+      </div>
+      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
+    </section>`;
+  }
+
+  // ── Collect all slides ────────────────────────────────────────────────────
+  const slideBuilders = [];
+
+  slideBuilders.push((num, total) => buildCover(TRIP, num, total));
+  slideBuilders.push((num, total) => buildOverview(TRIP, num, total));
+
+  TRIP.days.forEach(day => {
+    day.activities.forEach(act => {
+      if(act.showSlide !== false){
+        slideBuilders.push((num, total) => buildActivity(act, day, num, total));
+        const galleryPhotos = (act.photos || []).filter(Boolean);
+        if(galleryPhotos.length > 0){
+          slideBuilders.push((num, total) => buildGallery(act, day, num, total));
+        }
+      }
+    });
+  });
+
+  slideBuilders.push((num, total) => buildClosing(TRIP, num, total));
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  const TOTAL  = slideBuilders.length;
+  const scroll = document.getElementById('scroll');
+  const dotsNav = document.getElementById('dots');
+
+  // Skip generation when slides already exist (saved-snapshot mode)
+  if(scroll.children.length === 0){
+    slideBuilders.forEach((builder, i) => {
+      const html = builder(i + 1, TOTAL);
+      const wrap = document.createElement('div');
+      wrap.innerHTML = html.trim();
+      const sec = wrap.firstElementChild;
+      scroll.appendChild(sec);
+
+      const dot = document.createElement('button');
+      dot.className = 'dot' + (i === 0 ? ' active' : '');
+      dot.setAttribute('aria-label', `Slide ${i+1}`);
+      dotsNav.appendChild(dot);
+    });
+  }
+
+  // ── Navigation (runs for both fresh and pre-rendered) ─────────────────────
+  const sections = () => scroll.querySelectorAll('section');
+  const dots     = () => dotsNav.querySelectorAll('.dot');
+  let current = 0;
+
+  function goTo(idx){
+    const secs = sections();
+    if(idx < 0 || idx >= secs.length) return;
+    secs[idx].scrollIntoView({behavior:'smooth'});
+  }
+
+  function updateDots(idx){
+    dots().forEach((d,i) => d.classList.toggle('active', i===idx));
+    current = idx;
+  }
+
+  // Bind dot clicks (works for both freshly created and pre-rendered dots)
+  dots().forEach((d, i) => d.addEventListener('click', () => goTo(i)));
+
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if(e.isIntersecting){
+        const idx = Array.from(sections()).indexOf(e.target);
+        if(idx >= 0) updateDots(idx);
+      }
+    });
+  }, {root: scroll, threshold: 0.6});
+
+  sections().forEach(s => io.observe(s));
+  window._loveitIO = io; // exposed for dynamic slide insertion
+
+  document.addEventListener('keydown', e => {
+    if(e.key === 'ArrowDown' || e.key === 'ArrowRight') goTo(current + 1);
+    if(e.key === 'ArrowUp'   || e.key === 'ArrowLeft')  goTo(current - 1);
+  });
+
+})();
+</script>
+
+<!-- ═══ EDIT MODE + PDF ════════════════════════════════════════════════════ -->
+<style>
+/* ── Controls bar ─────────────────────────────────────────────────────────── */
+#edit-controls{position:fixed;bottom:1.8rem;left:2.4rem;z-index:300;display:flex;gap:.45rem;opacity:.28;transition:opacity .3s;}
+#edit-controls:hover,
+body.photo-mode #edit-controls,
+body.text-mode #edit-controls{ opacity:1; }
+#edit-controls button{font-family:var(--sans);font-size:.58rem;font-weight:500;letter-spacing:.13em;text-transform:uppercase;color:rgba(201,169,110,.8);background:rgba(10,10,10,.84);border:1px solid rgba(201,169,110,.22);padding:.42rem 1rem;cursor:pointer;border-radius:2px;backdrop-filter:blur(8px);transition:all .2s;}
+#edit-controls button:hover{ border-color:var(--gold);color:var(--gold); }
+#edit-toggle.active{ background:rgba(201,169,110,.15);border-color:var(--gold);color:var(--warm-white); }
+#save-btn{ display:none;color:var(--warm-white);background:rgba(201,169,110,.17);border-color:rgba(201,169,110,.4); }
+#save-btn:hover{ background:rgba(201,169,110,.3); }
+#pdf-btn{ color:var(--warm-white);background:rgba(30,30,30,.9); }
+
+/* ── New gallery grid layouts ─────────────────────────────────────────────── */
+.grid-1{ grid-template-columns:1fr;grid-template-rows:1fr; }
+.grid-3-rev{ grid-template-columns:2fr 3fr;grid-template-rows:1fr 1fr; }
+.grid-3-rev .gallery-cell:last-child{ grid-row:1 / 3; }
+
+/* ── Map slide ────────────────────────────────────────────────────────────── */
+.slide-map{ position:relative; }
+.slide-map .map-frame{ position:absolute;inset:0; }
+.slide-map .map-frame iframe{ width:100%;height:100%;border:none;display:block; }
+
+/* ── Photo drop zones ─────────────────────────────────────────────────────── */
+.edit-zone{position:absolute;inset:0;z-index:50;display:grid;place-items:center;font-family:var(--sans);font-size:.58rem;font-weight:400;letter-spacing:.15em;text-transform:uppercase;color:transparent;background:transparent;border:1.5px dashed transparent;cursor:pointer;transition:background .18s,border-color .18s,color .18s;user-select:none;}
+.edit-zone:hover{ color:rgba(201,169,110,.9);background:rgba(0,0,0,.4);border-color:rgba(201,169,110,.5); }
+.edit-zone.drag-over{ color:var(--warm-white)!important;background:rgba(201,169,110,.15)!important;border-color:var(--gold)!important;border-style:solid!important; }
+
+/* ── Editable text ────────────────────────────────────────────────────────── */
+[contenteditable="true"]{
+  outline:1.5px dashed rgba(201,169,110,.55);
+  outline-offset:5px;
+  border-radius:2px;
+  cursor:text;
+  caret-color:var(--gold);
+  transition:outline-color .2s,background .2s;
+}
+[contenteditable="true"]:hover{
+  outline-color:rgba(201,169,110,.9);
+  background:rgba(201,169,110,.09);
+}
+[contenteditable="true"]:focus{
+  outline-color:var(--gold);
+  outline-style:solid;
+  background:rgba(201,169,110,.1);
+}
+
+/* ── Add slide button ─────────────────────────────────────────────────────── */
+.add-slide-btn{position:absolute;bottom:1.2rem;left:50%;transform:translateX(-50%);z-index:60;font-family:var(--sans);font-size:.56rem;font-weight:500;letter-spacing:.15em;text-transform:uppercase;color:rgba(201,169,110,.75);background:rgba(10,10,10,.88);border:1px solid rgba(201,169,110,.28);padding:.38rem 1.2rem;cursor:pointer;border-radius:2px;backdrop-filter:blur(8px);transition:all .2s;white-space:nowrap;}
+.add-slide-btn:hover{ border-color:var(--gold);color:var(--gold);background:rgba(201,169,110,.1); }
+
+/* ── Add slide panel ──────────────────────────────────────────────────────── */
+#add-slide-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:500;background:rgba(8,8,8,.96);border:1px solid rgba(201,169,110,.28);border-radius:3px;padding:1.6rem 1.8rem 1.5rem;backdrop-filter:blur(16px);min-width:390px;}
+#asp-close{position:absolute;top:.55rem;right:.75rem;background:none;border:none;color:rgba(201,169,110,.35);cursor:pointer;font-size:1.1rem;padding:.2rem .4rem;line-height:1;transition:color .2s;}
+#asp-close:hover{ color:var(--gold); }
+.asp-title{font-family:var(--sans);font-size:.62rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:rgba(201,169,110,.55);margin-bottom:1.1rem;}
+.asp-options{ display:flex;gap:.75rem; }
+.asp-opt{flex:1;background:transparent;border:1px solid rgba(201,169,110,.18);border-radius:3px;padding:.75rem .5rem .55rem;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:.45rem;}
+.asp-opt:hover{ border-color:rgba(201,169,110,.6);background:rgba(201,169,110,.07); }
+.asp-opt svg{ width:62px;height:40px; }
+.asp-opt span{font-family:var(--sans);font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(201,169,110,.55);transition:color .2s;}
+.asp-opt:hover span{ color:var(--gold); }
+.asp-map-input{ display:flex;gap:.5rem;margin-top:.3rem; }
+.asp-map-input input{flex:1;font-family:var(--sans);font-size:.7rem;color:var(--warm-white);background:rgba(255,255,255,.05);border:1px solid rgba(201,169,110,.25);border-radius:2px;padding:.45rem .7rem;outline:none;transition:border-color .2s;}
+.asp-map-input input:focus{ border-color:var(--gold); }
+.asp-map-input input::placeholder{ color:rgba(255,255,255,.25); }
+.asp-map-input button{font-family:var(--sans);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--warm-white);background:rgba(201,169,110,.18);border:1px solid rgba(201,169,110,.38);border-radius:2px;padding:.45rem 1rem;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.asp-map-input button:hover{ background:rgba(201,169,110,.32); }
+.asp-hint{font-family:var(--sans);font-size:.54rem;color:rgba(255,255,255,.28);margin-top:.75rem;line-height:1.6;}
+.asp-hint strong{ color:rgba(255,255,255,.45); }
+/* ── PDF pick button ─────────────────────────────────────────────────────── */
+.asp-pdf-pick-btn{ width:100%;padding:.75rem;background:rgba(220,60,60,.1);border:1px dashed rgba(220,60,60,.45);color:rgba(220,90,90,.9);cursor:pointer;border-radius:2px;font-family:var(--sans);font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;transition:all .2s; }
+.asp-pdf-pick-btn:hover{ background:rgba(220,60,60,.2);border-color:rgba(220,60,60,.7); }
+
+/* ── PDF slide ────────────────────────────────────────────────────────────── */
+.slide-pdf{ position:relative;background:#111; }
+.slide-pdf .pdf-frame{ position:absolute;inset:0; }
+.slide-pdf .pdf-frame embed{ width:100%;height:100%;border:none;display:block; }
+.asp-opt[data-layout="pdf"]:hover{ border-color:rgba(220,60,60,.55);background:rgba(220,60,60,.07); }
+.asp-opt[data-layout="pdf"]:hover span{ color:rgba(220,90,90,.9); }
+
+/* ── Print / PDF ──────────────────────────────────────────────────────────── */
+@media print{
+  @page{ size:16in 9in;margin:0; }
+  *{ -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important; }
+  html,body{ width:16in;height:auto;overflow:visible!important;background:#000; }
+  #scroll{ overflow:visible!important;height:auto!important;display:block!important; }
+  section{ width:16in!important;height:9in!important;page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid;overflow:hidden!important;display:flex!important; }
+  .bg,.gallery-cell,.gallery-grid,.slide-overview,.slide-closing{ -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important; }
+  #dots,.logo-bar,#edit-controls,.edit-zone,.add-slide-btn,#add-slide-panel{ display:none!important; }
+  [contenteditable]{ border-bottom:none!important;background:transparent!important; }
+}
+</style>
+
+<div id="edit-controls">
+  <button id="photos-toggle" onclick="LoveitEditor.togglePhotos()">&#128247; Edit Photos</button>
+  <button id="text-toggle"   onclick="LoveitEditor.toggleText()">&#9998; Edit Text</button>
+  <button id="save-btn"      onclick="LoveitEditor.save()">&#8595; Save HTML</button>
+  <button id="pdf-btn"       onclick="window.print()">&#8681; PDF</button>
+</div>
+
+<script>
+let LoveitEditor={togglePhotos:()=>{},toggleText:()=>{},save:()=>{},pdf:()=>window.print()};
+try{ LoveitEditor=(function(){
+  let photoMode=false, textMode=false;
+  const zones=[], addBtns=[];
+  let currentTarget=null;
+  const TEXT_SEL='.headline,.display,.body-text,.tagline,.eyebrow,.gallery-title-small,.gallery-label';
+
+  const fi=document.createElement('input');
+  fi.type='file';fi.accept='image/*';fi.style.display='none';
+  document.body.appendChild(fi);
+  fi.addEventListener('change',()=>{ if(fi.files[0]) applyFile(fi.files[0],currentTarget); });
+
+  function makeZone(target){
+    const z=document.createElement('div');
+    z.className='edit-zone';z.title='Drop a photo, or click to browse';z.textContent='Drop a photo, or click to browse';
+    z.addEventListener('click',e=>{ e.stopPropagation();currentTarget=target;fi.value='';fi.click(); });
+    z.addEventListener('dragover',e=>{ e.preventDefault();e.dataTransfer.dropEffect='copy';z.classList.add('drag-over'); });
+    z.addEventListener('dragleave',()=>z.classList.remove('drag-over'));
+    z.addEventListener('drop',e=>{ e.preventDefault();z.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/')) applyFile(f,target); });
+    return z;
+  }
+
+  function applyFile(file,target){
+    const reader=new FileReader();
+    reader.onload=ev=>{ target.style.backgroundImage=`url('${ev.target.result}')`;if(target.animate) target.animate([{opacity:.4},{opacity:1}],{duration:280}); };
+    reader.readAsDataURL(file);
+  }
+
+  function _syncSaveBtn(){
+    document.getElementById('save-btn').style.display=(photoMode||textMode)?'inline-block':'none';
+  }
+
+  function togglePhotos(){
+    photoMode=!photoMode;
+    document.getElementById('photos-toggle').classList.toggle('active',photoMode);
+    document.body.classList.toggle('photo-mode',photoMode);
+    if(photoMode){
+      document.querySelectorAll('.bg').forEach(bg=>{ const z=makeZone(bg);bg.parentElement.appendChild(z);zones.push(z); });
+      document.querySelectorAll('.gallery-cell').forEach(cell=>{ if(getComputedStyle(cell).position==='static') cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z); });
+      document.querySelectorAll('.slide-gallery,.slide-map').forEach(sec=>_addInsertBtn(sec));
+    } else {
+      zones.forEach(z=>{ const p=z.parentElement;z.remove();if(p&&p.classList.contains('gallery-cell')) p.style.position=''; });
+      zones.length=0;
+      addBtns.forEach(b=>b.remove());addBtns.length=0;
+      _closePanel();
+    }
+    _syncSaveBtn();
+  }
+
+  function toggleText(){
+    textMode=!textMode;
+    document.getElementById('text-toggle').classList.toggle('active',textMode);
+    document.body.classList.toggle('text-mode',textMode);
+    if(textMode){
+      document.querySelectorAll(TEXT_SEL).forEach(el=>{ el.contentEditable='true';el.spellcheck=false; });
+    } else {
+      document.querySelectorAll('[contenteditable="true"]').forEach(el=>el.contentEditable='false');
+    }
+    _syncSaveBtn();
+  }
+
+  function _addInsertBtn(sec){
+    const btn=document.createElement('button');
+    btn.className='add-slide-btn';btn.textContent='+ Aggiungi slide';
+    btn.addEventListener('click',e=>{ e.stopPropagation();_showPanel(sec,btn); });
+    sec.appendChild(btn);addBtns.push(btn);
+  }
+
+  function _closePanel(){
+    const p=document.getElementById('add-slide-panel');if(p) p.remove();
+    document.removeEventListener('keydown',_escKey);
+  }
+  function _escKey(e){ if(e.key==='Escape') _closePanel(); }
+
+  function _showPanel(afterSec,anchorBtn){
+    const old=document.getElementById('add-slide-panel');
+    if(old){ const same=old._anchor===anchorBtn;_closePanel();if(same) return; }
+    const panel=document.createElement('div');
+    panel.id='add-slide-panel';panel._anchor=anchorBtn;
+    panel.innerHTML=`
+      <button id="asp-close" title="Chiudi">&times;</button>
+      <div class="asp-title">Aggiungi slide dopo questa</div>
+      <div class="asp-options">
+        <button class="asp-opt" data-layout="grid-1">
+          <svg viewBox="0 0 62 40" fill="none"><rect x="1" y="1" width="60" height="38" rx="2" fill="rgba(201,169,110,.25)" stroke="rgba(201,169,110,.65)" stroke-width="1.5"/></svg>
+          <span>Singola</span>
+        </button>
+        <button class="asp-opt" data-layout="grid-3">
+          <svg viewBox="0 0 62 40" fill="none">
+            <rect x="1" y="1" width="36" height="38" rx="2" fill="rgba(201,169,110,.3)" stroke="rgba(201,169,110,.65)" stroke-width="1.5"/>
+            <rect x="40" y="1" width="21" height="17" rx="2" fill="rgba(201,169,110,.15)" stroke="rgba(201,169,110,.45)" stroke-width="1.5"/>
+            <rect x="40" y="22" width="21" height="17" rx="2" fill="rgba(201,169,110,.15)" stroke="rgba(201,169,110,.45)" stroke-width="1.5"/>
+          </svg>
+          <span>Grande sx</span>
+        </button>
+        <button class="asp-opt" data-layout="grid-3-rev">
+          <svg viewBox="0 0 62 40" fill="none">
+            <rect x="1" y="1" width="21" height="17" rx="2" fill="rgba(201,169,110,.15)" stroke="rgba(201,169,110,.45)" stroke-width="1.5"/>
+            <rect x="1" y="22" width="21" height="17" rx="2" fill="rgba(201,169,110,.15)" stroke="rgba(201,169,110,.45)" stroke-width="1.5"/>
+            <rect x="25" y="1" width="36" height="38" rx="2" fill="rgba(201,169,110,.3)" stroke="rgba(201,169,110,.65)" stroke-width="1.5"/>
+          </svg>
+          <span>Grande dx</span>
+        </button>
+        <button class="asp-opt" data-layout="map">
+          <svg viewBox="0 0 62 40" fill="none">
+            <rect x="1" y="1" width="60" height="38" rx="2" fill="rgba(66,133,244,.1)" stroke="rgba(66,133,244,.5)" stroke-width="1.5"/>
+            <circle cx="31" cy="16" r="6" fill="rgba(66,133,244,.3)" stroke="rgba(66,133,244,.7)" stroke-width="1.3"/>
+            <circle cx="31" cy="16" r="2.5" fill="rgba(66,133,244,.8)"/>
+            <path d="M26 36 Q31 28 36 36" stroke="rgba(66,133,244,.35)" stroke-width="1" fill="rgba(66,133,244,.08)"/>
+          </svg>
+          <span>Mappa</span>
+        </button>
+        <button class="asp-opt" data-layout="pdf">
+          <svg viewBox="0 0 62 40" fill="none">
+            <rect x="1" y="1" width="60" height="38" rx="2" fill="rgba(220,60,60,.08)" stroke="rgba(220,60,60,.4)" stroke-width="1.5"/>
+            <rect x="19" y="4" width="18" height="24" rx="1.5" fill="rgba(220,60,60,.15)" stroke="rgba(220,60,60,.5)" stroke-width="1.3"/>
+            <path d="M31 4 L37 10 L37 28 L19 28 L19 4 Z" fill="rgba(220,60,60,.1)" stroke="rgba(220,60,60,.4)" stroke-width="1.3"/>
+            <path d="M31 4 L31 10 L37 10" stroke="rgba(220,60,60,.4)" stroke-width="1.3" fill="none"/>
+            <line x1="23" y1="15" x2="33" y2="15" stroke="rgba(220,60,60,.4)" stroke-width="1"/>
+            <line x1="23" y1="19" x2="33" y2="19" stroke="rgba(220,60,60,.4)" stroke-width="1"/>
+            <line x1="23" y1="23" x2="29" y2="23" stroke="rgba(220,60,60,.4)" stroke-width="1"/>
+          </svg>
+          <span>PDF</span>
+        </button>
+      </div>`;
+    document.body.appendChild(panel);
+    panel.querySelector('#asp-close').addEventListener('click',_closePanel);
+    document.addEventListener('keydown',_escKey);
+    panel.querySelectorAll('.asp-opt').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const layout=btn.dataset.layout;
+        if(layout==='map'){ _showMapInput(panel,afterSec); }
+        else if(layout==='pdf'){ _showPdfInput(panel,afterSec); }
+        else { _closePanel();_insertGallerySlide(afterSec,layout); }
+      });
+    });
+  }
+
+  function _showMapInput(panel,afterSec){
+    panel.querySelector('.asp-options').style.display='none';
+    const div=document.createElement('div');
+    div.innerHTML=`
+      <div class="asp-map-input">
+        <input type="text" id="asp-map-url" placeholder="Incolla il link Google Maps…" autocomplete="off"/>
+        <button id="asp-map-ok">Inserisci →</button>
+      </div>
+      <p class="asp-hint">Da Google Maps: <strong>Condividi → Incorpora mappa</strong> → copia il link src dell'iframe.<br>Oppure incolla un normale link di Google Maps.</p>`;
+    panel.appendChild(div);
+    const inp=panel.querySelector('#asp-map-url');inp.focus();
+    const confirm=()=>{
+      const url=inp.value.trim();if(!url) return;
+      _closePanel();_insertMapSlide(afterSec,_toEmbedUrl(url));
+    };
+    panel.querySelector('#asp-map-ok').addEventListener('click',confirm);
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter') confirm(); });
+  }
+
+  function _showPdfInput(panel,afterSec){
+    panel.querySelector('.asp-options').style.display='none';
+    const div=document.createElement('div');
+    div.innerHTML=`
+      <div style="margin-top:.3rem;">
+        <button class="asp-pdf-pick-btn" id="asp-pdf-pick">&#128196;&nbsp; Scegli file PDF…</button>
+      </div>
+      <p class="asp-hint">Il PDF viene incorporato come slide a tutta pagina.<br>Funziona in Chrome e Safari. File grandi aumentano il peso del salvataggio HTML.</p>`;
+    panel.appendChild(div);
+    const pdfInput=document.createElement('input');
+    pdfInput.type='file';pdfInput.accept='application/pdf';pdfInput.style.display='none';
+    document.body.appendChild(pdfInput);
+    panel.querySelector('#asp-pdf-pick').addEventListener('click',()=>pdfInput.click());
+    pdfInput.addEventListener('change',()=>{
+      const file=pdfInput.files[0];if(!file) return;
+      const reader=new FileReader();
+      reader.onload=ev=>{ _closePanel();_insertPdfSlide(afterSec,ev.target.result,file.name);pdfInput.remove(); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function _insertPdfSlide(afterSec,dataUrl,name){
+    const label=name.replace(/\.pdf$/i,'');
+    const sec=document.createElement('section');
+    sec.className='slide-pdf';sec.setAttribute('data-added','1');
+    sec.innerHTML=`<div class="pdf-frame"><embed src="${dataUrl}" type="application/pdf"/></div><div class="gallery-header"><span class="gallery-label">Planimetria</span><span class="gallery-title-small">${label}</span></div>`;
+    afterSec.insertAdjacentElement('afterend',sec);
+    if(window._loveitIO) window._loveitIO.observe(sec);
+    _insertDot(sec);_addInsertBtn(sec);
+    if(textMode){ sec.querySelectorAll(TEXT_SEL).forEach(el=>{ el.contentEditable='true';el.spellcheck=false; }); }
+    setTimeout(()=>sec.scrollIntoView({behavior:'smooth'}),150);
+  }
+
+  function _toEmbedUrl(url){
+    if(url.includes('/maps/embed')) return url;
+    const srcM=url.match(/src=["']([^"']+)["']/);if(srcM) return _toEmbedUrl(srcM[1]);
+    const coordM=url.match(/@(-?\d+\.\d+),(-?\d+\.\d+),(\d+)/);
+    if(coordM) return `https://www.google.com/maps?q=${coordM[1]},${coordM[2]}&z=${coordM[3]}&output=embed`;
+    const qM=url.match(/[?&]q=([^&]+)/);if(qM) return `https://www.google.com/maps?q=${qM[1]}&output=embed`;
+    const placeM=url.match(/maps\/place\/([^/@?]+)/);
+    if(placeM) return `https://www.google.com/maps?q=${decodeURIComponent(placeM[1])}&output=embed`;
+    return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&output=embed`;
+  }
+
+  function _insertGallerySlide(afterSec,layout){
+    const label=afterSec.querySelector('.gallery-label')?.textContent||'';
+    const title=afterSec.querySelector('.gallery-title-small')?.textContent||'';
+    const count=layout==='grid-1'?1:3;
+    const cells=Array.from({length:count},()=>'<div class="gallery-cell"></div>').join('');
+    const sec=document.createElement('section');
+    sec.className='slide-gallery';sec.setAttribute('data-added','1');
+    sec.innerHTML=`<div class="gallery-grid ${layout}">${cells}</div><div class="gallery-header"><span class="gallery-label">${label}</span><span class="gallery-title-small">${title}</span></div>`;
+    afterSec.insertAdjacentElement('afterend',sec);
+    if(window._loveitIO) window._loveitIO.observe(sec);
+    _insertDot(sec);
+    if(photoMode){ sec.querySelectorAll('.gallery-cell').forEach(cell=>{ cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z); }); }
+    if(textMode){ sec.querySelectorAll(TEXT_SEL).forEach(el=>{ el.contentEditable='true';el.spellcheck=false; }); }
+    _addInsertBtn(sec);
+    setTimeout(()=>sec.scrollIntoView({behavior:'smooth'}),150);
+  }
+
+  function _insertMapSlide(afterSec,embedUrl){
+    const sec=document.createElement('section');
+    sec.className='slide-map';sec.setAttribute('data-added','1');
+    sec.innerHTML=`<div class="map-frame"><iframe src="${embedUrl}" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div><div class="gallery-header"><span class="gallery-label">Location</span></div>`;
+    afterSec.insertAdjacentElement('afterend',sec);
+    if(window._loveitIO) window._loveitIO.observe(sec);
+    _insertDot(sec);_addInsertBtn(sec);
+    if(textMode){ const lbl=sec.querySelector('.gallery-label');if(lbl){lbl.contentEditable='true';lbl.spellcheck=false;} }
+    setTimeout(()=>sec.scrollIntoView({behavior:'smooth'}),150);
+  }
+
+  function _insertDot(newSec){
+    const scroll=document.getElementById('scroll');
+    const dotsNav=document.getElementById('dots');
+    const idx=Array.from(scroll.querySelectorAll('section')).indexOf(newSec);
+    const dot=document.createElement('button');dot.className='dot';dot.setAttribute('aria-label',`Slide ${idx+1}`);
+    dot.addEventListener('click',()=>newSec.scrollIntoView({behavior:'smooth'}));
+    const existingDots=Array.from(dotsNav.querySelectorAll('.dot'));
+    if(idx>=0&&idx<existingDots.length) dotsNav.insertBefore(dot,existingDots[idx]);else dotsNav.appendChild(dot);
+  }
+
+  function save(){
+    const raw='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+    const doc=new DOMParser().parseFromString(raw,'text/html');
+    doc.querySelectorAll('.edit-zone,.add-slide-btn,#add-slide-panel').forEach(el=>el.remove());
+    doc.querySelectorAll('.gallery-cell').forEach(c=>{ c.style.position='';if(!c.getAttribute('style')?.trim()) c.removeAttribute('style'); });
+    doc.querySelectorAll('[contenteditable]').forEach(el=>el.removeAttribute('contenteditable'));
+    doc.body.classList.remove('photo-mode','text-mode');
+    const pt=doc.getElementById('photos-toggle');if(pt) pt.classList.remove('active');
+    const tt=doc.getElementById('text-toggle');if(tt) tt.classList.remove('active');
+    const s=doc.getElementById('save-btn');if(s) s.style.display='none';
+    const clean='<!DOCTYPE html>\n'+doc.documentElement.outerHTML;
+    const blob=new Blob([clean],{type:'text/html'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;
+    a.download=document.title.replace(/\s*[–—\xb7]\s*/g,' ').replace(/[^a-z0-9 ]/gi,'').trim().replace(/\s+/g,'_').toLowerCase()+'_edited.html';
+    document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+  }
+
+  function pdf(){ window.print(); }
+
+  return{togglePhotos,toggleText,save,pdf};
+})(); } catch(e){ console.error('LoveitEditor init error:',e); document.getElementById('pdf-btn').title='Error: '+e.message; }
+</script>
+
+</body>
+</html>
