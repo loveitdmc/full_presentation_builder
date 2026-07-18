@@ -478,11 +478,12 @@ section:hover .bg{transform:scale(1.02)}
     </section>`;
   }
 
-  function buildActivity(act, day, num, total){
+  function buildActivity(act, day, num, total, dayIdx, actIdx){
     const hasPhoto = !!act.photo;
     const ovClass  = hasPhoto ? 'ov-dark' : 'ov-full';
+    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"` : '';
     return `
-    <section>
+    <section${dataAttrs}>
       <div class="bg" style="${bgStyle(act.photo, act.photoPosition)}"></div>
       <div class="${ovClass}"></div>
       <div class="content">
@@ -495,7 +496,7 @@ section:hover .bg{transform:scale(1.02)}
     </section>`;
   }
 
-  function buildGallery(act, day, num, total){
+  function buildGallery(act, day, num, total, dayIdx, actIdx){
     const photos = (act.photos || []).filter(Boolean);
     if(!photos.length) return '';
     // Always use 3-photo grid-3 layout (large left + 2 stacked right)
@@ -503,8 +504,9 @@ section:hover .bg{transform:scale(1.02)}
     const cells = slots.map(url =>
       `<div class="gallery-cell"${url ? ` style="background-image:url('${url}')"` : ''}></div>`
     ).join('');
+    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"` : '';
     return `
-    <section class="slide-gallery">
+    <section class="slide-gallery"${dataAttrs}>
       <div class="gallery-grid grid-3">${cells}</div>
       <div class="gallery-header">
         <span class="gallery-label">Day ${day.number}</span>
@@ -536,13 +538,13 @@ section:hover .bg{transform:scale(1.02)}
   slideBuilders.push((num, total) => buildCover(TRIP, num, total));
   slideBuilders.push((num, total) => buildOverview(TRIP, num, total));
 
-  TRIP.days.forEach(day => {
-    day.activities.forEach(act => {
+  TRIP.days.forEach((day, dayIdx) => {
+    day.activities.forEach((act, actIdx) => {
       if(act.showSlide !== false){
-        slideBuilders.push((num, total) => buildActivity(act, day, num, total));
+        slideBuilders.push((num, total) => buildActivity(act, day, num, total, dayIdx, actIdx));
         const galleryPhotos = (act.photos || []).filter(Boolean);
         if(galleryPhotos.length > 0){
-          slideBuilders.push((num, total) => buildGallery(act, day, num, total));
+          slideBuilders.push((num, total) => buildGallery(act, day, num, total, dayIdx, actIdx));
         }
       }
     });
@@ -692,6 +694,29 @@ body.text-mode #edit-controls{ opacity:1; }
 .asp-opt[data-layout="pdf"]:hover{ border-color:rgba(220,60,60,.55);background:rgba(220,60,60,.07); }
 .asp-opt[data-layout="pdf"]:hover span{ color:rgba(220,90,90,.9); }
 
+/* ── Split slides (foto metà / testo metà) ───────────────────────────────── */
+.slide-split{ display:grid!important;grid-template-columns:1fr 1fr; }
+.slide-split .split-photo{ background-size:cover;background-position:center;position:relative; }
+.slide-split .split-content{ display:flex;flex-direction:column;justify-content:center;padding:4rem 3.5rem;background:var(--near-black); }
+.slide-split .split-content .headline{ margin-bottom:1rem; }
+.slide-split .split-content .body-text{ color:rgba(255,255,255,.65);font-size:.9rem;line-height:1.7; }
+.slide-split-photo-right{ grid-template-columns:1fr 1fr; }
+.slide-split-photo-right .split-content{ order:-1; }
+
+/* ── Photo picker panel ──────────────────────────────────────────────────── */
+#photo-picker-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:600;background:rgba(8,8,8,.97);border:1px solid rgba(201,169,110,.32);border-radius:4px;padding:1.6rem 1.8rem 1.5rem;backdrop-filter:blur(18px);min-width:420px;max-width:580px;}
+.pp-close{position:absolute;top:.55rem;right:.75rem;background:none;border:none;color:rgba(201,169,110,.35);cursor:pointer;font-size:1.1rem;padding:.2rem .4rem;line-height:1;transition:color .2s;}
+.pp-close:hover{ color:var(--gold); }
+.pp-title{font-family:var(--sans);font-size:.62rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:rgba(201,169,110,.55);margin-bottom:1rem;}
+.pp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:.5rem;margin-bottom:1rem;max-height:280px;overflow-y:auto;}
+.pp-thumb{height:75px;background-size:cover;background-position:center;border-radius:2px;cursor:pointer;border:2px solid transparent;transition:border-color .18s,transform .15s;}
+.pp-thumb:hover{border-color:var(--gold);transform:scale(1.04);}
+.pp-divider{text-align:center;margin:.85rem 0;position:relative;}
+.pp-divider::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(201,169,110,.15);}
+.pp-divider span{position:relative;background:rgba(8,8,8,.97);padding:0 .8rem;font-family:var(--sans);font-size:.5rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.25);}
+.pp-upload{width:100%;padding:.65rem;background:rgba(201,169,110,.08);border:1px dashed rgba(201,169,110,.35);color:rgba(201,169,110,.75);cursor:pointer;border-radius:2px;font-family:var(--sans);font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;transition:all .2s;}
+.pp-upload:hover{background:rgba(201,169,110,.15);border-color:var(--gold);color:var(--gold);}
+
 /* ── Print / PDF ──────────────────────────────────────────────────────────── */
 @media print{
   @page{ size:16in 9in;margin:0; }
@@ -728,7 +753,14 @@ try{ LoveitEditor=(function(){
   function makeZone(target){
     const z=document.createElement('div');
     z.className='edit-zone';z.title='Drop a photo, or click to browse';z.textContent='Drop a photo, or click to browse';
-    z.addEventListener('click',e=>{ e.stopPropagation();currentTarget=target;fi.value='';fi.click(); });
+    z.addEventListener('click',e=>{
+      e.stopPropagation();currentTarget=target;
+      const sec=target.closest('section');
+      const dIdx=sec?.dataset.day, aIdx=sec?.dataset.act;
+      const avail=(dIdx!==undefined&&aIdx!==undefined) ? (TRIP.days[+dIdx]?.activities[+aIdx]?.allPhotos||[]) : [];
+      if(avail.length>0){ _showPhotoPicker(target,avail); }
+      else { fi.value='';fi.click(); }
+    });
     z.addEventListener('dragover',e=>{ e.preventDefault();e.dataTransfer.dropEffect='copy';z.classList.add('drag-over'); });
     z.addEventListener('dragleave',()=>z.classList.remove('drag-over'));
     z.addEventListener('drop',e=>{ e.preventDefault();z.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/')) applyFile(f,target); });
@@ -741,6 +773,33 @@ try{ LoveitEditor=(function(){
     reader.readAsDataURL(file);
   }
 
+  function applyUrl(url,target){
+    target.style.backgroundImage=`url('${url}')`;
+    if(target.animate) target.animate([{opacity:.4},{opacity:1}],{duration:280});
+  }
+
+  let _photoPicker=null;
+  function _showPhotoPicker(target,photos){
+    if(_photoPicker){_photoPicker.remove();_photoPicker=null;}
+    const panel=document.createElement('div');
+    panel.id='photo-picker-panel';
+    panel.innerHTML=`
+      <button class="pp-close" title="Chiudi">&times;</button>
+      <div class="pp-title">Foto del fornitore — clicca per sostituire</div>
+      <div class="pp-grid">${photos.map((url,i)=>`<div class="pp-thumb" data-idx="${i}" style="background-image:url('${url}')"></div>`).join('')}</div>
+      <div class="pp-divider"><span>oppure</span></div>
+      <button class="pp-upload">&#128196;&nbsp; Carica dal computer</button>`;
+    document.body.appendChild(panel);
+    _photoPicker=panel;
+    panel.querySelector('.pp-close').addEventListener('click',()=>{panel.remove();_photoPicker=null;});
+    panel.querySelectorAll('.pp-thumb').forEach((thumb,i)=>{
+      thumb.addEventListener('click',()=>{ applyUrl(photos[i],target);panel.remove();_photoPicker=null; });
+    });
+    panel.querySelector('.pp-upload').addEventListener('click',()=>{
+      currentTarget=target;fi.value='';fi.click();panel.remove();_photoPicker=null;
+    });
+  }
+
   function _syncSaveBtn(){
     document.getElementById('save-btn').style.display=(photoMode||textMode)?'inline-block':'none';
   }
@@ -751,13 +810,14 @@ try{ LoveitEditor=(function(){
     document.body.classList.toggle('photo-mode',photoMode);
     if(photoMode){
       document.querySelectorAll('.bg').forEach(bg=>{ const z=makeZone(bg);bg.parentElement.appendChild(z);zones.push(z); });
-      document.querySelectorAll('.gallery-cell').forEach(cell=>{ if(getComputedStyle(cell).position==='static') cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z); });
-      document.querySelectorAll('.slide-gallery,.slide-map').forEach(sec=>_addInsertBtn(sec));
+      document.querySelectorAll('.gallery-cell,.split-photo').forEach(cell=>{ if(getComputedStyle(cell).position==='static') cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z); });
+      document.querySelectorAll('.slide-gallery,.slide-map,.slide-split').forEach(sec=>_addInsertBtn(sec));
     } else {
-      zones.forEach(z=>{ const p=z.parentElement;z.remove();if(p&&p.classList.contains('gallery-cell')) p.style.position=''; });
+      zones.forEach(z=>{ const p=z.parentElement;z.remove();if(p&&(p.classList.contains('gallery-cell')||p.classList.contains('split-photo'))) p.style.position=''; });
       zones.length=0;
       addBtns.forEach(b=>b.remove());addBtns.length=0;
       _closePanel();
+      if(_photoPicker){_photoPicker.remove();_photoPicker=null;}
     }
     _syncSaveBtn();
   }
@@ -816,6 +876,26 @@ try{ LoveitEditor=(function(){
           </svg>
           <span>Grande dx</span>
         </button>
+        <button class="asp-opt" data-layout="split-left">
+          <svg viewBox="0 0 62 40" fill="none">
+            <rect x="1" y="1" width="29" height="38" rx="2" fill="rgba(201,169,110,.3)" stroke="rgba(201,169,110,.65)" stroke-width="1.5"/>
+            <rect x="33" y="1" width="28" height="38" rx="2" fill="rgba(201,169,110,.08)" stroke="rgba(201,169,110,.3)" stroke-width="1.5"/>
+            <line x1="37" y1="13" x2="57" y2="13" stroke="rgba(201,169,110,.5)" stroke-width="1.5"/>
+            <line x1="37" y1="20" x2="57" y2="20" stroke="rgba(201,169,110,.3)" stroke-width="1"/>
+            <line x1="37" y1="26" x2="51" y2="26" stroke="rgba(201,169,110,.3)" stroke-width="1"/>
+          </svg>
+          <span>Foto sx</span>
+        </button>
+        <button class="asp-opt" data-layout="split-right">
+          <svg viewBox="0 0 62 40" fill="none">
+            <rect x="1" y="1" width="28" height="38" rx="2" fill="rgba(201,169,110,.08)" stroke="rgba(201,169,110,.3)" stroke-width="1.5"/>
+            <rect x="32" y="1" width="29" height="38" rx="2" fill="rgba(201,169,110,.3)" stroke="rgba(201,169,110,.65)" stroke-width="1.5"/>
+            <line x1="5" y1="13" x2="25" y2="13" stroke="rgba(201,169,110,.5)" stroke-width="1.5"/>
+            <line x1="5" y1="20" x2="25" y2="20" stroke="rgba(201,169,110,.3)" stroke-width="1"/>
+            <line x1="5" y1="26" x2="19" y2="26" stroke="rgba(201,169,110,.3)" stroke-width="1"/>
+          </svg>
+          <span>Foto dx</span>
+        </button>
         <button class="asp-opt" data-layout="map">
           <svg viewBox="0 0 62 40" fill="none">
             <rect x="1" y="1" width="60" height="38" rx="2" fill="rgba(66,133,244,.1)" stroke="rgba(66,133,244,.5)" stroke-width="1.5"/>
@@ -846,6 +926,7 @@ try{ LoveitEditor=(function(){
         const layout=btn.dataset.layout;
         if(layout==='map'){ _showMapInput(panel,afterSec); }
         else if(layout==='pdf'){ _showPdfInput(panel,afterSec); }
+        else if(layout==='split-left'||layout==='split-right'){ _closePanel();_insertSplitSlide(afterSec,layout); }
         else { _closePanel();_insertGallerySlide(afterSec,layout); }
       });
     });
@@ -917,8 +998,13 @@ try{ LoveitEditor=(function(){
   function _insertGallerySlide(afterSec,layout){
     const label=afterSec.querySelector('.gallery-label')?.textContent||'';
     const title=afterSec.querySelector('.gallery-title-small')?.textContent||'';
+    const dIdx=afterSec.dataset.day, aIdx=afterSec.dataset.act;
+    const autoPhotos=(dIdx!==undefined&&aIdx!==undefined) ? (TRIP.days[+dIdx]?.activities[+aIdx]?.allPhotos||[]) : [];
     const count=layout==='grid-1'?1:3;
-    const cells=Array.from({length:count},()=>'<div class="gallery-cell"></div>').join('');
+    const cells=Array.from({length:count},(_,i)=>{
+      const url=autoPhotos[i]||'';
+      return `<div class="gallery-cell"${url?` style="background-image:url('${url}')"`:''} ></div>`;
+    }).join('');
     const sec=document.createElement('section');
     sec.className='slide-gallery';sec.setAttribute('data-added','1');
     sec.innerHTML=`<div class="gallery-grid ${layout}">${cells}</div><div class="gallery-header"><span class="gallery-label">${label}</span><span class="gallery-title-small">${title}</span></div>`;
@@ -928,6 +1014,31 @@ try{ LoveitEditor=(function(){
     if(photoMode){ sec.querySelectorAll('.gallery-cell').forEach(cell=>{ cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z); }); }
     if(textMode){ sec.querySelectorAll(TEXT_SEL).forEach(el=>{ el.contentEditable='true';el.spellcheck=false; }); }
     _addInsertBtn(sec);
+    setTimeout(()=>sec.scrollIntoView({behavior:'smooth'}),150);
+  }
+
+  function _insertSplitSlide(afterSec,layout){
+    const dIdx=afterSec.dataset.day, aIdx=afterSec.dataset.act;
+    const autoPhotos=(dIdx!==undefined&&aIdx!==undefined) ? (TRIP.days[+dIdx]?.activities[+aIdx]?.allPhotos||[]) : [];
+    const photoUrl=autoPhotos[0]||'';
+    const bgStyle=photoUrl?` style="background-image:url('${photoUrl}')"`:' style=""';
+    const isLeft=layout==='split-left';
+    const sec=document.createElement('section');
+    sec.className=`slide-split slide-split-photo-${isLeft?'left':'right'}`;sec.setAttribute('data-added','1');
+    if(isLeft){
+      sec.innerHTML=`<div class="split-photo"${bgStyle}></div><div class="split-content"><h2 class="headline">Titolo</h2><p class="body-text">Descrizione del fornitore o dell'esperienza…</p></div>`;
+    } else {
+      sec.innerHTML=`<div class="split-content"><h2 class="headline">Titolo</h2><p class="body-text">Descrizione del fornitore o dell'esperienza…</p></div><div class="split-photo"${bgStyle}></div>`;
+    }
+    afterSec.insertAdjacentElement('afterend',sec);
+    if(window._loveitIO) window._loveitIO.observe(sec);
+    _insertDot(sec);_addInsertBtn(sec);
+    if(photoMode){
+      sec.querySelectorAll('.split-photo').forEach(cell=>{
+        cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z);
+      });
+    }
+    if(textMode){ sec.querySelectorAll(TEXT_SEL).forEach(el=>{ el.contentEditable='true';el.spellcheck=false; }); }
     setTimeout(()=>sec.scrollIntoView({behavior:'smooth'}),150);
   }
 
@@ -955,7 +1066,7 @@ try{ LoveitEditor=(function(){
   function save(){
     const raw='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
     const doc=new DOMParser().parseFromString(raw,'text/html');
-    doc.querySelectorAll('.edit-zone,.add-slide-btn,#add-slide-panel').forEach(el=>el.remove());
+    doc.querySelectorAll('.edit-zone,.add-slide-btn,#add-slide-panel,#photo-picker-panel').forEach(el=>el.remove());
     doc.querySelectorAll('.gallery-cell').forEach(c=>{ c.style.position='';if(!c.getAttribute('style')?.trim()) c.removeAttribute('style'); });
     doc.querySelectorAll('[contenteditable]').forEach(el=>el.removeAttribute('contenteditable'));
     doc.body.classList.remove('photo-mode','text-mode');

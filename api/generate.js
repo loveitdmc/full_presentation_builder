@@ -97,11 +97,12 @@ async function searchAirtable(supplierName) {
     if (!data.records?.length) return null;
 
     const fields = data.records[0].fields;
-    const photoUrls = (fields.Foto || []).slice(0, 4).map((f) => f.url);
+    const photoUrls = (fields.Foto || []).map((f) => f.url);
 
     return {
       description: fields.Descrizione || null,
-      photos: photoUrls.length ? photoUrls : null,
+      photos: photoUrls.slice(0, 4).length ? photoUrls.slice(0, 4) : null,
+      allPhotos: photoUrls,
     };
   } catch (e) {
     console.warn("Airtable search failed for", supplierName, ":", e.message);
@@ -129,9 +130,10 @@ async function enrichFromAirtable(tripObj) {
           return {
             ...activity,
             description: match.description || activity.description,
-            photo:   match.photos?.[0] || activity.photo,
-            photos:  match.photos?.slice(1, 4) || activity.photos,
-            _airtable: true,
+            photo:       match.photos?.[0] || activity.photo,
+            photos:      match.photos?.slice(1, 4) || activity.photos,
+            allPhotos:   match.allPhotos || [],
+            _airtable:   true,
           };
         })
       );

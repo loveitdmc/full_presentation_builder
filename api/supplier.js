@@ -26,9 +26,11 @@ async function searchAirtable(supplierName) {
     const data = await resp.json();
     if (!data.records?.length) return null;
     const fields = data.records[0].fields;
+    const allPhotoUrls = (fields.Foto || []).map(f => f.url);
     return {
       description: fields.Descrizione || null,
-      photos: (fields.Foto || []).slice(0, 4).map(f => f.url),
+      photos:    allPhotoUrls.slice(0, 4),
+      allPhotos: allPhotoUrls,
       city: fields.Città || null,
       type: fields.Tipo || null,
     };
@@ -212,6 +214,7 @@ export default async function handler(req, res) {
       photo:         airtableData.photos?.[0] || null,
       photoPosition: "center center",
       photos:        airtableData.photos?.slice(1, 4) || [],
+      allPhotos:     airtableData.allPhotos || [],
       cityPhoto:     `${cityName.toLowerCase()} italy aerial landmark`,
       fromAirtable:  true,
     };
@@ -263,6 +266,7 @@ export default async function handler(req, res) {
         photo:        profile.photo,
         photoPosition: profile.photoPosition,
         photos:       profile.photos,
+        allPhotos:    profile.allPhotos || [],
         options:      [],
         _airtable:    profile.fromAirtable,
       }],
@@ -287,6 +291,12 @@ export default async function handler(req, res) {
   } catch (e) {
     return res.status(500).json({ error: `Template error: ${e.message}` });
   }
+
+  // Step 6: Hide slides not needed in supplier mode (overview + closing)
+  const supplierCss = `<style>
+    .slide-cover, .slide-overview, .slide-closing { display: none !important; }
+  </style>`;
+  finalHtml = finalHtml.replace('</head>', supplierCss + '\n</head>');
 
   const safeFilename = supplierName.replace(/[^a-zA-Z0-9_\-]/g, "_").slice(0, 60);
 
