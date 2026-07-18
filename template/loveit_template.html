@@ -518,6 +518,25 @@ section:hover .bg{transform:scale(1.02)}
 
   function buildVideo(act, day, video, num, total, dayIdx, actIdx){
     const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"` : '';
+    // YouTube: use thumbnail + play button (works even when embedding is disabled)
+    const ytMatch = video.embedUrl.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/);
+    if(ytMatch){
+      const ytId    = ytMatch[1];
+      const thumb   = `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`;
+      const watchUrl= `https://www.youtube.com/watch?v=${ytId}`;
+      return `
+    <section class="slide-video slide-video-yt"${dataAttrs} onclick="window.open('${watchUrl}','_blank')" style="cursor:pointer">
+      <div class="bg" style="background-image:url('${thumb}');background-size:cover;background-position:center"></div>
+      <div class="ov-dark"></div>
+      <div class="video-play-btn"><svg viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="38" fill="rgba(0,0,0,.55)" stroke="rgba(255,255,255,.6)" stroke-width="2"/><polygon points="32,24 32,56 60,40" fill="white"/></svg></div>
+      <div class="gallery-header">
+        <span class="gallery-label">Day ${day.number}</span>
+        <span class="gallery-title-small">${video.title || act.title}</span>
+      </div>
+      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
+    </section>`;
+    }
+    // Vimeo / Drive / direct file: embed as iframe/video
     const mediaTag = video.isFile
       ? `<video src="${video.embedUrl}" controls playsinline></video>`
       : `<iframe src="${video.embedUrl}" allowfullscreen frameborder="0" allow="autoplay; fullscreen; picture-in-picture; web-share"></iframe>`;
@@ -639,11 +658,10 @@ section:hover .bg{transform:scale(1.02)}
 /* ── Controls bar ─────────────────────────────────────────────────────────── */
 #edit-controls{position:fixed;bottom:1.8rem;left:2.4rem;z-index:300;display:flex;gap:.45rem;opacity:.28;transition:opacity .3s;}
 #edit-controls:hover,
-body.photo-mode #edit-controls,
-body.text-mode #edit-controls{ opacity:1; }
+body.edit-mode #edit-controls{ opacity:1; }
 #edit-controls button{font-family:var(--sans);font-size:.58rem;font-weight:500;letter-spacing:.13em;text-transform:uppercase;color:rgba(201,169,110,.8);background:rgba(10,10,10,.84);border:1px solid rgba(201,169,110,.22);padding:.42rem 1rem;cursor:pointer;border-radius:2px;backdrop-filter:blur(8px);transition:all .2s;}
 #edit-controls button:hover{ border-color:var(--gold);color:var(--gold); }
-#edit-toggle.active{ background:rgba(201,169,110,.15);border-color:var(--gold);color:var(--warm-white); }
+#edit-btn.active{ background:rgba(201,169,110,.15);border-color:var(--gold);color:var(--warm-white); }
 #save-btn{ display:none;color:var(--warm-white);background:rgba(201,169,110,.17);border-color:rgba(201,169,110,.4); }
 #save-btn:hover{ background:rgba(201,169,110,.3); }
 #pdf-btn{ color:var(--warm-white);background:rgba(30,30,30,.9); }
@@ -665,6 +683,10 @@ body.text-mode #edit-controls{ opacity:1; }
 .slide-video .video-frame video{ width:100%;height:100%;object-fit:contain; }
 .slide-video .gallery-header{ position:relative;z-index:5;padding:1.5rem 2rem;background:linear-gradient(to top, rgba(0,0,0,.75) 0%, transparent 100%);width:100%; }
 .slide-video .counter{ z-index:5; }
+/* YouTube thumbnail approach */
+.slide-video-yt .bg{ position:absolute;inset:0; }
+.video-play-btn{ position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);z-index:5;width:80px;height:80px;transition:transform .2s,opacity .2s; }
+.slide-video-yt:hover .video-play-btn{ transform:translate(-50%,-60%) scale(1.12); }
 
 /* ── Photo drop zones ─────────────────────────────────────────────────────── */
 .edit-zone{position:absolute;inset:0;z-index:50;display:grid;place-items:center;font-family:var(--sans);font-size:.58rem;font-weight:400;letter-spacing:.15em;text-transform:uppercase;color:transparent;background:transparent;border:1.5px dashed transparent;cursor:pointer;transition:background .18s,border-color .18s,color .18s;user-select:none;}
@@ -693,6 +715,10 @@ body.text-mode #edit-controls{ opacity:1; }
 /* ── Add slide button ─────────────────────────────────────────────────────── */
 .add-slide-btn{position:absolute;bottom:1.2rem;left:50%;transform:translateX(-50%);z-index:60;font-family:var(--sans);font-size:.56rem;font-weight:500;letter-spacing:.15em;text-transform:uppercase;color:rgba(201,169,110,.75);background:rgba(10,10,10,.88);border:1px solid rgba(201,169,110,.28);padding:.38rem 1.2rem;cursor:pointer;border-radius:2px;backdrop-filter:blur(8px);transition:all .2s;white-space:nowrap;}
 .add-slide-btn:hover{ border-color:var(--gold);color:var(--gold);background:rgba(201,169,110,.1); }
+
+/* ── Delete slide button ──────────────────────────────────────────────────── */
+.delete-slide-btn{position:absolute;bottom:1.2rem;right:1.5rem;z-index:60;font-family:var(--sans);font-size:.56rem;font-weight:500;letter-spacing:.15em;text-transform:uppercase;color:rgba(220,80,80,.75);background:rgba(10,10,10,.88);border:1px solid rgba(220,80,80,.28);padding:.38rem 1.2rem;cursor:pointer;border-radius:2px;backdrop-filter:blur(8px);transition:all .2s;white-space:nowrap;}
+.delete-slide-btn:hover{ border-color:rgba(220,80,80,.75);color:#e55;background:rgba(220,60,60,.14); }
 
 /* ── Add slide panel ──────────────────────────────────────────────────────── */
 #add-slide-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:500;background:rgba(8,8,8,.96);border:1px solid rgba(201,169,110,.28);border-radius:3px;padding:1.6rem 1.8rem 1.5rem;backdrop-filter:blur(16px);min-width:390px;}
@@ -765,17 +791,16 @@ body.text-mode #edit-controls{ opacity:1; }
 </style>
 
 <div id="edit-controls">
-  <button id="photos-toggle" onclick="LoveitEditor.togglePhotos()">&#128247; Edit Photos</button>
-  <button id="text-toggle"   onclick="LoveitEditor.toggleText()">&#9998; Edit Text</button>
-  <button id="save-btn"      onclick="LoveitEditor.save()">&#8595; Save HTML</button>
-  <button id="pdf-btn"       onclick="window.print()">&#8681; PDF</button>
+  <button id="edit-btn" onclick="LoveitEditor.toggleEdit()">&#9998; Edit</button>
+  <button id="save-btn" onclick="LoveitEditor.save()">&#8595; Save HTML</button>
+  <button id="pdf-btn"  onclick="window.print()">&#8681; PDF</button>
 </div>
 
 <script>
-let LoveitEditor={togglePhotos:()=>{},toggleText:()=>{},save:()=>{},pdf:()=>window.print()};
+let LoveitEditor={toggleEdit:()=>{},togglePhotos:()=>{},toggleText:()=>{},save:()=>{},pdf:()=>window.print()};
 try{ LoveitEditor=(function(){
-  let photoMode=false, textMode=false;
-  const zones=[], addBtns=[];
+  let photoMode=false, textMode=false, editMode=false;
+  const zones=[], addBtns=[], deleteBtns=[];
   let currentTarget=null;
   const TEXT_SEL='.headline,.display,.body-text,.tagline,.eyebrow,.gallery-title-small,.gallery-label';
 
@@ -848,44 +873,77 @@ try{ LoveitEditor=(function(){
   }
 
   function _syncSaveBtn(){
-    document.getElementById('save-btn').style.display=(photoMode||textMode)?'inline-block':'none';
+    document.getElementById('save-btn').style.display=editMode?'inline-block':'none';
   }
 
-  function togglePhotos(){
-    photoMode=!photoMode;
-    document.getElementById('photos-toggle').classList.toggle('active',photoMode);
-    document.body.classList.toggle('photo-mode',photoMode);
-    if(photoMode){
+  function toggleEdit(){
+    editMode=!editMode;
+    const btn=document.getElementById('edit-btn');
+    btn.classList.toggle('active',editMode);
+    btn.textContent=editMode?'✓ Fine':'✎ Edit';
+    document.body.classList.toggle('edit-mode',editMode);
+    if(editMode){
+      // Activate photo zones
+      photoMode=true;
       document.querySelectorAll('.bg').forEach(bg=>{ const z=makeZone(bg);bg.parentElement.appendChild(z);zones.push(z); });
       document.querySelectorAll('.gallery-cell,.split-photo').forEach(cell=>{ if(getComputedStyle(cell).position==='static') cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z); });
-      document.querySelectorAll('.slide-gallery,.slide-map,.slide-split,.slide-video').forEach(sec=>_addInsertBtn(sec));
+      // Activate text editing
+      textMode=true;
+      document.querySelectorAll(TEXT_SEL).forEach(el=>{ el.contentEditable='true';el.spellcheck=false; });
+      // Add + and − buttons to all sections
+      document.querySelectorAll('#scroll section').forEach(sec=>{ _addInsertBtn(sec);_addDeleteBtn(sec); });
     } else {
+      // Deactivate photo zones
+      photoMode=false;
       zones.forEach(z=>{ const p=z.parentElement;z.remove();if(p&&(p.classList.contains('gallery-cell')||p.classList.contains('split-photo'))) p.style.position=''; });
       zones.length=0;
-      addBtns.forEach(b=>b.remove());addBtns.length=0;
       _closePanel();
       if(_photoPicker){_photoPicker.remove();_photoPicker=null;}
+      // Deactivate text editing
+      textMode=false;
+      document.querySelectorAll('[contenteditable="true"]').forEach(el=>el.contentEditable='false');
+      // Remove all add + delete buttons
+      addBtns.forEach(b=>b.remove()); addBtns.length=0;
+      deleteBtns.forEach(b=>b.remove()); deleteBtns.length=0;
     }
     _syncSaveBtn();
   }
 
-  function toggleText(){
-    textMode=!textMode;
-    document.getElementById('text-toggle').classList.toggle('active',textMode);
-    document.body.classList.toggle('text-mode',textMode);
-    if(textMode){
-      document.querySelectorAll(TEXT_SEL).forEach(el=>{ el.contentEditable='true';el.spellcheck=false; });
-    } else {
-      document.querySelectorAll('[contenteditable="true"]').forEach(el=>el.contentEditable='false');
-    }
-    _syncSaveBtn();
-  }
+  // Legacy: kept so any external callers still work
+  function togglePhotos(){ if(!editMode) toggleEdit(); }
+  function toggleText(){   if(!editMode) toggleEdit(); }
 
   function _addInsertBtn(sec){
     const btn=document.createElement('button');
     btn.className='add-slide-btn';btn.textContent='+ Aggiungi slide';
     btn.addEventListener('click',e=>{ e.stopPropagation();_showPanel(sec,btn); });
     sec.appendChild(btn);addBtns.push(btn);
+  }
+
+  function _addDeleteBtn(sec){
+    const btn=document.createElement('button');
+    btn.className='delete-slide-btn';btn.textContent='− Cancella slide';
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      _deleteSlide(sec,btn);
+    });
+    sec.appendChild(btn);deleteBtns.push(btn);
+  }
+
+  function _deleteSlide(sec,btn){
+    const scroll=document.getElementById('scroll');
+    const dotsNav=document.getElementById('dots');
+    const idx=Array.from(scroll.querySelectorAll('section')).indexOf(sec);
+    if(idx>=0){
+      const dot=Array.from(dotsNav.querySelectorAll('.dot'))[idx];
+      dot?.remove();
+    }
+    const bi=deleteBtns.indexOf(btn);
+    if(bi>=0) deleteBtns.splice(bi,1);
+    // Remove add button too
+    const ab=sec.querySelector('.add-slide-btn');
+    if(ab){ const ai=addBtns.indexOf(ab);if(ai>=0) addBtns.splice(ai,1); }
+    sec.remove();
   }
 
   function _closePanel(){
@@ -1086,15 +1144,28 @@ try{ LoveitEditor=(function(){
   function _insertVideoSlide(afterSec,embedUrl,isFile){
     const label=afterSec.querySelector('.gallery-label')?.textContent||'';
     const title=afterSec.querySelector('.gallery-title-small')?.textContent||'Performance';
-    const mediaTag=isFile
-      ?`<video src="${embedUrl}" controls playsinline></video>`
-      :`<iframe src="${embedUrl}" allowfullscreen frameborder="0" allow="autoplay; fullscreen; picture-in-picture"></iframe>`;
     const sec=document.createElement('section');
-    sec.className='slide-video';sec.setAttribute('data-added','1');
-    sec.innerHTML=`<div class="video-frame">${mediaTag}</div><div class="gallery-header"><span class="gallery-label">${label}</span><span class="gallery-title-small">${title}</span></div>`;
+    sec.setAttribute('data-added','1');
+    // YouTube: thumbnail + play button
+    const ytMatch=embedUrl.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/);
+    if(ytMatch){
+      const ytId=ytMatch[1];
+      const thumb=`https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`;
+      const watchUrl=`https://www.youtube.com/watch?v=${ytId}`;
+      sec.className='slide-video slide-video-yt';
+      sec.style.cursor='pointer';
+      sec.onclick=()=>window.open(watchUrl,'_blank');
+      sec.innerHTML=`<div class="bg" style="background-image:url('${thumb}');background-size:cover;background-position:center"></div><div class="ov-dark"></div><div class="video-play-btn"><svg viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="38" fill="rgba(0,0,0,.55)" stroke="rgba(255,255,255,.6)" stroke-width="2"/><polygon points="32,24 32,56 60,40" fill="white"/></svg></div><div class="gallery-header"><span class="gallery-label">${label}</span><span class="gallery-title-small">${title}</span></div>`;
+    } else {
+      sec.className='slide-video';
+      const mediaTag=isFile
+        ?`<video src="${embedUrl}" controls playsinline></video>`
+        :`<iframe src="${embedUrl}" allowfullscreen frameborder="0" allow="autoplay; fullscreen; picture-in-picture"></iframe>`;
+      sec.innerHTML=`<div class="video-frame">${mediaTag}</div><div class="gallery-header"><span class="gallery-label">${label}</span><span class="gallery-title-small">${title}</span></div>`;
+    }
     afterSec.insertAdjacentElement('afterend',sec);
     if(window._loveitIO) window._loveitIO.observe(sec);
-    _insertDot(sec);_addInsertBtn(sec);
+    _insertDot(sec);_addInsertBtn(sec);if(editMode) _addDeleteBtn(sec);
     if(textMode){ sec.querySelectorAll(TEXT_SEL).forEach(el=>{ el.contentEditable='true';el.spellcheck=false; }); }
     setTimeout(()=>sec.scrollIntoView({behavior:'smooth'}),150);
   }
@@ -1118,7 +1189,7 @@ try{ LoveitEditor=(function(){
     _insertDot(sec);
     if(photoMode){ sec.querySelectorAll('.gallery-cell').forEach(cell=>{ cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z); }); }
     if(textMode){ sec.querySelectorAll(TEXT_SEL).forEach(el=>{ el.contentEditable='true';el.spellcheck=false; }); }
-    _addInsertBtn(sec);
+    _addInsertBtn(sec);if(editMode) _addDeleteBtn(sec);
     setTimeout(()=>sec.scrollIntoView({behavior:'smooth'}),150);
   }
 
@@ -1138,7 +1209,7 @@ try{ LoveitEditor=(function(){
     sec.innerHTML=isLeft?`${photoDiv}${textDiv}`:`${textDiv}${photoDiv}`;
     afterSec.insertAdjacentElement('afterend',sec);
     if(window._loveitIO) window._loveitIO.observe(sec);
-    _insertDot(sec);_addInsertBtn(sec);
+    _insertDot(sec);_addInsertBtn(sec);if(editMode) _addDeleteBtn(sec);
     // Placeholder click → open picker (always, regardless of photo mode)
     const ph=sec.querySelector('.split-photo-placeholder');
     if(ph){
@@ -1167,7 +1238,7 @@ try{ LoveitEditor=(function(){
     sec.innerHTML=`<div class="map-frame"><iframe src="${embedUrl}" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div><div class="gallery-header"><span class="gallery-label">Location</span></div>`;
     afterSec.insertAdjacentElement('afterend',sec);
     if(window._loveitIO) window._loveitIO.observe(sec);
-    _insertDot(sec);_addInsertBtn(sec);
+    _insertDot(sec);_addInsertBtn(sec);if(editMode) _addDeleteBtn(sec);
     if(textMode){ const lbl=sec.querySelector('.gallery-label');if(lbl){lbl.contentEditable='true';lbl.spellcheck=false;} }
     setTimeout(()=>sec.scrollIntoView({behavior:'smooth'}),150);
   }
@@ -1185,12 +1256,11 @@ try{ LoveitEditor=(function(){
   function save(){
     const raw='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
     const doc=new DOMParser().parseFromString(raw,'text/html');
-    doc.querySelectorAll('.edit-zone,.add-slide-btn,#add-slide-panel,#photo-picker-panel').forEach(el=>el.remove());
+    doc.querySelectorAll('.edit-zone,.add-slide-btn,.delete-slide-btn,#add-slide-panel,#photo-picker-panel').forEach(el=>el.remove());
     doc.querySelectorAll('.gallery-cell').forEach(c=>{ c.style.position='';if(!c.getAttribute('style')?.trim()) c.removeAttribute('style'); });
     doc.querySelectorAll('[contenteditable]').forEach(el=>el.removeAttribute('contenteditable'));
-    doc.body.classList.remove('photo-mode','text-mode');
-    const pt=doc.getElementById('photos-toggle');if(pt) pt.classList.remove('active');
-    const tt=doc.getElementById('text-toggle');if(tt) tt.classList.remove('active');
+    doc.body.classList.remove('photo-mode','text-mode','edit-mode');
+    const eb=doc.getElementById('edit-btn');if(eb){ eb.classList.remove('active');eb.textContent='✎ Edit'; }
     const s=doc.getElementById('save-btn');if(s) s.style.display='none';
     const clean='<!DOCTYPE html>\n'+doc.documentElement.outerHTML;
     const blob=new Blob([clean],{type:'text/html'});
@@ -1202,7 +1272,7 @@ try{ LoveitEditor=(function(){
 
   function pdf(){ window.print(); }
 
-  return{togglePhotos,toggleText,save,pdf};
+  return{toggleEdit,togglePhotos,toggleText,save,pdf};
 })(); } catch(e){ console.error('LoveitEditor init error:',e); document.getElementById('pdf-btn').title='Error: '+e.message; }
 </script>
 
