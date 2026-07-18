@@ -5,9 +5,9 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ─── AIRTABLE CONSTANTS ───────────────────────────────────────────────────────
-const TABLE_ACTS      = "tblZJsaWfBCJ228aO";   // Spaces & Services
-const TABLE_SUPPLIERS = "tbl3rEBd03iC29uNb";    // Suppliers
-const TABLE_MEDIA     = "tblpKKKum1aFwPjgY";    // Media
+const TABLE_ACTS      = "Spaces%20%26%20Services";  // "Spaces & Services"
+const TABLE_SUPPLIERS = "Suppliers";
+const TABLE_MEDIA     = "Media";
 
 // ─── VIDEO URL HELPERS ────────────────────────────────────────────────────────
 
