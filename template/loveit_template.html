@@ -695,13 +695,11 @@ body.text-mode #edit-controls{ opacity:1; }
 .asp-opt[data-layout="pdf"]:hover span{ color:rgba(220,90,90,.9); }
 
 /* ── Split slides (foto metà / testo metà) ───────────────────────────────── */
-.slide-split{ display:grid!important;grid-template-columns:1fr 1fr; }
-.slide-split .split-photo{ background-size:cover;background-position:center;position:relative; }
-.slide-split .split-content{ display:flex;flex-direction:column;justify-content:center;padding:4rem 3.5rem;background:var(--nero);color:var(--warm-white); }
+.slide-split{ align-items:stretch!important; }
+.slide-split .split-photo{ flex:0 0 50%;background-size:cover;background-position:center;background-color:rgba(0,0,0,.6);position:relative; }
+.slide-split .split-content{ flex:1;display:flex;flex-direction:column;justify-content:center;padding:4rem 3.5rem;background:var(--nero);color:var(--warm-white);overflow:hidden; }
 .slide-split .split-content .headline{ margin-bottom:1rem; }
 .slide-split .split-content .body-text{ color:rgba(245,240,232,.75);font-size:.96rem;line-height:1.75;max-width:480px; }
-.slide-split-photo-right{ grid-template-columns:1fr 1fr; }
-.slide-split-photo-right .split-content{ order:-1; }
 
 /* ── Photo picker panel ──────────────────────────────────────────────────── */
 #photo-picker-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:600;background:rgba(8,8,8,.97);border:1px solid rgba(201,169,110,.32);border-radius:4px;padding:1.6rem 1.8rem 1.5rem;backdrop-filter:blur(18px);min-width:420px;max-width:580px;}
