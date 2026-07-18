@@ -1,14 +1,16 @@
 {
   "version": 2,
   "functions": {
-    "api/generate.js": { "maxDuration": 60 },
-    "api/supplier.js": { "maxDuration": 30 },
-    "api/acts.js":     { "maxDuration": 30 }
+    "api/generate.js":   { "maxDuration": 60 },
+    "api/supplier.js":   { "maxDuration": 30 },
+    "api/acts.js":       { "maxDuration": 30 },
+    "api/acts-list.js":  { "maxDuration": 20 }
   },
   "rewrites": [
-    { "source": "/api/generate", "destination": "/api/generate" },
-    { "source": "/api/supplier", "destination": "/api/supplier" },
-    { "source": "/api/acts",     "destination": "/api/acts" },
+    { "source": "/api/generate",   "destination": "/api/generate" },
+    { "source": "/api/supplier",   "destination": "/api/supplier" },
+    { "source": "/api/acts",       "destination": "/api/acts" },
+    { "source": "/api/acts-list",  "destination": "/api/acts-list" },
     { "source": "/(.*)", "destination": "/public/index.html" }
   ],
   "headers": [

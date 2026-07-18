@@ -334,6 +334,11 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: `Template error: ${e.message}` });
   }
 
+  // Inject API base for in-presentation features (artist picker etc.)
+  const proto = req.headers["x-forwarded-proto"] || "https";
+  const apiBase = `${proto}://${req.headers.host}`;
+  finalHtml = finalHtml.replace("</head>", `<script>window.LOVEIT_API_BASE="${apiBase}";</script>\n</head>`);
+
   const safeFilename = (filename ?? "presentazione")
     .replace(/\.pdf$/i, "")
     .replace(/[^a-zA-Z0-9_\-]/g, "_")

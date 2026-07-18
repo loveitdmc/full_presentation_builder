@@ -192,19 +192,23 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { act } = req.body ?? {};
+  const { act, format } = req.body ?? {};
   if (!act?.trim()) return res.status(400).json({ error: "Missing act name" });
+  const jsonOnly = format === "json";
 
   const token  = process.env.AIRTABLE_TOKEN;
   const baseId = process.env.AIRTABLE_BASE_ID;
   if (!token || !baseId) return res.status(500).json({ error: "Missing Airtable configuration (AIRTABLE_TOKEN or AIRTABLE_BASE_ID)" });
 
-  const templatePath = path.resolve(process.cwd(), "template", "loveit_template.html");
-  let template;
-  try {
-    template = fs.readFileSync(templatePath, "utf8");
-  } catch {
-    return res.status(500).json({ error: "Template file not found" });
+  // For JSON-only mode we don't need the template
+  let template = null;
+  if (!jsonOnly) {
+    const templatePath = path.resolve(process.cwd(), "template", "loveit_template.html");
+    try {
+      template = fs.readFileSync(templatePath, "utf8");
+    } catch {
+      return res.status(500).json({ error: "Template file not found" });
+    }
   }
 
   // 1. Search Spaces, Services & Acts
@@ -314,6 +318,18 @@ export default async function handler(req, res) {
     },
   };
 
+  // 8a. JSON-only mode: return slide data without rendering HTML
+  if (jsonOnly) {
+    return res.status(200).json({
+      act:         actName,
+      description,
+      supplier:    supplier?.name || null,
+      mainPhoto,
+      photos:      photoUrls,
+      videos,
+    });
+  }
+
   // 8. Inject into template
   let finalHtml;
   try {
@@ -322,11 +338,14 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: `Template error: ${e.message}` });
   }
 
-  // 9. Hide cover / overview / closing
+  // 9. Hide cover / overview / closing + inject API base for in-presentation features
+  const proto = req.headers["x-forwarded-proto"] || "https";
+  const apiBase = `${proto}://${req.headers.host}`;
   const actCss = `<style>
     .slide-cover, .slide-overview, .slide-closing { display: none !important; }
   </style>`;
-  finalHtml = finalHtml.replace("</head>", actCss + "\n</head>");
+  const apiScript = `<script>window.LOVEIT_API_BASE="${apiBase}";</script>`;
+  finalHtml = finalHtml.replace("</head>", actCss + "\n" + apiScript + "\n</head>");
 
   const safeFilename = actName.replace(/[^a-zA-Z0-9_\-]/g, "_").slice(0, 60);
 

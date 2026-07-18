@@ -292,11 +292,14 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: `Template error: ${e.message}` });
   }
 
-  // Step 6: Hide slides not needed in supplier mode (overview + closing)
+  // Step 6: Hide slides not needed in supplier mode + inject API base
+  const proto = req.headers["x-forwarded-proto"] || "https";
+  const apiBase = `${proto}://${req.headers.host}`;
   const supplierCss = `<style>
     .slide-cover, .slide-overview, .slide-closing { display: none !important; }
   </style>`;
-  finalHtml = finalHtml.replace('</head>', supplierCss + '\n</head>');
+  const apiScript = `<script>window.LOVEIT_API_BASE="${apiBase}";</script>`;
+  finalHtml = finalHtml.replace('</head>', supplierCss + '\n' + apiScript + '\n</head>');
 
   const safeFilename = supplierName.replace(/[^a-zA-Z0-9_\-]/g, "_").slice(0, 60);
 

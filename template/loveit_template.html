@@ -717,11 +717,25 @@ body.edit-mode #edit-controls{ opacity:1; }
 .add-slide-btn:hover{ border-color:var(--gold);color:var(--gold);background:rgba(201,169,110,.1); }
 
 /* ── Delete slide button ──────────────────────────────────────────────────── */
+/* ── Artist picker ─────────────────────────────────────────────────────────── */
+.asp-artist-loading{padding:1.2rem 0;font-family:var(--sans);font-size:.72rem;letter-spacing:.1em;color:rgba(201,169,110,.55);text-align:center;}
+.asp-artist-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;max-height:320px;overflow-y:auto;margin-top:.4rem;padding-right:.2rem;}
+.asp-artist-grid::-webkit-scrollbar{width:3px;}
+.asp-artist-grid::-webkit-scrollbar-track{background:transparent;}
+.asp-artist-grid::-webkit-scrollbar-thumb{background:rgba(201,169,110,.3);border-radius:2px;}
+.asp-artist-card{cursor:pointer;border:1px solid rgba(201,169,110,.15);border-radius:3px;overflow:hidden;transition:border-color .2s,transform .15s;background:rgba(255,255,255,.03);}
+.asp-artist-card:hover{border-color:rgba(201,169,110,.65);transform:scale(1.03);}
+.asp-artist-thumb{width:100%;aspect-ratio:4/3;background:#1a1a1a;background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;}
+.asp-artist-no-thumb{font-size:1.4rem;opacity:.35;}
+.asp-artist-name{padding:.35rem .45rem .1rem;font-family:var(--sans);font-size:.6rem;font-weight:500;color:var(--warm-white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.asp-artist-type{padding:0 .45rem .35rem;font-family:var(--sans);font-size:.52rem;color:rgba(201,169,110,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.asp-artist-err{padding:.8rem 0;font-family:var(--sans);font-size:.68rem;color:rgba(220,80,80,.75);line-height:1.5;}
+
 .delete-slide-btn{position:absolute;bottom:1.2rem;right:1.5rem;z-index:60;font-family:var(--sans);font-size:.56rem;font-weight:500;letter-spacing:.15em;text-transform:uppercase;color:rgba(220,80,80,.75);background:rgba(10,10,10,.88);border:1px solid rgba(220,80,80,.28);padding:.38rem 1.2rem;cursor:pointer;border-radius:2px;backdrop-filter:blur(8px);transition:all .2s;white-space:nowrap;}
 .delete-slide-btn:hover{ border-color:rgba(220,80,80,.75);color:#e55;background:rgba(220,60,60,.14); }
 
 /* ── Add slide panel ──────────────────────────────────────────────────────── */
-#add-slide-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:500;background:rgba(8,8,8,.96);border:1px solid rgba(201,169,110,.28);border-radius:3px;padding:1.6rem 1.8rem 1.5rem;backdrop-filter:blur(16px);min-width:390px;}
+#add-slide-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:500;background:rgba(8,8,8,.96);border:1px solid rgba(201,169,110,.28);border-radius:3px;padding:1.6rem 1.8rem 1.5rem;backdrop-filter:blur(16px);min-width:390px;max-width:90vw;}
 #asp-close{position:absolute;top:.55rem;right:.75rem;background:none;border:none;color:rgba(201,169,110,.35);cursor:pointer;font-size:1.1rem;padding:.2rem .4rem;line-height:1;transition:color .2s;}
 #asp-close:hover{ color:var(--gold); }
 .asp-title{font-family:var(--sans);font-size:.62rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:rgba(201,169,110,.55);margin-bottom:1.1rem;}
@@ -1029,6 +1043,15 @@ try{ LoveitEditor=(function(){
           </svg>
           <span>Video</span>
         </button>
+        <button class="asp-opt" data-layout="artist">
+          <svg viewBox="0 0 62 40" fill="none">
+            <rect x="1" y="1" width="60" height="38" rx="2" fill="rgba(201,169,110,.07)" stroke="rgba(201,169,110,.35)" stroke-width="1.5"/>
+            <circle cx="31" cy="13" r="6" fill="rgba(201,169,110,.25)" stroke="rgba(201,169,110,.65)" stroke-width="1.3"/>
+            <path d="M18 34 Q25 24 31 22 Q37 24 44 34" fill="rgba(201,169,110,.12)" stroke="rgba(201,169,110,.5)" stroke-width="1.3"/>
+            <line x1="27" y1="33" x2="35" y2="33" stroke="rgba(201,169,110,.35)" stroke-width="1"/>
+          </svg>
+          <span>Artista</span>
+        </button>
       </div>`;
     document.body.appendChild(panel);
     panel.querySelector('#asp-close').addEventListener('click',_closePanel);
@@ -1039,10 +1062,121 @@ try{ LoveitEditor=(function(){
         if(layout==='map'){ _showMapInput(panel,afterSec); }
         else if(layout==='pdf'){ _showPdfInput(panel,afterSec); }
         else if(layout==='video'){ _showVideoInput(panel,afterSec); }
+        else if(layout==='artist'){ _showArtistPicker(panel,afterSec); }
         else if(layout==='split-left'||layout==='split-right'){ _closePanel();_insertSplitSlide(afterSec,layout); }
         else { _closePanel();_insertGallerySlide(afterSec,layout); }
       });
     });
+  }
+
+  function _showArtistPicker(panel,afterSec){
+    panel.querySelector('.asp-options').style.display='none';
+    panel.style.minWidth='480px';
+    const apiBase=window.LOVEIT_API_BASE||'';
+    const wrap=document.createElement('div');
+    wrap.innerHTML='<div class="asp-artist-loading">🎤 Caricamento artisti…</div>';
+    panel.appendChild(wrap);
+    if(!apiBase){
+      wrap.innerHTML='<p class="asp-artist-err">Funzione disponibile solo dalla versione online (Vercel).<br>Apri la presentazione dal server per usare il picker artisti.</p>';
+      return;
+    }
+    fetch(apiBase+'/api/acts-list')
+      .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(data=>{
+        const artists=data.artists||[];
+        if(!artists.length){ wrap.innerHTML='<p class="asp-artist-err">Nessun artista trovato in Airtable.</p>'; return; }
+        wrap.innerHTML=`<div class="asp-title" style="margin-top:.5rem;margin-bottom:.6rem">${artists.length} artisti — clicca per aggiungere</div><div class="asp-artist-grid">${
+          artists.map((a,i)=>`
+            <div class="asp-artist-card" data-idx="${i}">
+              <div class="asp-artist-thumb" style="${a.thumbnail?`background-image:url('${a.thumbnail.replace(/'/g,"\\'")}');`:''}">
+                ${!a.thumbnail?'<div class="asp-artist-no-thumb">🎤</div>':''}
+              </div>
+              <div class="asp-artist-name">${a.name}</div>
+              ${a.type?`<div class="asp-artist-type">${a.type}</div>`:''}
+            </div>`).join('')
+        }</div>`;
+        wrap.querySelectorAll('.asp-artist-card').forEach(card=>{
+          card.addEventListener('click',()=>{
+            const artist=artists[+card.dataset.idx];
+            card.style.opacity='.4';card.style.pointerEvents='none';
+            _closePanel();
+            _insertArtistSlides(afterSec,apiBase,artist.name);
+          });
+        });
+      })
+      .catch(e=>{ wrap.innerHTML=`<p class="asp-artist-err">Errore connessione: ${e.message}<br>Assicurati di essere online e che il server Vercel sia raggiungibile.</p>`; });
+  }
+
+  async function _insertArtistSlides(afterSec,apiBase,actName){
+    let lastSec=afterSec;
+    try{
+      const resp=await fetch(apiBase+'/api/acts',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({act:actName,format:'json'})
+      });
+      const data=await resp.json();
+      if(data.error){ alert('Errore: '+data.error); return; }
+
+      // 1. Split slide: main photo + testo
+      const mainPhoto=data.mainPhoto||(data.photos&&data.photos[0])||'';
+      const sec1=document.createElement('section');
+      sec1.className='slide-split slide-split-photo-left';sec1.setAttribute('data-added','1');
+      sec1.innerHTML=`<div class="split-photo" style="background-image:url('${mainPhoto}')"></div><div class="split-content"><h2 class="headline">${data.act||actName}</h2><p class="body-text">${data.description||''}</p>${data.supplier?`<p class="body-text" style="margin-top:.75rem;opacity:.55;font-size:.85em">${data.supplier}</p>`:''}</div>`;
+      lastSec.insertAdjacentElement('afterend',sec1);
+      if(window._loveitIO) window._loveitIO.observe(sec1);
+      _insertDot(sec1);_addInsertBtn(sec1);if(editMode) _addDeleteBtn(sec1);
+      if(photoMode){ const cell=sec1.querySelector('.split-photo');if(cell){cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z);} }
+      if(textMode) sec1.querySelectorAll(TEXT_SEL).forEach(el=>{el.contentEditable='true';el.spellcheck=false;});
+      lastSec=sec1;
+
+      // 2. Gallery slide se ci sono più foto
+      const extraPhotos=(data.photos||[]).slice(1,4);
+      if(extraPhotos.length>0){
+        const sec2=document.createElement('section');
+        sec2.className='slide-gallery';sec2.setAttribute('data-added','1');
+        const layout=extraPhotos.length===1?'grid-1':'grid-3';
+        const cells=extraPhotos.map(url=>`<div class="gallery-cell" style="background-image:url('${url}')"></div>`).join('');
+        sec2.innerHTML=`<div class="gallery-grid ${layout}">${cells}</div><div class="gallery-header"><span class="gallery-label">Gallery</span><span class="gallery-title-small">${data.act||actName}</span></div>`;
+        lastSec.insertAdjacentElement('afterend',sec2);
+        if(window._loveitIO) window._loveitIO.observe(sec2);
+        _insertDot(sec2);
+        if(photoMode) sec2.querySelectorAll('.gallery-cell').forEach(cell=>{cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z);});
+        if(textMode) sec2.querySelectorAll(TEXT_SEL).forEach(el=>{el.contentEditable='true';el.spellcheck=false;});
+        _addInsertBtn(sec2);if(editMode) _addDeleteBtn(sec2);
+        lastSec=sec2;
+      }
+
+      // 3. Video slides
+      for(const video of (data.videos||[])){
+        const ytMatch=video.embedUrl.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/);
+        const sec3=document.createElement('section');
+        sec3.setAttribute('data-added','1');
+        if(ytMatch){
+          const ytId=ytMatch[1];
+          const thumb=`https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`;
+          const watchUrl=`https://www.youtube.com/watch?v=${ytId}`;
+          sec3.className='slide-video slide-video-yt';sec3.style.cursor='pointer';
+          sec3.onclick=()=>window.open(watchUrl,'_blank');
+          sec3.innerHTML=`<div class="bg" style="background-image:url('${thumb}');background-size:cover;background-position:center"></div><div class="ov-dark"></div><div class="video-play-btn"><svg viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="38" fill="rgba(0,0,0,.55)" stroke="rgba(255,255,255,.6)" stroke-width="2"/><polygon points="32,24 32,56 60,40" fill="white"/></svg></div><div class="gallery-header"><span class="gallery-label">Video</span><span class="gallery-title-small">${data.act||actName}</span></div>`;
+        } else {
+          sec3.className='slide-video';
+          const mediaTag=video.isFile
+            ?`<video src="${video.embedUrl}" controls playsinline></video>`
+            :`<iframe src="${video.embedUrl}" allowfullscreen frameborder="0" allow="autoplay; fullscreen; picture-in-picture"></iframe>`;
+          sec3.innerHTML=`<div class="video-frame">${mediaTag}</div><div class="gallery-header"><span class="gallery-label">Video</span><span class="gallery-title-small">${data.act||actName}</span></div>`;
+        }
+        lastSec.insertAdjacentElement('afterend',sec3);
+        if(window._loveitIO) window._loveitIO.observe(sec3);
+        _insertDot(sec3);_addInsertBtn(sec3);if(editMode) _addDeleteBtn(sec3);
+        if(textMode) sec3.querySelectorAll(TEXT_SEL).forEach(el=>{el.contentEditable='true';el.spellcheck=false;});
+        lastSec=sec3;
+      }
+
+      setTimeout(()=>sec1.scrollIntoView({behavior:'smooth'}),150);
+    } catch(e){
+      alert('Errore nel caricamento artista: '+e.message);
+    }
   }
 
   function _showMapInput(panel,afterSec){
