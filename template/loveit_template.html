@@ -516,6 +516,22 @@ section:hover .bg{transform:scale(1.02)}
     </section>`;
   }
 
+  function buildVideo(act, day, video, num, total, dayIdx, actIdx){
+    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"` : '';
+    const mediaTag = video.isFile
+      ? `<video src="${video.embedUrl}" controls playsinline></video>`
+      : `<iframe src="${video.embedUrl}" allowfullscreen frameborder="0" allow="autoplay; fullscreen; picture-in-picture; web-share"></iframe>`;
+    return `
+    <section class="slide-video"${dataAttrs}>
+      <div class="video-frame">${mediaTag}</div>
+      <div class="gallery-header">
+        <span class="gallery-label">Day ${day.number}</span>
+        <span class="gallery-title-small">${video.title || act.title}</span>
+      </div>
+      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
+    </section>`;
+  }
+
   function buildClosing(trip, num, total){
     const c = trip.closing || {};
     return `
@@ -545,6 +561,12 @@ section:hover .bg{transform:scale(1.02)}
         const galleryPhotos = (act.photos || []).filter(Boolean);
         if(galleryPhotos.length > 0){
           slideBuilders.push((num, total) => buildGallery(act, day, num, total, dayIdx, actIdx));
+        }
+        if(act.videos?.length){
+          act.videos.forEach(video=>{
+            const v=video;
+            slideBuilders.push((num, total) => buildVideo(act, day, v, num, total, dayIdx, actIdx));
+          });
         }
       }
     });
@@ -635,6 +657,14 @@ body.text-mode #edit-controls{ opacity:1; }
 .slide-map{ position:relative; }
 .slide-map .map-frame{ position:absolute;inset:0; }
 .slide-map .map-frame iframe{ width:100%;height:100%;border:none;display:block; }
+
+/* ── Video slide ──────────────────────────────────────────────────────────── */
+.slide-video{ position:relative;background:#000; }
+.slide-video .video-frame{ position:absolute;inset:0;display:flex;align-items:center;justify-content:center; }
+.slide-video .video-frame iframe{ width:100%;height:100%;border:none; }
+.slide-video .video-frame video{ width:100%;height:100%;object-fit:contain; }
+.slide-video .gallery-header{ position:relative;z-index:5;padding:1.5rem 2rem;background:linear-gradient(to top, rgba(0,0,0,.75) 0%, transparent 100%);width:100%; }
+.slide-video .counter{ z-index:5; }
 
 /* ── Photo drop zones ─────────────────────────────────────────────────────── */
 .edit-zone{position:absolute;inset:0;z-index:50;display:grid;place-items:center;font-family:var(--sans);font-size:.58rem;font-weight:400;letter-spacing:.15em;text-transform:uppercase;color:transparent;background:transparent;border:1.5px dashed transparent;cursor:pointer;transition:background .18s,border-color .18s,color .18s;user-select:none;}
@@ -828,7 +858,7 @@ try{ LoveitEditor=(function(){
     if(photoMode){
       document.querySelectorAll('.bg').forEach(bg=>{ const z=makeZone(bg);bg.parentElement.appendChild(z);zones.push(z); });
       document.querySelectorAll('.gallery-cell,.split-photo').forEach(cell=>{ if(getComputedStyle(cell).position==='static') cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z); });
-      document.querySelectorAll('.slide-gallery,.slide-map,.slide-split').forEach(sec=>_addInsertBtn(sec));
+      document.querySelectorAll('.slide-gallery,.slide-map,.slide-split,.slide-video').forEach(sec=>_addInsertBtn(sec));
     } else {
       zones.forEach(z=>{ const p=z.parentElement;z.remove();if(p&&(p.classList.contains('gallery-cell')||p.classList.contains('split-photo'))) p.style.position=''; });
       zones.length=0;
@@ -934,6 +964,13 @@ try{ LoveitEditor=(function(){
           </svg>
           <span>PDF</span>
         </button>
+        <button class="asp-opt" data-layout="video">
+          <svg viewBox="0 0 62 40" fill="none">
+            <rect x="1" y="1" width="60" height="38" rx="2" fill="rgba(80,200,120,.07)" stroke="rgba(80,200,120,.45)" stroke-width="1.5"/>
+            <polygon points="22,10 22,30 43,20" fill="rgba(80,200,120,.35)" stroke="rgba(80,200,120,.65)" stroke-width="1.2"/>
+          </svg>
+          <span>Video</span>
+        </button>
       </div>`;
     document.body.appendChild(panel);
     panel.querySelector('#asp-close').addEventListener('click',_closePanel);
@@ -943,6 +980,7 @@ try{ LoveitEditor=(function(){
         const layout=btn.dataset.layout;
         if(layout==='map'){ _showMapInput(panel,afterSec); }
         else if(layout==='pdf'){ _showPdfInput(panel,afterSec); }
+        else if(layout==='video'){ _showVideoInput(panel,afterSec); }
         else if(layout==='split-left'||layout==='split-right'){ _closePanel();_insertSplitSlide(afterSec,layout); }
         else { _closePanel();_insertGallerySlide(afterSec,layout); }
       });
@@ -1010,6 +1048,55 @@ try{ LoveitEditor=(function(){
     const placeM=url.match(/maps\/place\/([^/@?]+)/);
     if(placeM) return `https://www.google.com/maps?q=${decodeURIComponent(placeM[1])}&output=embed`;
     return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&output=embed`;
+  }
+
+  function _toVideoEmbed(url){
+    if(!url) return null;
+    const yt=url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    if(yt) return `https://www.youtube.com/embed/${yt[1]}?rel=0`;
+    const vimeo=url.match(/vimeo\.com\/(\d+)/);
+    if(vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`;
+    const drive=url.match(/drive\.google\.com\/file\/d\/([^/\?]+)/);
+    if(drive) return `https://drive.google.com/file/d/${drive[1]}/preview`;
+    if(/\.(mp4|webm|ogg)(\?|$)/i.test(url)) return url;
+    return null;
+  }
+
+  function _showVideoInput(panel,afterSec){
+    panel.querySelector('.asp-options').style.display='none';
+    const div=document.createElement('div');
+    div.innerHTML=`
+      <div class="asp-map-input">
+        <input type="text" id="asp-video-url" placeholder="YouTube, Vimeo, Drive o link diretto MP4…" autocomplete="off"/>
+        <button id="asp-video-ok">Inserisci →</button>
+      </div>
+      <p class="asp-hint">Supporta <strong>YouTube</strong>, <strong>Vimeo</strong>, <strong>Google Drive</strong> e file MP4 diretti.</p>`;
+    panel.appendChild(div);
+    const inp=panel.querySelector('#asp-video-url');inp.focus();
+    const confirm=()=>{
+      const url=inp.value.trim();if(!url) return;
+      const embed=_toVideoEmbed(url);
+      if(!embed){ alert('URL video non riconosciuto. Usa un link YouTube, Vimeo, Drive o MP4.');return; }
+      _closePanel();_insertVideoSlide(afterSec,embed,/\.(mp4|webm|ogg)(\?|$)/i.test(url));
+    };
+    panel.querySelector('#asp-video-ok').addEventListener('click',confirm);
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter') confirm(); });
+  }
+
+  function _insertVideoSlide(afterSec,embedUrl,isFile){
+    const label=afterSec.querySelector('.gallery-label')?.textContent||'';
+    const title=afterSec.querySelector('.gallery-title-small')?.textContent||'Performance';
+    const mediaTag=isFile
+      ?`<video src="${embedUrl}" controls playsinline></video>`
+      :`<iframe src="${embedUrl}" allowfullscreen frameborder="0" allow="autoplay; fullscreen; picture-in-picture"></iframe>`;
+    const sec=document.createElement('section');
+    sec.className='slide-video';sec.setAttribute('data-added','1');
+    sec.innerHTML=`<div class="video-frame">${mediaTag}</div><div class="gallery-header"><span class="gallery-label">${label}</span><span class="gallery-title-small">${title}</span></div>`;
+    afterSec.insertAdjacentElement('afterend',sec);
+    if(window._loveitIO) window._loveitIO.observe(sec);
+    _insertDot(sec);_addInsertBtn(sec);
+    if(textMode){ sec.querySelectorAll(TEXT_SEL).forEach(el=>{ el.contentEditable='true';el.spellcheck=false; }); }
+    setTimeout(()=>sec.scrollIntoView({behavior:'smooth'}),150);
   }
 
   function _insertGallerySlide(afterSec,layout){

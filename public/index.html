@@ -30,8 +30,9 @@ header nav{font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:v
 
 .tabs{display:flex;max-width:680px;margin:2rem auto 0;padding:0 1.5rem}
 .tab-btn{flex:1;padding:.9rem 1rem;background:var(--card);border:1px solid #222;color:var(--stone);font-family:var(--sans);font-size:.7rem;font-weight:500;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;transition:all .25s}
-.tab-btn:first-child{border-radius:3px 0 0 3px;border-right:none}
+.tab-btn:first-child{border-radius:3px 0 0 3px}
 .tab-btn:last-child{border-radius:0 3px 3px 0}
+.tab-btn:not(:last-child){border-right:none}
 .tab-btn.active{background:#1a1610;border-color:var(--gold);color:var(--gold)}
 .tab-btn:not(.active):hover{color:var(--warm-white);border-color:#444}
 
@@ -110,12 +111,13 @@ footer{text-align:center;padding:2rem;font-size:.65rem;letter-spacing:.12em;text
 
 <div class="hero">
   <h1>Genera una <em>presentazione</em></h1>
-  <p>Dal preventivo PDF · oppure scheda dedicata per un fornitore</p>
+  <p>Dal preventivo PDF · scheda fornitore · scheda artista o atto</p>
 </div>
 
 <div class="tabs">
   <button class="tab-btn active" data-tab="preventivo">📄 Da Preventivo</button>
   <button class="tab-btn" data-tab="fornitore">✦ Scheda Fornitore</button>
+  <button class="tab-btn" data-tab="atti">🎭 Atti & Spazi</button>
 </div>
 
 <main>
@@ -144,6 +146,16 @@ footer{text-align:center;padding:2rem;font-size:.65rem;letter-spacing:.12em;text
       <p class="supplier-hint">Se il fornitore è nel database verranno usate descrizione e foto reali.<br>Altrimenti l'AI genererà la presentazione automaticamente.</p>
     </div>
     <button class="btn-generate" id="btn-generate-supplier" disabled>Genera Scheda Fornitore</button>
+  </div>
+
+  <!-- PANEL: ATTI & SPAZI -->
+  <div class="panel" id="panel-atti">
+    <div class="supplier-field">
+      <label for="act-input">Nome dell'artista o atto</label>
+      <input type="text" id="act-input" placeholder="es. Quartetto d'Archi, DJ Set Lounge…" autocomplete="off"/>
+      <p class="supplier-hint">Cerca nella tabella Spaces &amp; Services. Recupera automaticamente foto e video collegati nel database Media.</p>
+    </div>
+    <button class="btn-generate" id="btn-generate-act" disabled>Genera Scheda Artista</button>
   </div>
 
   <!-- SHARED -->
@@ -202,6 +214,8 @@ const btnRemove      = document.getElementById('btn-remove');
 const btnGeneratePdf = document.getElementById('btn-generate-pdf');
 const supplierInput  = document.getElementById('supplier-input');
 const btnGenerateSup = document.getElementById('btn-generate-supplier');
+const actInput       = document.getElementById('act-input');
+const btnGenerateAct = document.getElementById('btn-generate-act');
 const errorMsg       = document.getElementById('error-msg');
 const progressEl     = document.getElementById('progress');
 const resultEl       = document.getElementById('result');
@@ -256,6 +270,10 @@ btnRemove.addEventListener('click', () => {
 // SUPPLIER INPUT
 supplierInput.addEventListener('input', () => { btnGenerateSup.disabled = !supplierInput.value.trim(); });
 supplierInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !btnGenerateSup.disabled) generateSupplier(); });
+
+// ACT INPUT
+actInput.addEventListener('input', () => { btnGenerateAct.disabled = !actInput.value.trim(); });
+actInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !btnGenerateAct.disabled) generateAct(); });
 
 // GENERATE PDF
 btnGeneratePdf.addEventListener('click', generatePdf);
@@ -314,13 +332,40 @@ async function generateSupplier() {
   showResult(data, 'Scheda fornitore pronta', badge);
 }
 
+// GENERATE ACT
+btnGenerateAct.addEventListener('click', generateAct);
+async function generateAct() {
+  const name = actInput.value.trim();
+  if (!name) return;
+  setStepLabels('act');
+  btnGenerateAct.disabled = true;
+  hideError(); resetResult();
+  progressEl.style.display = 'block'; setStep(1);
+
+  const t = setTimeout(() => setStep(2), 2000);
+  let data;
+  try {
+    const resp = await fetch('/api/acts', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ act: name })
+    });
+    clearTimeout(t); setStep(4);
+    if (!resp.ok) { const e = await resp.json().catch(() => ({error:`HTTP ${resp.status}`})); throw new Error(e.error); }
+    data = await resp.json();
+  } catch(e) { clearTimeout(t); showError('Errore:\n' + e.message); resetProgress(); btnGenerateAct.disabled = !actInput.value.trim(); return; }
+
+  const parts = [`${data.photoCount || 0} foto`];
+  if (data.videoCount > 0) parts.push(`${data.videoCount} video`);
+  showResult(data, 'Scheda artista pronta', ' · ' + parts.join(' · '));
+}
+
 function showResult(data, title, badge = '') {
   generatedHtml = data.html;
   generatedFilename = data.filename ?? 'presentazione.html';
   const blob = new Blob([generatedHtml], {type:'text/html'});
   btnDownload.href = URL.createObjectURL(blob);
   btnDownload.download = generatedFilename;
-  const info = [generatedFilename, data.client||data.supplier||'', data.city||data.destination||''].filter(Boolean).join(' · ') + badge;
+  const info = [generatedFilename, data.client||data.supplier||data.act||'', data.city||data.destination||''].filter(Boolean).join(' · ') + badge;
   resultTitle.textContent = title;
   resultInfo.textContent = info;
   doneAllSteps();
@@ -341,15 +386,21 @@ btnNew.addEventListener('click', () => {
   generatedHtml = null; generatedFilename = null; selectedFile = null; fileInput.value = '';
   fileBadge.style.display = 'none'; dropZone.style.display = 'block';
   btnGeneratePdf.disabled = true; supplierInput.value = ''; btnGenerateSup.disabled = true;
+  actInput.value = ''; btnGenerateAct.disabled = true;
   resetProgress(); resetResult(); hideError();
 });
 function resetResult() { resultEl.style.display = 'none'; generatedHtml = null; generatedFilename = null; }
 function resetProgress() { progressEl.style.display = 'none'; document.querySelectorAll('.step').forEach(s => s.classList.remove('active','done')); }
 
 function setStepLabels(mode) {
-  document.getElementById('step-1-label').textContent = mode === 'supplier' ? 'Ricerca nel database' : 'Lettura preventivo';
-  document.getElementById('step-2-label').textContent = mode === 'supplier' ? 'Generazione con AI' : 'Analisi AI del programma';
-  document.getElementById('progress-note').textContent = mode === 'supplier' ? 'La generazione richiede circa 10–20 secondi…' : 'La generazione richiede circa 20–40 secondi…';
+  document.getElementById('step-1-label').textContent =
+    mode === 'act'      ? 'Ricerca atto nel database' :
+    mode === 'supplier' ? 'Ricerca nel database' : 'Lettura preventivo';
+  document.getElementById('step-2-label').textContent =
+    mode === 'act'      ? 'Recupero foto e video' :
+    mode === 'supplier' ? 'Generazione con AI' : 'Analisi AI del programma';
+  document.getElementById('progress-note').textContent =
+    mode === 'pdf' ? 'La generazione richiede circa 20–40 secondi…' : 'La generazione richiede circa 10–20 secondi…';
 }
 function setStep(n) {
   document.querySelectorAll('.step').forEach((s,i) => {
