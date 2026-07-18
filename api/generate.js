@@ -76,7 +76,7 @@ RULES (strict):
 async function searchAirtable(supplierName) {
   const token   = process.env.AIRTABLE_TOKEN;
   const baseId  = process.env.AIRTABLE_BASE_ID;
-  const tableId = process.env.AIRTABLE_TABLE_ID || "Fornitori";
+  const tableId = process.env.AIRTABLE_TABLE_ID || "Suppliers";
 
   if (!token || !baseId || !supplierName) return null;
 
@@ -97,10 +97,10 @@ async function searchAirtable(supplierName) {
     if (!data.records?.length) return null;
 
     const fields = data.records[0].fields;
-    const photoUrls = (fields.Foto || []).map((f) => f.url);
+    const photoUrls = (fields.Photos || []).map((f) => f.url);
 
     return {
-      description: fields.Descrizione || null,
+      description: fields.Description || null,
       photos: photoUrls.slice(0, 4).length ? photoUrls.slice(0, 4) : null,
       allPhotos: photoUrls,
     };

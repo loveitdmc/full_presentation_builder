@@ -10,7 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 async function searchAirtable(supplierName) {
   const token   = process.env.AIRTABLE_TOKEN;
   const baseId  = process.env.AIRTABLE_BASE_ID;
-  const tableId = process.env.AIRTABLE_TABLE_ID || "Fornitori";
+  const tableId = process.env.AIRTABLE_TABLE_ID || "Suppliers";
   if (!token || !baseId || !supplierName) return null;
 
   const safeName = supplierName.replace(/"/g, '\\"').toLowerCase();
@@ -26,13 +26,13 @@ async function searchAirtable(supplierName) {
     const data = await resp.json();
     if (!data.records?.length) return null;
     const fields = data.records[0].fields;
-    const allPhotoUrls = (fields.Foto || []).map(f => f.url);
+    const allPhotoUrls = (fields.Photos || []).map(f => f.url);
     return {
-      description: fields.Descrizione || null,
+      description: fields.Description || null,
       photos:    allPhotoUrls.slice(0, 4),
       allPhotos: allPhotoUrls,
-      city: fields.Città || null,
-      type: fields.Tipo || null,
+      city: fields.City || null,
+      type: fields.Type || null,
     };
   } catch {
     return null;
