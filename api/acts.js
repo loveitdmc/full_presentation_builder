@@ -6,7 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ─── AIRTABLE CONSTANTS ───────────────────────────────────────────────────────
 // Use table IDs (most reliable) — verified from Airtable schema
-const TABLE_ACTS      = "tblZJsaWfBCK228aO";   // Spaces, Services & Acts
+const TABLE_ACTS      = "tblbCAthb1HXfc13i";   // Artists (new dedicated table)
 const TABLE_SUPPLIERS = "tbl3rEBd03iC29uNb";    // Suppliers
 const TABLE_MEDIA     = "tblpKKKum1aFwPjgY";    // Media
 
@@ -58,22 +58,24 @@ async function airtableFetch(url, token) {
 }
 
 async function searchAct(actName, token, baseId) {
-  // Field name confirmed from Airtable schema: "Space, Service or Act Name"
+  // Artists table — field name: "Artist or Act Name"
   const safe = actName.replace(/"/g, '\\"').toLowerCase();
-  const formula = encodeURIComponent(`SEARCH("${safe}", LOWER({Space, Service or Act Name}))>0`);
+  const formula = encodeURIComponent(`SEARCH("${safe}", LOWER({Artist or Act Name}))>0`);
   const url = `https://api.airtable.com/v0/${baseId}/${TABLE_ACTS}?filterByFormula=${formula}&maxRecords=1`;
   const data = await airtableFetch(url, token);
   if (!data.records?.length) return null;
   const r = data.records[0];
   const f = r.fields;
+  // Artist Tags is multipleSelects — array of strings
+  const tags = Array.isArray(f["Artist Tags"]) ? f["Artist Tags"].join(", ") : (f["Artist Tags"] || null);
   return {
     id:          r.id,
-    name:        f["Space, Service or Act Name"] || actName,
-    supplierIds: f.Supplier  || [],
-    mediaIds:    f.Media     || [],
-    notes:       f["Operational Notes"] || null,
-    type:        typeof f.Type === "object" ? f.Type?.name : f.Type || null,
-    videoLinks:  f["Video Links"] || "",  // multilineText: one URL or label+URL per line
+    name:        f["Artist or Act Name"] || actName,
+    supplierIds: f.Supplier             || [],
+    mediaIds:    f["Consolidated Media"] || [],
+    notes:       f["Description and Operational Notes"] || null,
+    type:        tags,
+    videoLinks:  f["Video Links"] || "",
   };
 }
 
@@ -219,7 +221,7 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: `Airtable search error: ${e.message}` });
   }
   if (!actRecord) {
-    return res.status(404).json({ error: `"${act}" not found in Spaces, Services & Acts. Check the name and try again.` });
+    return res.status(404).json({ error: `"${act}" not found in Artists. Check the name and try again.` });
   }
 
   // 2. Fetch linked supplier

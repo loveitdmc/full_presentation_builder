@@ -1,17 +1,20 @@
-import { fileURLToPath } from "url";
-
 // ─── AIRTABLE CONSTANTS ───────────────────────────────────────────────────────
-const TABLE_ACTS  = "tblZJsaWfBCK228aO";   // Spaces, Services & Acts
+const TABLE_ACTS  = "tblbCAthb1HXfc13i";   // Artists
 const TABLE_MEDIA = "tblpKKKum1aFwPjgY";    // Media
+
+// Field names — use encodeURIComponent to handle spaces and commas correctly
+const FIELD_NAME  = encodeURIComponent("Artist or Act Name");
+const FIELD_TAGS  = encodeURIComponent("Artist Tags");
+const FIELD_MEDIA = encodeURIComponent("Consolidated Media");
 
 async function airtableFetch(url, token) {
   const resp = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(10000),
   });
   if (!resp.ok) {
     const text = await resp.text();
-    throw new Error(`Airtable ${resp.status}: ${text.slice(0, 200)}`);
+    throw new Error(`Airtable ${resp.status}: ${text.slice(0, 300)}`);
   }
   return resp.json();
 }
@@ -27,14 +30,13 @@ export default async function handler(req, res) {
   const baseId = process.env.AIRTABLE_BASE_ID;
   if (!token || !baseId) return res.status(500).json({ error: "Missing Airtable config" });
 
-  // 1. Fetch all SSA records — only the fields we need
-  const fields = ["Space%2C+Service+or+Act+Name", "Type", "Media"]
-    .map(f => `fields[]=${f}`).join("&");
+  // 1. Fetch all Artist records — only the fields we need
+  const fieldsParam = `fields[]=${FIELD_NAME}&fields[]=${FIELD_TAGS}&fields[]=${FIELD_MEDIA}`;
   let allRecords = [];
   let offset = "";
   try {
     do {
-      const url = `https://api.airtable.com/v0/${baseId}/${TABLE_ACTS}?${fields}&maxRecords=100${offset ? `&offset=${offset}` : ""}`;
+      const url = `https://api.airtable.com/v0/${baseId}/${TABLE_ACTS}?${fieldsParam}&maxRecords=100${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`;
       const data = await airtableFetch(url, token);
       allRecords = allRecords.concat(data.records || []);
       offset = data.offset || "";
@@ -67,12 +69,13 @@ export default async function handler(req, res) {
   // 4. Build artist list
   const artists = allRecords.map(r => {
     const f = r.fields;
-    const name = f["Space, Service or Act Name"] || "";
+    const name = f["Artist or Act Name"] || "";
     if (!name) return null;
-    const type = typeof f.Type === "object" ? f.Type?.name || "" : f.Type || "";
-    const firstMediaId = (f.Media || [])[0];
+    // Artist Tags is a multipleSelects — array of strings
+    const tags = Array.isArray(f["Artist Tags"]) ? f["Artist Tags"].join(", ") : (f["Artist Tags"] || "");
+    const firstMediaId = (f["Consolidated Media"] || [])[0];
     const thumbnail = firstMediaId ? (mediaMap.get(firstMediaId) || null) : null;
-    return { name, type, thumbnail };
+    return { name, type: tags, thumbnail };
   }).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
 
   return res.status(200).json({ artists });
