@@ -5,14 +5,16 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ─── AIRTABLE CONSTANTS ───────────────────────────────────────────────────────
-const TABLE_ACTS      = "Spaces%20%26%20Services";  // "Spaces & Services"
-const TABLE_SUPPLIERS = "Suppliers";
-const TABLE_MEDIA     = "Media";
+// Use table IDs (most reliable) — verified from Airtable schema
+const TABLE_ACTS      = "tblZJsaWfBCK228aO";   // Spaces, Services & Acts
+const TABLE_SUPPLIERS = "tbl3rEBd03iC29uNb";    // Suppliers
+const TABLE_MEDIA     = "tblpKKKum1aFwPjgY";    // Media
 
 // ─── VIDEO URL HELPERS ────────────────────────────────────────────────────────
 
 function toEmbedUrl(url) {
   if (!url) return null;
+  url = url.trim();
   // YouTube
   const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
   if (yt) return `https://www.youtube.com/embed/${yt[1]}?rel=0&modestbranding=1`;
@@ -25,6 +27,12 @@ function toEmbedUrl(url) {
   // Direct video file
   if (/\.(mp4|webm|ogg)(\?|$)/i.test(url)) return url;
   return null;
+}
+
+// Extract all URLs from a multiline text field (e.g. "Video Links")
+function extractUrls(text) {
+  if (!text) return [];
+  return (text.match(/https?:\/\/\S+/g) || []).map(u => u.replace(/[,;)>\]"']+$/, ''));
 }
 
 function isVideoLinkOrType(assetType, driveLink, fileUrls) {
@@ -44,14 +52,15 @@ async function airtableFetch(url, token) {
   });
   if (!resp.ok) {
     const text = await resp.text();
-    throw new Error(`Airtable ${resp.status}: ${text.slice(0, 200)}`);
+    throw new Error(`Airtable ${resp.status}: ${text.slice(0, 300)}`);
   }
   return resp.json();
 }
 
 async function searchAct(actName, token, baseId) {
+  // Field name confirmed from Airtable schema: "Space, Service or Act Name"
   const safe = actName.replace(/"/g, '\\"').toLowerCase();
-  const formula = encodeURIComponent(`SEARCH("${safe}", LOWER({Space or Service Name}))>0`);
+  const formula = encodeURIComponent(`SEARCH("${safe}", LOWER({Space, Service or Act Name}))>0`);
   const url = `https://api.airtable.com/v0/${baseId}/${TABLE_ACTS}?filterByFormula=${formula}&maxRecords=1`;
   const data = await airtableFetch(url, token);
   if (!data.records?.length) return null;
@@ -59,11 +68,12 @@ async function searchAct(actName, token, baseId) {
   const f = r.fields;
   return {
     id:          r.id,
-    name:        f["Space or Service Name"] || actName,
-    supplierIds: f.Supplier  || [],    // array of record ID strings
-    mediaIds:    f.Media     || [],    // array of record ID strings
+    name:        f["Space, Service or Act Name"] || actName,
+    supplierIds: f.Supplier  || [],
+    mediaIds:    f.Media     || [],
     notes:       f["Operational Notes"] || null,
     type:        typeof f.Type === "object" ? f.Type?.name : f.Type || null,
+    videoLinks:  f["Video Links"] || "",  // multilineText: one URL or label+URL per line
   };
 }
 
@@ -91,17 +101,11 @@ async function getMediaRecords(mediaIds, token, baseId) {
     const data = await airtableFetch(url, token);
     return (data.records || []).map(r => {
       const f = r.fields;
-      // Asset Type may be a string or object {name, id, color} depending on API version
       const assetType = typeof f["Asset Type"] === "object"
         ? f["Asset Type"]?.name || ""
         : f["Asset Type"] || "";
       const fileUrls = (f.File || []).map(att => att.url).filter(Boolean);
-      return {
-        assetType,
-        fileUrls,
-        driveLink:   f["Drive Link"]  || null,
-        description: f.Description    || null,
-      };
+      return { assetType, fileUrls, driveLink: f["Drive Link"] || null, description: f.Description || null };
     });
   } catch {
     return [];
@@ -193,7 +197,7 @@ export default async function handler(req, res) {
 
   const token  = process.env.AIRTABLE_TOKEN;
   const baseId = process.env.AIRTABLE_BASE_ID;
-  if (!token || !baseId) return res.status(500).json({ error: "Missing Airtable configuration" });
+  if (!token || !baseId) return res.status(500).json({ error: "Missing Airtable configuration (AIRTABLE_TOKEN or AIRTABLE_BASE_ID)" });
 
   const templatePath = path.resolve(process.cwd(), "template", "loveit_template.html");
   let template;
@@ -203,7 +207,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Template file not found" });
   }
 
-  // 1. Search Spaces & Services
+  // 1. Search Spaces, Services & Acts
   let actRecord;
   try {
     actRecord = await searchAct(act.trim(), token, baseId);
@@ -211,7 +215,7 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: `Airtable search error: ${e.message}` });
   }
   if (!actRecord) {
-    return res.status(404).json({ error: `"${act}" not found in Spaces & Services. Check the name and try again.` });
+    return res.status(404).json({ error: `"${act}" not found in Spaces, Services & Acts. Check the name and try again.` });
   }
 
   // 2. Fetch linked supplier
@@ -220,39 +224,52 @@ export default async function handler(req, res) {
     supplier = await getSupplier(actRecord.supplierIds[0], token, baseId);
   }
 
-  // 3. Fetch Media records
+  // 3. Fetch Media records for photos
   const mediaRecords = await getMediaRecords(actRecord.mediaIds, token, baseId);
 
-  // 4. Separate photos and videos
+  // 4. Build photo list from Media records
   const photoUrls = [];
-  const videos    = [];
+  const videosFromMedia = [];
 
   for (const m of mediaRecords) {
     if (isVideoLinkOrType(m.assetType, m.driveLink, m.fileUrls)) {
-      // Video: prefer Drive Link (YouTube/Vimeo/Drive), fallback to first file
       const rawUrl = m.driveLink || m.fileUrls[0] || null;
       const embedUrl = toEmbedUrl(rawUrl);
       if (embedUrl) {
-        const isFile = rawUrl ? /\.(mp4|webm|ogg)(\?|$)/i.test(rawUrl) : false;
-        videos.push({
+        videosFromMedia.push({
           embedUrl,
-          isFile,
+          isFile: rawUrl ? /\.(mp4|webm|ogg)(\?|$)/i.test(rawUrl) : false,
           title: m.description || "Performance",
         });
       }
     } else {
-      // Photo: use file attachments
       photoUrls.push(...m.fileUrls);
     }
   }
 
-  // 5. Resolve cover photo
+  // 5. Build video list from "Video Links" field (more reliable source)
+  const videosFromField = extractUrls(actRecord.videoLinks)
+    .map(url => {
+      const embedUrl = toEmbedUrl(url);
+      if (!embedUrl) return null;
+      return {
+        embedUrl,
+        isFile: /\.(mp4|webm|ogg)(\?|$)/i.test(url),
+        title: "Performance",
+      };
+    })
+    .filter(Boolean);
+
+  // Prefer field videos if present, otherwise use Media videos
+  const videos = videosFromField.length > 0 ? videosFromField : videosFromMedia;
+
+  // 6. Cover photo
   const unsplashKey = process.env.UNSPLASH_ACCESS_KEY;
   const cityName    = supplier?.city || "Italy";
   const mainPhoto   = photoUrls[0]
     || await unsplashSearch(`${cityName} italy luxury performance venue`, unsplashKey);
 
-  // 6. Build TRIP JSON
+  // 7. Build TRIP JSON
   const actName    = actRecord.name;
   const description = actRecord.notes
     || supplier?.description
@@ -297,7 +314,7 @@ export default async function handler(req, res) {
     },
   };
 
-  // 7. Inject into template
+  // 8. Inject into template
   let finalHtml;
   try {
     finalHtml = injectTrip(template, tripObj);
@@ -305,7 +322,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: `Template error: ${e.message}` });
   }
 
-  // 8. Hide cover / overview / closing (not needed for single-act scheda)
+  // 9. Hide cover / overview / closing
   const actCss = `<style>
     .slide-cover, .slide-overview, .slide-closing { display: none !important; }
   </style>`;
