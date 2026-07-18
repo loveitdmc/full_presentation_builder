@@ -697,9 +697,9 @@ body.text-mode #edit-controls{ opacity:1; }
 /* ── Split slides (foto metà / testo metà) ───────────────────────────────── */
 .slide-split{ display:grid!important;grid-template-columns:1fr 1fr; }
 .slide-split .split-photo{ background-size:cover;background-position:center;position:relative; }
-.slide-split .split-content{ display:flex;flex-direction:column;justify-content:center;padding:4rem 3.5rem;background:var(--near-black); }
+.slide-split .split-content{ display:flex;flex-direction:column;justify-content:center;padding:4rem 3.5rem;background:var(--nero);color:var(--warm-white); }
 .slide-split .split-content .headline{ margin-bottom:1rem; }
-.slide-split .split-content .body-text{ color:rgba(255,255,255,.65);font-size:.9rem;line-height:1.7; }
+.slide-split .split-content .body-text{ color:rgba(245,240,232,.75);font-size:.96rem;line-height:1.75;max-width:480px; }
 .slide-split-photo-right{ grid-template-columns:1fr 1fr; }
 .slide-split-photo-right .split-content{ order:-1; }
 
@@ -1007,6 +1007,7 @@ try{ LoveitEditor=(function(){
     }).join('');
     const sec=document.createElement('section');
     sec.className='slide-gallery';sec.setAttribute('data-added','1');
+    if(dIdx!==undefined){ sec.dataset.day=dIdx; sec.dataset.act=aIdx; }
     sec.innerHTML=`<div class="gallery-grid ${layout}">${cells}</div><div class="gallery-header"><span class="gallery-label">${label}</span><span class="gallery-title-small">${title}</span></div>`;
     afterSec.insertAdjacentElement('afterend',sec);
     if(window._loveitIO) window._loveitIO.observe(sec);
@@ -1025,6 +1026,7 @@ try{ LoveitEditor=(function(){
     const isLeft=layout==='split-left';
     const sec=document.createElement('section');
     sec.className=`slide-split slide-split-photo-${isLeft?'left':'right'}`;sec.setAttribute('data-added','1');
+    if(dIdx!==undefined){ sec.dataset.day=dIdx; sec.dataset.act=aIdx; }
     if(isLeft){
       sec.innerHTML=`<div class="split-photo"${bgStyle}></div><div class="split-content"><h2 class="headline">Titolo</h2><p class="body-text">Descrizione del fornitore o dell'esperienza…</p></div>`;
     } else {
