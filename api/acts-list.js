@@ -1,11 +1,25 @@
 // ─── AIRTABLE CONSTANTS ───────────────────────────────────────────────────────
-const TABLE_ACTS  = "tblbCAthb1HXfc13i";   // Artists
-const TABLE_MEDIA = "tblpKKKum1aFwPjgY";    // Media
+const TABLE_ACTS       = "tblbCAthb1HXfc13i";   // Artists & Shows
+const TABLE_ACTIVITIES = "tblPIbMu1UDjOLYIK";   // Activities
+const TABLE_MEDIA      = "tblpKKKum1aFwPjgY";    // Media
 
-// Field names — use encodeURIComponent to handle spaces and commas correctly
-const FIELD_NAME  = encodeURIComponent("Artist or Show Name");
-const FIELD_TAGS  = encodeURIComponent("Artist & Show Tags");
-const FIELD_MEDIA = encodeURIComponent("Consolidated Media");
+// Per-kind config: table + field names (encoded at use time)
+const KINDS = {
+  artists: {
+    table: TABLE_ACTS,
+    nameField:  "Artist or Show Name",
+    tagField:   "Artist & Show Tags",
+    mediaField: "Consolidated Media",
+    responseKey: "artists",
+  },
+  activities: {
+    table: TABLE_ACTIVITIES,
+    nameField:  "Activity or Service Name",
+    tagField:   "Activity Type",
+    mediaField: "Media",
+    responseKey: "activities",
+  },
+};
 
 async function airtableFetch(url, token) {
   const resp = await fetch(url, {
@@ -30,13 +44,17 @@ export default async function handler(req, res) {
   const baseId = process.env.AIRTABLE_BASE_ID;
   if (!token || !baseId) return res.status(500).json({ error: "Missing Airtable config" });
 
-  // 1. Fetch all Artist records — only the fields we need
-  const fieldsParam = `fields[]=${FIELD_NAME}&fields[]=${FIELD_TAGS}&fields[]=${FIELD_MEDIA}`;
+  // Select kind: default artists, ?kind=activities for Activities table
+  const kind = KINDS[req.query?.kind] || KINDS.artists;
+
+  // 1. Fetch all records — only the fields we need
+  const fieldsParam = [kind.nameField, kind.tagField, kind.mediaField]
+    .map(f => `fields[]=${encodeURIComponent(f)}`).join("&");
   let allRecords = [];
   let offset = "";
   try {
     do {
-      const url = `https://api.airtable.com/v0/${baseId}/${TABLE_ACTS}?${fieldsParam}&maxRecords=100${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`;
+      const url = `https://api.airtable.com/v0/${baseId}/${kind.table}?${fieldsParam}&maxRecords=100${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`;
       const data = await airtableFetch(url, token);
       allRecords = allRecords.concat(data.records || []);
       offset = data.offset || "";
@@ -46,9 +64,8 @@ export default async function handler(req, res) {
   }
 
   // 2. Collect unique first-Media IDs for thumbnail lookup
-  // Field is "Consolidated Media" (not "Media") in the Artists table
   const firstMediaIds = [...new Set(
-    allRecords.map(r => (r.fields["Consolidated Media"] || [])[0]).filter(Boolean)
+    allRecords.map(r => (r.fields[kind.mediaField] || [])[0]).filter(Boolean)
   )];
 
   // 3. Batch fetch those Media records (one request for all)
@@ -67,17 +84,19 @@ export default async function handler(req, res) {
     }
   }
 
-  // 4. Build artist list
-  const artists = allRecords.map(r => {
+  // 4. Build list (works for both multipleSelects arrays and singleSelect strings)
+  const items = allRecords.map(r => {
     const f = r.fields;
-    const name = f["Artist or Show Name"] || "";
+    const name = f[kind.nameField] || "";
     if (!name) return null;
-    // Artist & Show Tags is a multipleSelects — array of strings
-    const tags = Array.isArray(f["Artist & Show Tags"]) ? f["Artist & Show Tags"].join(", ") : (f["Artist & Show Tags"] || "");
-    const firstMediaId = (f["Consolidated Media"] || [])[0];
+    const rawTag = f[kind.tagField];
+    const tags = Array.isArray(rawTag) ? rawTag.join(", ")
+      : (typeof rawTag === "object" && rawTag?.name) ? rawTag.name
+      : (rawTag || "");
+    const firstMediaId = (f[kind.mediaField] || [])[0];
     const thumbnail = firstMediaId ? (mediaMap.get(firstMediaId) || null) : null;
     return { name, type: tags, thumbnail };
   }).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
 
-  return res.status(200).json({ artists });
+  return res.status(200).json({ [kind.responseKey]: items });
 }

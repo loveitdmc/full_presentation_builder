@@ -6,9 +6,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ─── AIRTABLE CONSTANTS ───────────────────────────────────────────────────────
 // Use table IDs (most reliable) — verified from Airtable schema
-const TABLE_ACTS      = "tblbCAthb1HXfc13i";   // Artists (new dedicated table)
-const TABLE_SUPPLIERS = "tbl3rEBd03iC29uNb";    // Suppliers
-const TABLE_MEDIA     = "tblpKKKum1aFwPjgY";    // Media
+const TABLE_ACTS       = "tblbCAthb1HXfc13i";   // Artists & Shows
+const TABLE_ACTIVITIES = "tblPIbMu1UDjOLYIK";   // Activities
+const TABLE_SUPPLIERS  = "tbl3rEBd03iC29uNb";    // Suppliers
+const TABLE_MEDIA      = "tblpKKKum1aFwPjgY";    // Media
 
 // ─── VIDEO URL HELPERS ────────────────────────────────────────────────────────
 
@@ -113,6 +114,88 @@ async function searchAct(actName, token, baseId) {
     type:        tags,
     videoLinks:  f["Video Links"] || "",
   };
+}
+
+// ─── ACTIVITIES ──────────────────────────────────────────────────────────────
+
+async function searchActivity(name, token, baseId) {
+  const safe = name.replace(/"/g, '\\"').toLowerCase();
+  const formula = encodeURIComponent(`SEARCH("${safe}", LOWER({Activity or Service Name}))>0`);
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_ACTIVITIES}?filterByFormula=${formula}&maxRecords=1`;
+  const data = await airtableFetch(url, token);
+  if (!data.records?.length) return null;
+  const r = data.records[0];
+  const f = r.fields;
+  const sel = v => (typeof v === "object" && v?.name) ? v.name : (v || null);
+  return {
+    id:          r.id,
+    name:        f["Activity or Service Name"] || name,
+    supplierIds: f.Supplier || [],
+    mediaIds:    f.Media    || [],
+    notes:       f["Description and Operational Notes"] || null,
+    type:        sel(f["Activity Type"]),
+    setting:     sel(f.Setting),
+    capacity:    f.Capacity || null,
+    duration:    f.Duration || null,
+  };
+}
+
+async function handleActivity(activityName, res, token, baseId) {
+  let rec;
+  try {
+    rec = await searchActivity(activityName, token, baseId);
+  } catch (e) {
+    return res.status(502).json({ error: `Airtable error: ${e.message}` });
+  }
+  if (!rec) return res.status(404).json({ error: `"${activityName}" not found in Activities.` });
+
+  let supplier = null;
+  if (rec.supplierIds.length > 0) {
+    supplier = await getSupplier(rec.supplierIds[0], token, baseId);
+  }
+
+  const mediaRecords = await getMediaRecords(rec.mediaIds, token, baseId);
+  const photoUrls = [];
+  const videos = [];
+  for (const m of mediaRecords) {
+    photoUrls.push(...m.fileUrls.filter(u => !/\.(mp4|webm|ogg)(\?|$)/i.test(u)));
+    const videoRawUrl = m.driveLink
+      || m.fileUrls.find(u => /\.(mp4|webm|ogg)(\?|$)/i.test(u)) || null;
+    if (videoRawUrl) {
+      const embedUrl = toEmbedUrl(videoRawUrl);
+      if (embedUrl) videos.push({
+        embedUrl,
+        isFile: /\.(mp4|webm|ogg)(\?|$)/i.test(videoRawUrl),
+        title: m.description || "Video",
+      });
+    }
+  }
+
+  const unsplashKey = process.env.UNSPLASH_ACCESS_KEY;
+  const cityName    = supplier?.city || "Italy";
+  const mainPhoto   = photoUrls[0]
+    || await unsplashSearch(`${cityName} italy ${rec.type || "experience"}`, unsplashKey);
+
+  const description = rec.notes
+    || supplier?.description
+    || `An exclusive experience: ${rec.name}.`;
+
+  // Meta line for the slide (type · setting · capacity · duration)
+  const metaParts = [];
+  if (rec.type)     metaParts.push(rec.type);
+  if (rec.setting)  metaParts.push(rec.setting);
+  if (rec.capacity) metaParts.push(`Max ${rec.capacity} pax`);
+  if (rec.duration) metaParts.push(rec.duration);
+
+  return res.status(200).json({
+    act:         rec.name,
+    description,
+    supplier:    supplier?.name || null,
+    meta:        metaParts.join(" · ") || null,
+    mainPhoto,
+    photos:      photoUrls,
+    videos,
+  });
 }
 
 async function getSupplier(supplierId, token, baseId) {
@@ -230,13 +313,18 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { act, format } = req.body ?? {};
-  if (!act?.trim()) return res.status(400).json({ error: "Missing act name" });
+  const { act, activity, format } = req.body ?? {};
+  if (!act?.trim() && !activity?.trim()) return res.status(400).json({ error: "Missing act or activity name" });
   const jsonOnly = format === "json";
 
   const token  = process.env.AIRTABLE_TOKEN;
   const baseId = process.env.AIRTABLE_BASE_ID;
   if (!token || !baseId) return res.status(500).json({ error: "Missing Airtable configuration (AIRTABLE_TOKEN or AIRTABLE_BASE_ID)" });
+
+  // Activities mode — always JSON (used by the in-presentation picker)
+  if (activity?.trim()) {
+    return handleActivity(activity.trim(), res, token, baseId);
+  }
 
   // For JSON-only mode we don't need the template
   let template = null;
