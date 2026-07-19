@@ -481,7 +481,8 @@ section:hover .bg{transform:scale(1.02)}
   function buildActivity(act, day, num, total, dayIdx, actIdx){
     const hasPhoto = !!act.photo;
     const ovClass  = hasPhoto ? 'ov-dark' : 'ov-full';
-    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"` : '';
+    const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
+    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
     return `
     <section${dataAttrs}>
       <div class="bg" style="${bgStyle(act.photo, act.photoPosition)}"></div>
@@ -504,7 +505,8 @@ section:hover .bg{transform:scale(1.02)}
     const cells = slots.map(url =>
       `<div class="gallery-cell"${url ? ` style="background-image:url('${url}')"` : ''}></div>`
     ).join('');
-    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"` : '';
+    const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
+    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
     return `
     <section class="slide-gallery"${dataAttrs}>
       <div class="gallery-grid grid-3">${cells}</div>
@@ -517,7 +519,8 @@ section:hover .bg{transform:scale(1.02)}
   }
 
   function buildVideo(act, day, video, num, total, dayIdx, actIdx){
-    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"` : '';
+    const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
+    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
     // YouTube: use thumbnail + play button (works even when embedding is disabled)
     const ytMatch = video.embedUrl.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/);
     if(ytMatch){
@@ -747,6 +750,27 @@ body.edit-mode [contenteditable="true"]{
 .asp-artist-name{padding:.35rem .45rem .1rem;font-family:var(--sans);font-size:.6rem;font-weight:500;color:var(--warm-white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .asp-artist-type{padding:0 .45rem .35rem;font-family:var(--sans);font-size:.52rem;color:rgba(201,169,110,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .asp-artist-err{padding:.8rem 0;font-family:var(--sans);font-size:.68rem;color:rgba(220,80,80,.75);line-height:1.5;}
+/* ── Spaces picker ─────────────────────────────────────────────── */
+.asp-spaces-supplier{font-family:var(--sans);font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(201,169,110,.6);margin-bottom:.65rem;padding-bottom:.5rem;border-bottom:1px solid rgba(201,169,110,.14);}
+.asp-rooms-list{max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:.35rem;padding-right:.2rem;margin-top:.5rem;}
+.asp-rooms-list::-webkit-scrollbar{width:3px;}
+.asp-rooms-list::-webkit-scrollbar-track{background:transparent;}
+.asp-rooms-list::-webkit-scrollbar-thumb{background:rgba(201,169,110,.28);border-radius:2px;}
+.asp-room-item{display:grid;grid-template-columns:72px 1fr;gap:.75rem;padding:.5rem .6rem;background:rgba(255,255,255,.025);border:1px solid rgba(201,169,110,.13);border-radius:3px;cursor:pointer;text-align:left;transition:border-color .18s,background .18s;align-items:center;width:100%;}
+.asp-room-item:hover{border-color:rgba(201,169,110,.5);background:rgba(201,169,110,.055);}
+.asp-room-thumb{width:72px;height:52px;background:#111 center/cover no-repeat;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;opacity:.7;flex-shrink:0;}
+.asp-room-info{min-width:0;}
+.asp-room-name{font-family:var(--sans);font-size:.7rem;font-weight:500;color:var(--warm-white);margin-bottom:.18rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.asp-room-meta{font-family:var(--sans);font-size:.57rem;color:rgba(201,169,110,.52);margin-bottom:.18rem;}
+.asp-room-caps{font-family:var(--sans);font-size:.53rem;color:rgba(245,240,232,.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* ── Meeting Room slide ────────────────────────────────────────── */
+.slide-room .split-content{justify-content:flex-start;padding-top:4.2rem;}
+.slide-room .split-content .headline{margin-bottom:.6rem;}
+.room-eyebrow{font-family:var(--sans);font-size:.58rem;letter-spacing:.16em;text-transform:uppercase;color:rgba(201,169,110,.6);margin-bottom:1rem;}
+.room-caps{display:flex;flex-wrap:wrap;gap:.5rem 1.8rem;margin:1.1rem 0 1.2rem;padding:.9rem 0;border-top:1px solid rgba(201,169,110,.15);border-bottom:1px solid rgba(201,169,110,.15);}
+.room-cap-item{display:flex;flex-direction:column;min-width:56px;}
+.room-cap-label{font-family:var(--sans);font-size:.46rem;letter-spacing:.13em;text-transform:uppercase;color:rgba(201,169,110,.45);margin-bottom:.25rem;}
+.room-cap-value{font-family:var(--serif);font-size:1.15rem;color:var(--warm-white);line-height:1;}
 
 .delete-slide-btn{position:absolute;bottom:1.2rem;right:1.5rem;z-index:60;font-family:var(--sans);font-size:.56rem;font-weight:500;letter-spacing:.15em;text-transform:uppercase;color:rgba(220,80,80,.75);background:rgba(10,10,10,.88);border:1px solid rgba(220,80,80,.28);padding:.38rem 1.2rem;cursor:pointer;border-radius:2px;backdrop-filter:blur(8px);transition:all .2s;white-space:nowrap;}
 .delete-slide-btn:hover{ border-color:rgba(220,80,80,.75);color:#e55;background:rgba(220,60,60,.14); }
@@ -988,6 +1012,22 @@ try{ LoveitEditor=(function(){
     if(old){ const same=old._anchor===anchorBtn;_closePanel();if(same) return; }
     const panel=document.createElement('div');
     panel.id='add-slide-panel';panel._anchor=anchorBtn;
+    const _supName=afterSec.dataset.supplier||'';
+    const _spacesBtn=_supName?`
+        <button class="asp-opt" data-layout="spaces" title="Spazi di ${_supName}">
+          <svg viewBox="0 0 62 40" fill="none">
+            <rect x="1" y="1" width="60" height="38" rx="2" fill="rgba(201,169,110,.07)" stroke="rgba(201,169,110,.35)" stroke-width="1.5"/>
+            <rect x="6" y="7" width="22" height="26" rx="1.5" fill="rgba(201,169,110,.22)" stroke="rgba(201,169,110,.65)" stroke-width="1.3"/>
+            <rect x="33" y="7" width="22" height="26" rx="1.5" fill="rgba(201,169,110,.1)" stroke="rgba(201,169,110,.38)" stroke-width="1.3"/>
+            <line x1="10" y1="15" x2="24" y2="15" stroke="rgba(201,169,110,.55)" stroke-width="1.2"/>
+            <line x1="10" y1="20" x2="24" y2="20" stroke="rgba(201,169,110,.3)" stroke-width="1"/>
+            <line x1="10" y1="25" x2="20" y2="25" stroke="rgba(201,169,110,.3)" stroke-width="1"/>
+            <line x1="37" y1="15" x2="51" y2="15" stroke="rgba(201,169,110,.35)" stroke-width="1"/>
+            <line x1="37" y1="20" x2="51" y2="20" stroke="rgba(201,169,110,.2)" stroke-width="1"/>
+            <line x1="37" y1="25" x2="47" y2="25" stroke="rgba(201,169,110,.2)" stroke-width="1"/>
+          </svg>
+          <span>Spazi</span>
+        </button>`:'';
     panel.innerHTML=`
       <button id="asp-close" title="Chiudi">&times;</button>
       <div class="asp-title">Aggiungi slide dopo questa</div>
@@ -1069,6 +1109,7 @@ try{ LoveitEditor=(function(){
           </svg>
           <span>Artista</span>
         </button>
+        ${_spacesBtn}
       </div>`;
     document.body.appendChild(panel);
     panel.querySelector('#asp-close').addEventListener('click',_closePanel);
@@ -1080,6 +1121,7 @@ try{ LoveitEditor=(function(){
         else if(layout==='pdf'){ _showPdfInput(panel,afterSec); }
         else if(layout==='video'){ _showVideoInput(panel,afterSec); }
         else if(layout==='artist'){ _showArtistPicker(panel,afterSec); }
+        else if(layout==='spaces'){ _showSpacesPicker(panel,afterSec,_supName); }
         else if(layout==='split-left'||layout==='split-right'){ _closePanel();_insertSplitSlide(afterSec,layout); }
         else { _closePanel();_insertGallerySlide(afterSec,layout); }
       });
@@ -1358,6 +1400,130 @@ try{ LoveitEditor=(function(){
     if(photoMode){ sec.querySelectorAll('.gallery-cell').forEach(cell=>{ cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z); }); }
     if(textMode){ sec.querySelectorAll(TEXT_SEL).forEach(el=>{ el.contentEditable='true';el.spellcheck=false; }); }
     _addInsertBtn(sec);if(editMode) _addDeleteBtn(sec);
+    setTimeout(()=>sec.scrollIntoView({behavior:'smooth'}),150);
+  }
+
+  // ── Spaces picker ─────────────────────────────────────────────────────────
+  function _capsSummary(r){
+    const parts=[];
+    if(r.banquet)  parts.push(`Banquet ${r.banquet}`);
+    if(r.theatre)  parts.push(`Theatre ${r.theatre}`);
+    if(r.cocktail) parts.push(`Cocktail ${r.cocktail}`);
+    if(r.classroom)parts.push(`Classroom ${r.classroom}`);
+    if(r.boardroom)parts.push(`Boardroom ${r.boardroom}`);
+    return parts.join(' · ')||'—';
+  }
+
+  function _showSpacesPicker(panel,afterSec,supplierName){
+    panel.querySelector('.asp-options').style.display='none';
+    panel.style.minWidth='520px';
+    const apiBase=window.LOVEIT_API_BASE||'';
+    const wrap=document.createElement('div');
+    wrap.innerHTML='<div class="asp-artist-loading">🏛 Caricamento spazi…</div>';
+    panel.appendChild(wrap);
+    if(!apiBase){
+      wrap.innerHTML='<p class="asp-artist-err">Funzione disponibile solo dalla versione online (Vercel).<br>Apri la presentazione dal server per usare il picker spazi.</p>';
+      return;
+    }
+    fetch(`${apiBase}/api/supplier-spaces?supplier=${encodeURIComponent(supplierName)}`)
+      .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(data=>{
+        const rooms=data.rooms||[];
+        if(!rooms.length){
+          wrap.innerHTML='<p class="asp-artist-err">Nessuno spazio trovato per <strong>'+data.supplierName+'</strong> in Airtable.</p>';
+          return;
+        }
+        const listHtml=rooms.map((r,i)=>`
+          <button class="asp-room-item" data-idx="${i}">
+            <div class="asp-room-thumb" style="${r.photo?`background-image:url('${r.photo.replace(/'/g,"\\'")}')`:''}">
+              ${!r.photo?'<span>🏛</span>':''}
+            </div>
+            <div class="asp-room-info">
+              <div class="asp-room-name">${r.name}</div>
+              <div class="asp-room-meta">${[r.setting,r.area?r.area+' m²':null].filter(Boolean).join(' · ')||''}</div>
+              <div class="asp-room-caps">${_capsSummary(r)}</div>
+            </div>
+          </button>`).join('');
+        wrap.innerHTML=`
+          <div class="asp-spaces-supplier">🏛 ${data.supplierName}</div>
+          <input class="asp-artist-search" type="text" placeholder="🔍  Filtra sale…" autocomplete="off"/>
+          <div class="asp-rooms-list">${listHtml}</div>`;
+        const inp=wrap.querySelector('.asp-artist-search');
+        const list=wrap.querySelector('.asp-rooms-list');
+        inp.addEventListener('input',()=>{
+          const q=inp.value.toLowerCase();
+          list.querySelectorAll('.asp-room-item').forEach(c=>{
+            c.style.display=c.querySelector('.asp-room-name').textContent.toLowerCase().includes(q)?'':'none';
+          });
+        });
+        wrap.querySelectorAll('.asp-room-item').forEach(item=>{
+          item.addEventListener('click',()=>{
+            const room=rooms[+item.dataset.idx];
+            _closePanel();
+            _insertMeetingRoomSlide(afterSec,room);
+          });
+        });
+      })
+      .catch(e=>{ wrap.innerHTML=`<p class="asp-artist-err">Errore: ${e.message}</p>`; });
+  }
+
+  function _insertMeetingRoomSlide(afterSec,room){
+    const capDefs=[
+      {label:'Banquet',val:room.banquet},
+      {label:'Theatre',val:room.theatre},
+      {label:'Cocktail',val:room.cocktail},
+      {label:'Classroom',val:room.classroom},
+      {label:'Boardroom',val:room.boardroom},
+    ].filter(c=>c.val);
+    const capsHtml=capDefs.length?`
+      <div class="room-caps">${capDefs.map(c=>`
+        <div class="room-cap-item">
+          <span class="room-cap-label">${c.label}</span>
+          <span class="room-cap-value">${c.val}</span>
+        </div>`).join('')}
+      </div>`:'' ;
+    const eyebrow=[room.setting,room.area?room.area+' m²':null].filter(Boolean).join(' · ');
+    const bgStyle=room.photo?` style="background-image:url('${room.photo.replace(/'/g,"\\'")}')"`:' style=""';
+    const phIcon=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="opacity:.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>`;
+    const placeholder=!room.photo?`<div class="split-photo-placeholder">${phIcon}<span>Scegli una foto</span></div>`:'';
+
+    const sec=document.createElement('section');
+    sec.className='slide-split slide-split-photo-left slide-room';
+    sec.setAttribute('data-added','1');
+    if(afterSec.dataset.day!==undefined){ sec.dataset.day=afterSec.dataset.day; sec.dataset.act=afterSec.dataset.act; }
+    if(afterSec.dataset.supplier) sec.dataset.supplier=afterSec.dataset.supplier;
+
+    sec.innerHTML=`
+      <div class="split-photo room-photo"${bgStyle}>${placeholder}</div>
+      <div class="split-content">
+        ${eyebrow?`<div class="room-eyebrow">${eyebrow}</div>`:''}
+        <h2 class="headline">${room.name}</h2>
+        ${capsHtml}
+        <p class="body-text">${room.notes||'…'}</p>
+      </div>`;
+
+    afterSec.insertAdjacentElement('afterend',sec);
+    if(window._loveitIO) window._loveitIO.observe(sec);
+    _insertDot(sec);_addInsertBtn(sec);if(editMode) _addDeleteBtn(sec);
+
+    // Placeholder → photo picker
+    const ph=sec.querySelector('.split-photo-placeholder');
+    if(ph){
+      const spPhoto=sec.querySelector('.room-photo');
+      ph.addEventListener('click',()=>{
+        const avail=(afterSec.dataset.day!==undefined)?(TRIP.days[+afterSec.dataset.day]?.activities[+afterSec.dataset.act]?.allPhotos||[]):[];
+        _showPhotoPicker(spPhoto,avail);
+      });
+      ph.addEventListener('dragover',e=>{ e.preventDefault();ph.classList.add('drag-over'); });
+      ph.addEventListener('dragleave',()=>ph.classList.remove('drag-over'));
+      ph.addEventListener('drop',e=>{ e.preventDefault();ph.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/')) applyFile(f,spPhoto); });
+    }
+    if(photoMode){
+      sec.querySelectorAll('.room-photo').forEach(cell=>{
+        cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z);
+      });
+    }
+    if(textMode){ sec.querySelectorAll(TEXT_SEL).forEach(el=>{ el.contentEditable='true';el.spellcheck=false; }); }
     setTimeout(()=>sec.scrollIntoView({behavior:'smooth'}),150);
   }
 
