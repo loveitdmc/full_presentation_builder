@@ -295,23 +295,32 @@ export default async function handler(req, res) {
   // 3. Fetch Media records for photos
   const mediaRecords = await getMediaRecords(actRecord.mediaIds, token, baseId);
 
-  // 4. Build photo list from Media records
+  // 4. Build photo + video lists from Media records.
+  // Photos and videos are NOT mutually exclusive — a "Consolidated Photos and Videos"
+  // record can carry image attachments AND a video Drive Link simultaneously.
+  // Rule: always extract image file attachments as photos; only extract an embeddable
+  // video from the Drive Link field (or explicit video file URLs in File).
   const photoUrls = [];
   const videosFromMedia = [];
 
   for (const m of mediaRecords) {
-    if (isVideoLinkOrType(m.assetType, m.driveLink, m.fileUrls)) {
-      const rawUrl = m.driveLink || m.fileUrls[0] || null;
-      const embedUrl = toEmbedUrl(rawUrl);
+    // Always extract image attachments (filter out video file extensions)
+    const imageUrls = m.fileUrls.filter(u => !/\.(mp4|webm|ogg)(\?|$)/i.test(u));
+    photoUrls.push(...imageUrls);
+
+    // Extract video: Drive Link first (YouTube/Vimeo/GDrive), then explicit video files
+    const videoRawUrl = m.driveLink
+      || m.fileUrls.find(u => /\.(mp4|webm|ogg)(\?|$)/i.test(u))
+      || null;
+    if (videoRawUrl) {
+      const embedUrl = toEmbedUrl(videoRawUrl);
       if (embedUrl) {
         videosFromMedia.push({
           embedUrl,
-          isFile: rawUrl ? /\.(mp4|webm|ogg)(\?|$)/i.test(rawUrl) : false,
+          isFile: /\.(mp4|webm|ogg)(\?|$)/i.test(videoRawUrl),
           title: m.description || "Performance",
         });
       }
-    } else {
-      photoUrls.push(...m.fileUrls);
     }
   }
 

@@ -46,8 +46,9 @@ export default async function handler(req, res) {
   }
 
   // 2. Collect unique first-Media IDs for thumbnail lookup
+  // Field is "Consolidated Media" (not "Media") in the Artists table
   const firstMediaIds = [...new Set(
-    allRecords.map(r => (r.fields.Media || [])[0]).filter(Boolean)
+    allRecords.map(r => (r.fields["Consolidated Media"] || [])[0]).filter(Boolean)
   )];
 
   // 3. Batch fetch those Media records (one request for all)
