@@ -9,12 +9,6 @@
     "api/acts-list.js":        { "maxDuration": 20 }
   },
   "rewrites": [
-    { "source": "/api/generate",        "destination": "/api/generate" },
-    { "source": "/api/generate-text",   "destination": "/api/generate-text" },
-    { "source": "/api/supplier",        "destination": "/api/supplier" },
-    { "source": "/api/supplier-spaces", "destination": "/api/supplier-spaces" },
-    { "source": "/api/acts",            "destination": "/api/acts" },
-    { "source": "/api/acts-list",       "destination": "/api/acts-list" },
     { "source": "/(.*)", "destination": "/public/index.html" }
   ],
   "headers": [
