@@ -34,17 +34,18 @@ async function findSupplierForSpaces(name, token, baseId) {
   if (!kw.length) return null;
   const orClauses = kw.map(w => `SEARCH("${w}", LOWER({Name}))>0`).join(",");
   const formula   = encodeURIComponent(`OR(${orClauses})`);
-  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_SUPPLIERS_ID}?filterByFormula=${formula}&fields[]=fldf1guJqLASjc0sP&fields[]=fldSovyZuFZCp9N6Q&maxRecords=8`;
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_SUPPLIERS_ID}?filterByFormula=${formula}&fields[]=fldf1guJqLASjc0sP&fields[]=fldSovyZuFZCp9N6Q&maxRecords=8&returnFieldsByFieldId=true`;
   const resp = await fetch(url, { headers:{ Authorization:`Bearer ${token}` }, signal:AbortSignal.timeout(7000) });
   if (!resp.ok) return null;
   const data = await resp.json();
   const records = data.records || [];
   if (!records.length) return null;
   const inputLower = name.toLowerCase();
-  const exact = records.find(r => (r.fields.Name||"").toLowerCase() === inputLower);
+  // returnFieldsByFieldId=true → keys are field IDs (fldf1guJqLASjc0sP = Name)
+  const exact = records.find(r => (r.fields["fldf1guJqLASjc0sP"]||"").toLowerCase() === inputLower);
   if (exact) return exact;
   const scored = records
-    .map(r => ({ r, score: spaceMatchScore(name, r.fields.Name||"") }))
+    .map(r => ({ r, score: spaceMatchScore(name, r.fields["fldf1guJqLASjc0sP"]||"") }))
     .filter(({ score }) => score >= 0.5)
     .sort((a,b) => b.score - a.score);
   return scored[0]?.r || records[0]; // fall back to first result if any found
@@ -68,7 +69,7 @@ async function fetchRoomRecords(roomIds, token, baseId) {
     "fldnvvLqifmGnGn5n", // Media (linked)
   ];
   const fieldsParam = ROOM_FIELDS.map(f => `fields[]=${f}`).join("&");
-  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_ROOMS_ID}?filterByFormula=${formula}&${fieldsParam}&maxRecords=50`;
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_ROOMS_ID}?filterByFormula=${formula}&${fieldsParam}&maxRecords=50&returnFieldsByFieldId=true`;
   const resp = await fetch(url, { headers:{ Authorization:`Bearer ${token}` }, signal:AbortSignal.timeout(8000) });
   if (!resp.ok) return [];
   const data = await resp.json();
@@ -80,7 +81,7 @@ async function fetchRoomPhotos(mediaIds, token, baseId) {
   const idClauses = mediaIds.slice(0,50).map(id => `RECORD_ID()="${id}"`).join(",");
   const formula   = encodeURIComponent(`OR(${idClauses})`);
   // Use field ID for File attachment to avoid name encoding issues
-  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_MEDIA_ID}?filterByFormula=${formula}&fields[]=fldqQsLLwleNQAART&maxRecords=100`;
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_MEDIA_ID}?filterByFormula=${formula}&fields[]=fldqQsLLwleNQAART&maxRecords=100&returnFieldsByFieldId=true`;
   const resp = await fetch(url, { headers:{ Authorization:`Bearer ${token}` }, signal:AbortSignal.timeout(7000) });
   if (!resp.ok) return new Map();
   const data = await resp.json();
