@@ -39,6 +39,43 @@ async function searchAirtable(supplierName) {
   }
 }
 
+async function findCandidates(supplierName) {
+  const token   = process.env.AIRTABLE_TOKEN;
+  const baseId  = process.env.AIRTABLE_BASE_ID;
+  const tableId = process.env.AIRTABLE_TABLE_ID || "Suppliers";
+  if (!token || !baseId) return [];
+
+  // Split into significant words (>2 chars), ignore common stop words
+  const stopWords = new Set(["the","and","per","del","dei","della","delle","degli","di","da","in","con","su","tra","fra"]);
+  const words = supplierName.toLowerCase()
+    .replace(/[^\w\s]/g, " ")
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !stopWords.has(w))
+    .map(w => w.replace(/"/g, '\\"'));
+
+  if (!words.length) return [];
+
+  // OR search: any word matching is a candidate
+  const orClauses = words.map(w => `SEARCH("${w}", LOWER({Name}))>0`).join(",");
+  const formula = encodeURIComponent(`OR(${orClauses})`);
+  const url = `https://api.airtable.com/v0/${baseId}/${tableId}?filterByFormula=${formula}&maxRecords=5&fields[]=${encodeURIComponent("Name")}&fields[]=${encodeURIComponent("City")}`;
+
+  try {
+    const resp = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return (data.records || []).map(r => ({
+      name: r.fields.Name || "",
+      city: r.fields.City || "",
+    })).filter(c => c.name);
+  } catch {
+    return [];
+  }
+}
+
 // ─── UNSPLASH ────────────────────────────────────────────────────────────────
 
 const FALLBACK_PHOTOS = [
@@ -199,8 +236,17 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Template file not found" });
   }
 
-  // Step 1: Airtable lookup
+  // Step 1: Airtable lookup — exact search first
   const airtableData = await searchAirtable(supplier.trim());
+
+  // Step 1b: Fuzzy match — if exact not found, look for candidates
+  if (!airtableData?.description) {
+    const candidates = await findCandidates(supplier.trim());
+    if (candidates.length > 0) {
+      // Return candidates for frontend confirmation — don't burn AI credits yet
+      return res.status(200).json({ status: "fuzzy", candidates });
+    }
+  }
 
   let profile;
   if (airtableData?.description) {

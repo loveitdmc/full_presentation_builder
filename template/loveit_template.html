@@ -711,6 +711,11 @@ body.edit-mode #edit-controls{ opacity:1; }
   outline-style:solid;
   background:rgba(201,169,110,.1);
 }
+/* In edit-mode text must sit ABOVE photo drop zones (z-index 50-60) */
+body.edit-mode [contenteditable="true"]{
+  position:relative;
+  z-index:65;
+}
 
 /* ── Add slide button ─────────────────────────────────────────────────────── */
 .add-slide-btn{position:absolute;bottom:1.2rem;left:50%;transform:translateX(-50%);z-index:60;font-family:var(--sans);font-size:.56rem;font-weight:500;letter-spacing:.15em;text-transform:uppercase;color:rgba(201,169,110,.75);background:rgba(10,10,10,.88);border:1px solid rgba(201,169,110,.28);padding:.38rem 1.2rem;cursor:pointer;border-radius:2px;backdrop-filter:blur(8px);transition:all .2s;white-space:nowrap;}
@@ -719,7 +724,10 @@ body.edit-mode #edit-controls{ opacity:1; }
 /* ── Delete slide button ──────────────────────────────────────────────────── */
 /* ── Artist picker ─────────────────────────────────────────────────────────── */
 .asp-artist-loading{padding:1.2rem 0;font-family:var(--sans);font-size:.72rem;letter-spacing:.1em;color:rgba(201,169,110,.55);text-align:center;}
-.asp-artist-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;max-height:320px;overflow-y:auto;margin-top:.4rem;padding-right:.2rem;}
+.asp-artist-search{width:100%;padding:.55rem .8rem;background:rgba(255,255,255,.05);border:1px solid rgba(201,169,110,.2);color:var(--warm-white);font-family:var(--sans);font-size:.75rem;border-radius:2px;outline:none;margin-bottom:.7rem;transition:border-color .2s;}
+.asp-artist-search::placeholder{color:rgba(201,169,110,.3);}
+.asp-artist-search:focus{border-color:rgba(201,169,110,.6);}
+.asp-artist-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;max-height:280px;overflow-y:auto;margin-top:0;padding-right:.2rem;}
 .asp-artist-grid::-webkit-scrollbar{width:3px;}
 .asp-artist-grid::-webkit-scrollbar-track{background:transparent;}
 .asp-artist-grid::-webkit-scrollbar-thumb{background:rgba(201,169,110,.3);border-radius:2px;}
@@ -1085,16 +1093,33 @@ try{ LoveitEditor=(function(){
       .then(data=>{
         const artists=data.artists||[];
         if(!artists.length){ wrap.innerHTML='<p class="asp-artist-err">Nessun artista trovato in Airtable.</p>'; return; }
-        wrap.innerHTML=`<div class="asp-title" style="margin-top:.5rem;margin-bottom:.6rem">${artists.length} artisti — clicca per aggiungere</div><div class="asp-artist-grid">${
-          artists.map((a,i)=>`
-            <div class="asp-artist-card" data-idx="${i}">
+        const gridHtml=artists.map((a,i)=>`
+            <div class="asp-artist-card" data-idx="${i}" data-name="${a.name.toLowerCase()}">
               <div class="asp-artist-thumb" style="${a.thumbnail?`background-image:url('${a.thumbnail.replace(/'/g,"\\'")}');`:''}">
                 ${!a.thumbnail?'<div class="asp-artist-no-thumb">🎤</div>':''}
               </div>
               <div class="asp-artist-name">${a.name}</div>
               ${a.type?`<div class="asp-artist-type">${a.type}</div>`:''}
-            </div>`).join('')
-        }</div>`;
+            </div>`).join('');
+        wrap.innerHTML=`
+          <div class="asp-title" style="margin-top:.5rem;margin-bottom:.5rem">${artists.length} artisti — clicca per aggiungere</div>
+          <input class="asp-artist-search" type="text" placeholder="🔍  Filtra per nome…" autocomplete="off"/>
+          <div class="asp-artist-grid">${gridHtml}</div>`;
+        // Search filter
+        const searchInp=wrap.querySelector('.asp-artist-search');
+        const grid=wrap.querySelector('.asp-artist-grid');
+        searchInp.addEventListener('input',()=>{
+          const q=searchInp.value.toLowerCase().trim();
+          grid.querySelectorAll('.asp-artist-card').forEach(c=>{
+            c.style.display=(!q||c.dataset.name.includes(q))?'':'none';
+          });
+        });
+        searchInp.addEventListener('keydown',e=>{
+          if(e.key==='Enter'){
+            const visible=[...grid.querySelectorAll('.asp-artist-card')].filter(c=>c.style.display!=='none');
+            if(visible.length===1) visible[0].click();
+          }
+        });
         wrap.querySelectorAll('.asp-artist-card').forEach(card=>{
           card.addEventListener('click',()=>{
             const artist=artists[+card.dataset.idx];

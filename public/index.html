@@ -92,6 +92,14 @@ main{max-width:680px;margin:0 auto;padding:0 1.5rem 6rem}
 
 #error-msg{display:none;margin-top:1.5rem;background:#1a0a0a;border:1px solid #5a1a1a;border-radius:3px;padding:1rem 1.2rem;font-size:.75rem;color:#e88;line-height:1.6}
 
+#fuzzy-confirm{display:none;margin-top:1.5rem;background:#111208;border:1px solid rgba(201,169,110,.3);border-radius:3px;padding:1.2rem 1.4rem}
+#fuzzy-confirm .fuzzy-label{font-size:.67rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(201,169,110,.6);margin-bottom:.9rem}
+.fuzzy-btn{display:block;width:100%;text-align:left;background:rgba(201,169,110,.05);border:1px solid rgba(201,169,110,.15);color:var(--warm-white);font-family:var(--sans);font-size:.8rem;padding:.7rem 1rem;border-radius:2px;cursor:pointer;transition:all .2s;margin-bottom:.5rem}
+.fuzzy-btn:hover{background:rgba(201,169,110,.12);border-color:rgba(201,169,110,.5);color:var(--gold)}
+.fuzzy-btn .fuzzy-city{font-size:.65rem;color:var(--stone);margin-left:.5rem}
+.fuzzy-cancel{background:none;border:none;color:#444;font-family:var(--sans);font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;margin-top:.3rem;transition:color .2s}
+.fuzzy-cancel:hover{color:var(--stone)}
+
 footer{text-align:center;padding:2rem;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:#333;border-top:1px solid #1a1a1a}
 
 #preview-overlay{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.9)}
@@ -160,6 +168,7 @@ footer{text-align:center;padding:2rem;font-size:.65rem;letter-spacing:.12em;text
 
   <!-- SHARED -->
   <div id="error-msg"></div>
+  <div id="fuzzy-confirm"></div>
 
   <div id="progress">
     <div class="step" id="step-1">
@@ -236,7 +245,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('panel-' + activeTab).classList.add('active');
-    hideError(); resetResult(); resetProgress();
+    hideError(); hideFuzzyConfirm(); resetResult(); resetProgress();
   });
 });
 
@@ -308,12 +317,12 @@ async function generatePdf() {
 
 // GENERATE SUPPLIER
 btnGenerateSup.addEventListener('click', generateSupplier);
-async function generateSupplier() {
-  const name = supplierInput.value.trim();
+async function generateSupplier(confirmedName) {
+  const name = confirmedName || supplierInput.value.trim();
   if (!name) return;
   setStepLabels('supplier');
   btnGenerateSup.disabled = true;
-  hideError(); resetResult();
+  hideError(); hideFuzzyConfirm(); resetResult();
   progressEl.style.display = 'block'; setStep(1);
 
   const t = setTimeout(() => setStep(2), 3000);
@@ -323,13 +332,53 @@ async function generateSupplier() {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ supplier: name })
     });
-    clearTimeout(t); setStep(4);
+    clearTimeout(t);
     if (!resp.ok) { const e = await resp.json().catch(() => ({error:`HTTP ${resp.status}`})); throw new Error(e.error); }
     data = await resp.json();
   } catch(e) { clearTimeout(t); showError('Errore:\n' + e.message); resetProgress(); btnGenerateSup.disabled = !supplierInput.value.trim(); return; }
 
+  // Fuzzy match: backend found candidates but no exact match
+  if (data.status === 'fuzzy') {
+    resetProgress();
+    btnGenerateSup.disabled = !supplierInput.value.trim();
+    showFuzzyConfirm(data.candidates);
+    return;
+  }
+
+  setStep(4);
   const badge = data.fromAirtable ? ' · database ✓' : ' · generata con AI';
   showResult(data, 'Scheda fornitore pronta', badge);
+}
+
+function showFuzzyConfirm(candidates) {
+  const box = document.getElementById('fuzzy-confirm');
+  const btns = candidates.map(c => {
+    const city = c.city ? `<span class="fuzzy-city">${c.city}</span>` : '';
+    return `<button class="fuzzy-btn" data-name="${c.name.replace(/"/g,'&quot;')}">${c.name}${city}</button>`;
+  }).join('');
+  box.innerHTML = `
+    <div class="fuzzy-label">Intendi forse…</div>
+    ${btns}
+    <button class="fuzzy-cancel">Annulla</button>`;
+  box.style.display = 'block';
+  box.querySelectorAll('.fuzzy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const exactName = btn.dataset.name;
+      supplierInput.value = exactName;
+      btnGenerateSup.disabled = false;
+      generateSupplier(exactName);
+    });
+  });
+  box.querySelector('.fuzzy-cancel').addEventListener('click', () => {
+    hideFuzzyConfirm();
+    btnGenerateSup.disabled = !supplierInput.value.trim();
+  });
+}
+
+function hideFuzzyConfirm() {
+  const box = document.getElementById('fuzzy-confirm');
+  box.style.display = 'none';
+  box.innerHTML = '';
 }
 
 // GENERATE ACT
@@ -387,7 +436,7 @@ btnNew.addEventListener('click', () => {
   fileBadge.style.display = 'none'; dropZone.style.display = 'block';
   btnGeneratePdf.disabled = true; supplierInput.value = ''; btnGenerateSup.disabled = true;
   actInput.value = ''; btnGenerateAct.disabled = true;
-  resetProgress(); resetResult(); hideError();
+  resetProgress(); resetResult(); hideError(); hideFuzzyConfirm();
 });
 function resetResult() { resultEl.style.display = 'none'; generatedHtml = null; generatedFilename = null; }
 function resetProgress() { progressEl.style.display = 'none'; document.querySelectorAll('.step').forEach(s => s.classList.remove('active','done')); }
