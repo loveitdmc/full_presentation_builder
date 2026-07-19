@@ -90,6 +90,21 @@ main{max-width:680px;margin:0 auto;padding:0 1.5rem 6rem}
 #btn-new{display:block;margin:1.5rem auto 0;background:none;border:none;color:var(--stone);font-family:var(--sans);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:color .2s}
 #btn-new:hover{color:var(--warm-white)}
 
+/* ── Input mode toggle (PDF / testo) ── */
+.mode-toggle{display:flex;gap:0;margin-bottom:1.4rem}
+.mode-btn{flex:1;padding:.7rem .8rem;background:var(--card);border:1px solid #2a2a2a;color:var(--stone);font-family:var(--sans);font-size:.65rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;transition:all .2s}
+.mode-btn:first-child{border-radius:3px 0 0 3px}
+.mode-btn:last-child{border-radius:0 3px 3px 0;border-left:none}
+.mode-btn.active{background:#1a1610;border-color:var(--gold);color:var(--gold)}
+.mode-btn:not(.active):hover{color:var(--warm-white);border-color:#444}
+
+/* ── Programme textarea ── */
+#input-text{margin-bottom:1.5rem}
+#program-text{width:100%;min-height:220px;padding:1rem 1.1rem;background:var(--card);border:1.5px solid #2a2a2a;color:var(--warm-white);font-family:var(--sans);font-size:.82rem;font-weight:300;line-height:1.7;border-radius:3px;resize:vertical;outline:none;transition:border-color .2s}
+#program-text::placeholder{color:#3a3a3a;line-height:1.8}
+#program-text:focus{border-color:var(--gold)}
+.program-hint{font-size:.65rem;letter-spacing:.08em;color:#3a3a3a;margin-top:.5rem;line-height:1.6}
+
 #error-msg{display:none;margin-top:1.5rem;background:#1a0a0a;border:1px solid #5a1a1a;border-radius:3px;padding:1rem 1.2rem;font-size:.75rem;color:#e88;line-height:1.6}
 
 #fuzzy-confirm{display:none;margin-top:1.5rem;background:#111208;border:1px solid rgba(201,169,110,.3);border-radius:3px;padding:1.2rem 1.4rem}
@@ -132,17 +147,45 @@ footer{text-align:center;padding:2rem;font-size:.65rem;letter-spacing:.12em;text
 
   <!-- PANEL: PREVENTIVO -->
   <div class="panel active" id="panel-preventivo">
-    <div id="drop-zone">
-      <div class="icon">📄</div>
-      <p class="label">Trascina qui il PDF del preventivo<br>oppure clicca per scegliere il file</p>
-      <p class="sub">Solo file PDF · max 20 MB</p>
-      <input type="file" id="file-input" accept=".pdf,application/pdf"/>
+    <!-- Mode toggle -->
+    <div class="mode-toggle">
+      <button class="mode-btn active" data-mode="pdf">📄 Carica PDF</button>
+      <button class="mode-btn" data-mode="text">✏ Scrivi programma</button>
     </div>
-    <div id="file-badge">
-      <span class="pdf-icon">📄</span>
-      <span class="name" id="file-name">preventivo.pdf</span>
-      <button class="remove" id="btn-remove" title="Rimuovi file">✕</button>
+
+    <!-- PDF input -->
+    <div id="input-pdf">
+      <div id="drop-zone">
+        <div class="icon">📄</div>
+        <p class="label">Trascina qui il PDF del preventivo<br>oppure clicca per scegliere il file</p>
+        <p class="sub">Solo file PDF · max 20 MB</p>
+        <input type="file" id="file-input" accept=".pdf,application/pdf"/>
+      </div>
+      <div id="file-badge">
+        <span class="pdf-icon">📄</span>
+        <span class="name" id="file-name">preventivo.pdf</span>
+        <button class="remove" id="btn-remove" title="Rimuovi file">✕</button>
+      </div>
     </div>
+
+    <!-- Text programme input -->
+    <div id="input-text" style="display:none">
+      <textarea id="program-text" placeholder="Scrivi il programma dell'evento, ad esempio:
+
+Giorno 1 – 15 ottobre 2027
+10:00  Transfer dall'aeroporto con Pacifico Transfer
+13:00  Pranzo al Roscioli
+16:00  Tour privato Galleria Doria Pamphilj
+20:00  Welcome dinner al Palazzo Brancaccio
+
+Giorno 2 – 16 ottobre 2027
+09:00  Colazione in hotel (Hotel de Russie)
+…
+
+Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></textarea>
+      <p class="program-hint">I fornitori presenti nel database verranno arricchiti con descrizioni e foto reali. Gli altri verranno descritti dall'AI.</p>
+    </div>
+
     <button class="btn-generate" id="btn-generate-pdf" disabled>Genera Presentazione</button>
   </div>
 
@@ -214,6 +257,7 @@ footer{text-align:center;padding:2rem;font-size:.65rem;letter-spacing:.12em;text
 
 <script>
 let selectedFile = null, generatedHtml = null, generatedFilename = null, activeTab = 'preventivo';
+let programMode = 'pdf'; // 'pdf' | 'text'
 
 const dropZone       = document.getElementById('drop-zone');
 const fileInput      = document.getElementById('file-input');
@@ -221,6 +265,7 @@ const fileBadge      = document.getElementById('file-badge');
 const fileNameEl     = document.getElementById('file-name');
 const btnRemove      = document.getElementById('btn-remove');
 const btnGeneratePdf = document.getElementById('btn-generate-pdf');
+const programTextEl  = document.getElementById('program-text');
 const supplierInput  = document.getElementById('supplier-input');
 const btnGenerateSup = document.getElementById('btn-generate-supplier');
 const actInput       = document.getElementById('act-input');
@@ -267,14 +312,37 @@ function setFile(file) {
   fileNameEl.textContent = file.name;
   fileBadge.style.display = 'flex';
   dropZone.style.display = 'none';
-  btnGeneratePdf.disabled = false;
+  updateGenerateBtn();
   hideError(); resetResult();
 }
 btnRemove.addEventListener('click', () => {
   selectedFile = null; fileInput.value = '';
   fileBadge.style.display = 'none'; dropZone.style.display = 'block';
-  btnGeneratePdf.disabled = true; hideError(); resetResult();
+  updateGenerateBtn(); hideError(); resetResult();
 });
+
+// MODE TOGGLE (PDF / Text)
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    programMode = btn.dataset.mode;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('input-pdf').style.display  = programMode === 'pdf'  ? 'block' : 'none';
+    document.getElementById('input-text').style.display = programMode === 'text' ? 'block' : 'none';
+    updateGenerateBtn();
+    hideError(); hideFuzzyConfirm(); resetResult(); resetProgress();
+  });
+});
+
+programTextEl.addEventListener('input', updateGenerateBtn);
+
+function updateGenerateBtn() {
+  if (programMode === 'pdf') {
+    btnGeneratePdf.disabled = !selectedFile;
+  } else {
+    btnGeneratePdf.disabled = !programTextEl.value.trim();
+  }
+}
 
 // SUPPLIER INPUT
 supplierInput.addEventListener('input', () => { btnGenerateSup.disabled = !supplierInput.value.trim(); });
@@ -284,9 +352,13 @@ supplierInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !btnGe
 actInput.addEventListener('input', () => { btnGenerateAct.disabled = !actInput.value.trim(); });
 actInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !btnGenerateAct.disabled) generateAct(); });
 
-// GENERATE PDF
-btnGeneratePdf.addEventListener('click', generatePdf);
-async function generatePdf() {
+// GENERATE (dispatcher)
+btnGeneratePdf.addEventListener('click', () => {
+  if (programMode === 'text') generateFromText();
+  else generateFromPdf();
+});
+
+async function generateFromPdf() {
   if (!selectedFile) return;
   setStepLabels('pdf');
   btnGeneratePdf.disabled = true;
@@ -297,7 +369,7 @@ async function generatePdf() {
   try {
     pdfBase64 = await toBase64(selectedFile);
     pdfBase64 = pdfBase64.replace(/^data:application\/pdf;base64,/, '');
-  } catch(e) { showError('Errore lettura file: ' + e.message); resetProgress(); btnGeneratePdf.disabled = false; return; }
+  } catch(e) { showError('Errore lettura file: ' + e.message); resetProgress(); updateGenerateBtn(); return; }
 
   setStep(2);
   const t = setTimeout(() => setStep(3), 8000);
@@ -310,9 +382,41 @@ async function generatePdf() {
     clearTimeout(t); setStep(4);
     if (!resp.ok) { const e = await resp.json().catch(() => ({error:`HTTP ${resp.status}`})); throw new Error(e.error); }
     data = await resp.json();
-  } catch(e) { clearTimeout(t); showError('Errore:\n' + e.message); resetProgress(); btnGeneratePdf.disabled = false; return; }
+  } catch(e) { clearTimeout(t); showError('Errore:\n' + e.message); resetProgress(); updateGenerateBtn(); return; }
 
   showResult(data, 'Presentazione pronta');
+}
+
+// GENERATE FROM TEXT
+async function generateFromText() {
+  const text = programTextEl.value.trim();
+  if (!text) return;
+  setStepLabels('text');
+  btnGeneratePdf.disabled = true;
+  hideError(); resetResult();
+  progressEl.style.display = 'block'; setStep(1);
+
+  // Step 1 → 2 after a moment (AI extraction starting)
+  const t1 = setTimeout(() => setStep(2), 3000);
+  // Step 2 → 3 after more time (Airtable enrichment + photos)
+  const t2 = setTimeout(() => setStep(3), 12000);
+
+  let data;
+  try {
+    const resp = await fetch('/api/generate-text', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ programText: text })
+    });
+    clearTimeout(t1); clearTimeout(t2); setStep(4);
+    if (!resp.ok) { const e = await resp.json().catch(() => ({error:`HTTP ${resp.status}`})); throw new Error(e.error); }
+    data = await resp.json();
+  } catch(e) { clearTimeout(t1); clearTimeout(t2); showError('Errore:\n' + e.message); resetProgress(); updateGenerateBtn(); return; }
+
+  const parts = [];
+  if (data.dayCount) parts.push(`${data.dayCount} giorn${data.dayCount === 1 ? 'o' : 'i'}`);
+  if (data.pax) parts.push(`${data.pax} pax`);
+  const badge = parts.length ? ' · ' + parts.join(' · ') : '';
+  showResult(data, 'Presentazione pronta', badge);
 }
 
 // GENERATE SUPPLIER
@@ -449,7 +553,14 @@ closePreview.addEventListener('click', () => { previewOverlay.style.display = 'n
 btnNew.addEventListener('click', () => {
   generatedHtml = null; generatedFilename = null; selectedFile = null; fileInput.value = '';
   fileBadge.style.display = 'none'; dropZone.style.display = 'block';
-  btnGeneratePdf.disabled = true; supplierInput.value = ''; btnGenerateSup.disabled = true;
+  // Reset mode toggle to PDF
+  programMode = 'pdf';
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === 'pdf'));
+  document.getElementById('input-pdf').style.display  = 'block';
+  document.getElementById('input-text').style.display = 'none';
+  programTextEl.value = '';
+  btnGeneratePdf.disabled = true;
+  supplierInput.value = ''; btnGenerateSup.disabled = true;
   actInput.value = ''; btnGenerateAct.disabled = true;
   resetProgress(); resetResult(); hideError(); hideFuzzyConfirm();
 });
@@ -459,12 +570,19 @@ function resetProgress() { progressEl.style.display = 'none'; document.querySele
 function setStepLabels(mode) {
   document.getElementById('step-1-label').textContent =
     mode === 'act'      ? 'Ricerca atto nel database' :
-    mode === 'supplier' ? 'Ricerca nel database' : 'Lettura preventivo';
+    mode === 'supplier' ? 'Ricerca nel database' :
+    mode === 'text'     ? 'Lettura programma' : 'Lettura preventivo';
   document.getElementById('step-2-label').textContent =
     mode === 'act'      ? 'Recupero foto e video' :
-    mode === 'supplier' ? 'Generazione con AI' : 'Analisi AI del programma';
+    mode === 'supplier' ? 'Generazione con AI' :
+    mode === 'text'     ? 'Ricerca fornitori' : 'Analisi AI del programma';
+  document.getElementById('step-3-label') &&
+    (document.getElementById('step-3-label').textContent =
+      mode === 'text' ? 'Generazione presentazione' : 'Elaborazione slides');
   document.getElementById('progress-note').textContent =
-    mode === 'pdf' ? 'La generazione richiede circa 20–40 secondi…' : 'La generazione richiede circa 10–20 secondi…';
+    mode === 'pdf' || mode === 'text'
+      ? 'La generazione richiede circa 20–40 secondi…'
+      : 'La generazione richiede circa 10–20 secondi…';
 }
 function setStep(n) {
   document.querySelectorAll('.step').forEach((s,i) => {
