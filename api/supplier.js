@@ -34,7 +34,7 @@ async function findSupplierForSpaces(name, token, baseId) {
   if (!kw.length) return null;
   const orClauses = kw.map(w => `SEARCH("${w}", LOWER({Name}))>0`).join(",");
   const formula   = encodeURIComponent(`OR(${orClauses})`);
-  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_SUPPLIERS_ID}?filterByFormula=${formula}&fields[]=Name&fields[]=Meeting%20Rooms&maxRecords=8`;
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_SUPPLIERS_ID}?filterByFormula=${formula}&fields[]=fldf1guJqLASjc0sP&fields[]=fldSovyZuFZCp9N6Q&maxRecords=8`;
   const resp = await fetch(url, { headers:{ Authorization:`Bearer ${token}` }, signal:AbortSignal.timeout(7000) });
   if (!resp.ok) return null;
   const data = await resp.json();
@@ -118,12 +118,14 @@ async function handleGetSpaces(req, res) {
   const supplierRec = await findSupplierForSpaces(supplierParam, token, baseId);
   if (!supplierRec) return res.status(200).json({ supplierName: supplierParam, rooms: [] });
 
-  const supplierName = supplierRec.fields.Name || supplierParam;
-  const roomIds = supplierRec.fields["Meeting Rooms"] || [];
+  // Fields returned by ID: fldf1guJqLASjc0sP = Name, fldSovyZuFZCp9N6Q = Meeting Rooms (linked)
+  const supplierName = supplierRec.fields["fldf1guJqLASjc0sP"] || supplierParam;
+  const roomIds = supplierRec.fields["fldSovyZuFZCp9N6Q"] || [];
   if (!roomIds.length) return res.status(200).json({ supplierName, rooms: [] });
 
   const roomRecords = await fetchRoomRecords(roomIds, token, baseId);
-  const allMediaIds = [...new Set(roomRecords.flatMap(r => r.fields.Media || []))];
+  // fldnvvLqifmGnGn5n = Media (linked) — rooms fetched by field ID, so keys are field IDs
+  const allMediaIds = [...new Set(roomRecords.flatMap(r => r.fields["fldnvvLqifmGnGn5n"] || []))];
   const mediaMap    = await fetchRoomPhotos(allMediaIds, token, baseId).catch(() => new Map());
 
   const roomById = new Map(roomRecords.map(r => [r.id, r]));
