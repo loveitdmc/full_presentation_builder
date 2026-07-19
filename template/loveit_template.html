@@ -1425,7 +1425,7 @@ try{ LoveitEditor=(function(){
       wrap.innerHTML='<p class="asp-artist-err">Funzione disponibile solo dalla versione online (Vercel).<br>Apri la presentazione dal server per usare il picker spazi.</p>';
       return;
     }
-    fetch(`${apiBase}/api/supplier-spaces?supplier=${encodeURIComponent(supplierName)}`)
+    fetch(`${apiBase}/api/supplier?supplier=${encodeURIComponent(supplierName)}`)
       .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
       .then(data=>{
         const rooms=data.rooms||[];

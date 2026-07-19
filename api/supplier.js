@@ -5,6 +5,123 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// ─── MEETING ROOMS (GET mode) ─────────────────────────────────────────────────
+
+const TABLE_SUPPLIERS_ID = "tbl3rEBd03iC29uNb";
+const TABLE_ROOMS_ID     = "tbl4JXVw0K9Sz0dHC";
+const TABLE_MEDIA_ID     = "tblpKKKum1aFwPjgY";
+
+const STOP_WORDS = new Set([
+  "the","and","its","of","at","per","del","dei","della","delle","degli","di","da",
+  "in","con","su","tra","fra","al","alle","agli","allo","dal","dalla","dagli","dalle",
+  "la","lo","le","il","gli","un","una","uno","i","e","o",
+]);
+
+function spaceKeywords(name) {
+  return name.toLowerCase().replace(/[^\w\s]/g," ").split(/\s+/)
+    .filter(w => w.length > 1 && !STOP_WORDS.has(w))
+    .map(w => w.replace(/"/g,'\\"'));
+}
+function spaceMatchScore(queryName, airtableName) {
+  const kw = spaceKeywords(queryName);
+  if (!kw.length) return 0;
+  const hay = airtableName.toLowerCase();
+  return kw.filter(w => hay.includes(w)).length / kw.length;
+}
+
+async function findSupplierForSpaces(name, token, baseId) {
+  const kw = spaceKeywords(name);
+  if (!kw.length) return null;
+  const orClauses = kw.map(w => `SEARCH("${w}", LOWER({Name}))>0`).join(",");
+  const formula   = encodeURIComponent(`OR(${orClauses})`);
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_SUPPLIERS_ID}?filterByFormula=${formula}&fields[]=Name&fields[]=Meeting%20Rooms&maxRecords=8`;
+  const resp = await fetch(url, { headers:{ Authorization:`Bearer ${token}` }, signal:AbortSignal.timeout(7000) });
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  const records = data.records || [];
+  if (!records.length) return null;
+  const inputLower = name.toLowerCase();
+  const exact = records.find(r => (r.fields.Name||"").toLowerCase() === inputLower);
+  if (exact) return exact;
+  const scored = records
+    .map(r => ({ r, score: spaceMatchScore(name, r.fields.Name||"") }))
+    .filter(({ score }) => score >= 0.5)
+    .sort((a,b) => b.score - a.score);
+  return scored[0]?.r || records[0]; // fall back to first result if any found
+}
+
+async function fetchRoomRecords(roomIds, token, baseId) {
+  if (!roomIds.length) return [];
+  const idClauses = roomIds.slice(0,50).map(id => `RECORD_ID()="${id}"`).join(",");
+  const formula   = encodeURIComponent(`OR(${idClauses})`);
+  const fields    = ["Meeting%20Room%20Name","Setting","Area%20m%C2%B2","Banquet%20Capacity","Theatre%20Capacity","Cocktail%20Capacity","Classroom%20Capacity","Boardroom%20Capacity","Operational%20Notes","Media"]
+    .map(f => `fields[]=${f}`).join("&");
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_ROOMS_ID}?filterByFormula=${formula}&${fields}&maxRecords=50`;
+  const resp = await fetch(url, { headers:{ Authorization:`Bearer ${token}` }, signal:AbortSignal.timeout(8000) });
+  if (!resp.ok) return [];
+  const data = await resp.json();
+  return data.records || [];
+}
+
+async function fetchRoomPhotos(mediaIds, token, baseId) {
+  if (!mediaIds.length) return new Map();
+  const idClauses = mediaIds.slice(0,50).map(id => `RECORD_ID()="${id}"`).join(",");
+  const formula   = encodeURIComponent(`OR(${idClauses})`);
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_MEDIA_ID}?filterByFormula=${formula}&fields[]=File&maxRecords=100`;
+  const resp = await fetch(url, { headers:{ Authorization:`Bearer ${token}` }, signal:AbortSignal.timeout(7000) });
+  if (!resp.ok) return new Map();
+  const data = await resp.json();
+  const map = new Map();
+  for (const mr of (data.records||[])) {
+    const files = mr.fields.File || [];
+    const img = files.find(f => !/\.(mp4|webm|ogg)(\?|$)/i.test(f.filename||""));
+    if (img?.url) map.set(mr.id, img.url);
+  }
+  return map;
+}
+
+async function handleGetSpaces(req, res) {
+  const token  = process.env.AIRTABLE_TOKEN;
+  const baseId = process.env.AIRTABLE_BASE_ID;
+  if (!token || !baseId) return res.status(500).json({ error: "Missing Airtable config" });
+
+  const supplierParam = (req.query?.supplier || "").trim();
+  if (!supplierParam) return res.status(400).json({ error: "Missing supplier param" });
+
+  const supplierRec = await findSupplierForSpaces(supplierParam, token, baseId);
+  if (!supplierRec) return res.status(200).json({ supplierName: supplierParam, rooms: [] });
+
+  const supplierName = supplierRec.fields.Name || supplierParam;
+  const roomIds = supplierRec.fields["Meeting Rooms"] || [];
+  if (!roomIds.length) return res.status(200).json({ supplierName, rooms: [] });
+
+  const roomRecords = await fetchRoomRecords(roomIds, token, baseId);
+  const allMediaIds = [...new Set(roomRecords.flatMap(r => r.fields.Media || []))];
+  const mediaMap    = await fetchRoomPhotos(allMediaIds, token, baseId).catch(() => new Map());
+
+  const roomById = new Map(roomRecords.map(r => [r.id, r]));
+  const rooms = roomIds
+    .map(id => roomById.get(id)).filter(Boolean)
+    .map(r => {
+      const f = r.fields;
+      const firstMediaId = (f.Media||[])[0];
+      return {
+        name:      f["Meeting Room Name"] || "",
+        setting:   f.Setting?.name || null,
+        area:      f["Area m²"]           || null,
+        banquet:   f["Banquet Capacity"]  || null,
+        theatre:   f["Theatre Capacity"]  || null,
+        cocktail:  f["Cocktail Capacity"] || null,
+        classroom: f["Classroom Capacity"]|| null,
+        boardroom: f["Boardroom Capacity"]|| null,
+        notes:     f["Operational Notes"] || null,
+        photo:     firstMediaId ? (mediaMap.get(firstMediaId)||null) : null,
+      };
+    }).filter(r => r.name);
+
+  return res.status(200).json({ supplierName, rooms });
+}
+
 // ─── AIRTABLE ────────────────────────────────────────────────────────────────
 
 // Single smart search: keyword OR-search returning up to 8 records with full data.
@@ -198,10 +315,12 @@ async function generateWithAI(supplierName, apiKey) {
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   if (req.method === "OPTIONS") return res.status(204).end();
+  // GET → return meeting rooms for a supplier
+  if (req.method === "GET") return handleGetSpaces(req, res);
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const { supplier } = req.body ?? {};
