@@ -155,20 +155,31 @@ async function handleActivity(activityName, res, token, baseId) {
   }
 
   const mediaRecords = await getMediaRecords(rec.mediaIds, token, baseId);
-  const photoUrls = [];
-  const videos = [];
-  for (const m of mediaRecords) {
-    photoUrls.push(...m.fileUrls.filter(u => !/\.(mp4|webm|ogg)(\?|$)/i.test(u)));
-    const videoRawUrl = m.driveLink
-      || m.fileUrls.find(u => /\.(mp4|webm|ogg)(\?|$)/i.test(u)) || null;
-    if (videoRawUrl) {
-      const embedUrl = toEmbedUrl(videoRawUrl);
-      if (embedUrl) videos.push({
-        embedUrl,
-        isFile: /\.(mp4|webm|ogg)(\?|$)/i.test(videoRawUrl),
-        title: m.description || "Video",
-      });
+
+  // Media linked to only THIS activity are specific; media linked to 2+ activities
+  // are generic supplier assets shared across tours — use them only as fallback.
+  const buildAssets = recs => {
+    const photos = [], vids = [];
+    for (const m of recs) {
+      photos.push(...m.fileUrls.filter(u => !/\.(mp4|webm|ogg)(\?|$)/i.test(u)));
+      const videoRawUrl = m.driveLink
+        || m.fileUrls.find(u => /\.(mp4|webm|ogg)(\?|$)/i.test(u)) || null;
+      if (videoRawUrl) {
+        const embedUrl = toEmbedUrl(videoRawUrl);
+        if (embedUrl) vids.push({
+          embedUrl,
+          isFile: /\.(mp4|webm|ogg)(\?|$)/i.test(videoRawUrl),
+          title: m.description || "Video",
+        });
+      }
     }
+    return { photos, vids };
+  };
+
+  const specific = mediaRecords.filter(m => m.activityCount <= 1);
+  let { photos: photoUrls, vids: videos } = buildAssets(specific);
+  if (!photoUrls.length && !videos.length) {
+    ({ photos: photoUrls, vids: videos } = buildAssets(mediaRecords));
   }
 
   const unsplashKey = process.env.UNSPLASH_ACCESS_KEY;
@@ -226,7 +237,10 @@ async function getMediaRecords(mediaIds, token, baseId) {
         ? f["Asset Type"]?.name || ""
         : f["Asset Type"] || "";
       const fileUrls = (f.File || []).map(att => att.url).filter(Boolean);
-      return { assetType, fileUrls, driveLink: f["Drive Link"] || null, description: f.Description || null };
+      // How many Activities this media record is linked to — used to detect
+      // generic/shared assets (linked to many activities) vs specific ones
+      const activityCount = Array.isArray(f.Activities) ? f.Activities.length : 0;
+      return { assetType, fileUrls, driveLink: f["Drive Link"] || null, description: f.Description || null, activityCount };
     });
   } catch {
     return [];

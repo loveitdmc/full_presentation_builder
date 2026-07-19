@@ -63,10 +63,11 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: `Airtable error: ${e.message}` });
   }
 
-  // 2. Collect unique first-Media IDs for thumbnail lookup
+  // 2. Collect Media IDs for thumbnail lookup — up to 8 per record, because the
+  // first linked media may have no File attachment (e.g. shared/generic assets)
   const firstMediaIds = [...new Set(
-    allRecords.map(r => (r.fields[kind.mediaField] || [])[0]).filter(Boolean)
-  )];
+    allRecords.flatMap(r => (r.fields[kind.mediaField] || []).slice(0, 8))
+  )].slice(0, 190);
 
   // 3. Batch fetch those Media records (one request for all)
   const mediaMap = new Map(); // mediaId → thumbnailUrl
@@ -93,8 +94,9 @@ export default async function handler(req, res) {
     const tags = Array.isArray(rawTag) ? rawTag.join(", ")
       : (typeof rawTag === "object" && rawTag?.name) ? rawTag.name
       : (rawTag || "");
-    const firstMediaId = (f[kind.mediaField] || [])[0];
-    const thumbnail = firstMediaId ? (mediaMap.get(firstMediaId) || null) : null;
+    // First linked media that actually has a File attachment
+    const thumbId = (f[kind.mediaField] || []).find(id => mediaMap.has(id));
+    const thumbnail = thumbId ? mediaMap.get(thumbId) : null;
     return { name, type: tags, thumbnail };
   }).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
 
