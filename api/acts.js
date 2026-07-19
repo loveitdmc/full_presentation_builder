@@ -57,6 +57,42 @@ async function airtableFetch(url, token) {
   return resp.json();
 }
 
+// Smart keyword search — returns up to 8 candidates with name + type.
+// Works with partial names like "stefano", "camilli", "jazz", etc.
+async function findActCandidates(actName, token, baseId) {
+  const stopWords = new Set([
+    "the","and","per","del","dei","della","delle","degli","di","da",
+    "in","con","su","tra","fra","its",
+  ]);
+  const words = actName.toLowerCase()
+    .replace(/[^\w\s]/g, " ")
+    .split(/\s+/)
+    .filter(w => w.length > 1 && !stopWords.has(w))
+    .map(w => w.replace(/"/g, '\\"'));
+
+  if (!words.length) return [];
+
+  const orClauses = words.map(w => `SEARCH("${w}", LOWER({Artist or Act Name}))>0`).join(",");
+  const formula   = encodeURIComponent(`OR(${orClauses})`);
+  const nameField = encodeURIComponent("Artist or Act Name");
+  const tagsField = encodeURIComponent("Artist Tags");
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_ACTS}?filterByFormula=${formula}&maxRecords=8&fields[]=${nameField}&fields[]=${tagsField}`;
+
+  try {
+    const data = await airtableFetch(url, token);
+    return (data.records || []).map(r => {
+      const f    = r.fields;
+      const name = f["Artist or Act Name"] || "";
+      const tags = Array.isArray(f["Artist Tags"])
+        ? f["Artist Tags"].join(", ")
+        : (f["Artist Tags"] || "");
+      return { name, type: tags };
+    }).filter(c => c.name);
+  } catch {
+    return [];
+  }
+}
+
 async function searchAct(actName, token, baseId) {
   // Artists table — field name: "Artist or Act Name"
   const safe = actName.replace(/"/g, '\\"').toLowerCase();
@@ -213,15 +249,41 @@ export default async function handler(req, res) {
     }
   }
 
-  // 1. Search Spaces, Services & Acts
-  let actRecord;
+  // 1. Smart keyword search — find candidates
+  let candidates;
   try {
-    actRecord = await searchAct(act.trim(), token, baseId);
+    candidates = await findActCandidates(act.trim(), token, baseId);
   } catch (e) {
     return res.status(502).json({ error: `Airtable search error: ${e.message}` });
   }
-  if (!actRecord) {
+
+  if (candidates.length === 0) {
     return res.status(404).json({ error: `"${act}" not found in Artists. Check the name and try again.` });
+  }
+
+  // Determine which artist to use
+  let selectedName;
+  const inputLower = act.trim().toLowerCase();
+  const exact = candidates.find(c => c.name.toLowerCase() === inputLower);
+  if (exact) {
+    selectedName = exact.name;
+  } else if (candidates.length === 1) {
+    // Single partial match — auto-proceed
+    selectedName = candidates[0].name;
+  } else {
+    // Multiple partial matches — return picker
+    return res.status(200).json({ status: "fuzzy", candidates });
+  }
+
+  // 1b. Fetch full record for the selected artist
+  let actRecord;
+  try {
+    actRecord = await searchAct(selectedName, token, baseId);
+  } catch (e) {
+    return res.status(502).json({ error: `Airtable fetch error: ${e.message}` });
+  }
+  if (!actRecord) {
+    return res.status(404).json({ error: `"${selectedName}" not found.` });
   }
 
   // 2. Fetch linked supplier

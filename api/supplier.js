@@ -7,58 +7,32 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ─── AIRTABLE ────────────────────────────────────────────────────────────────
 
-async function searchAirtable(supplierName) {
+// Single smart search: keyword OR-search returning up to 8 records with full data.
+// Returns [] when nothing found. Words shorter than 2 chars or stop-words are skipped;
+// single-word inputs like "roscioli" or "hilton" work fine.
+async function findSuppliers(supplierName) {
   const token   = process.env.AIRTABLE_TOKEN;
   const baseId  = process.env.AIRTABLE_BASE_ID;
   const tableId = process.env.AIRTABLE_TABLE_ID || "Suppliers";
-  if (!token || !baseId || !supplierName) return null;
+  if (!token || !baseId || !supplierName) return [];
 
-  const safeName = supplierName.replace(/"/g, '\\"').toLowerCase();
-  const formula  = encodeURIComponent(`SEARCH("${safeName}", LOWER({Name}))>0`);
-  const url = `https://api.airtable.com/v0/${baseId}/${tableId}?filterByFormula=${formula}&maxRecords=1`;
-
-  try {
-    const resp = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(6000),
-    });
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    if (!data.records?.length) return null;
-    const fields = data.records[0].fields;
-    const allPhotoUrls = (fields.Photos || []).map(f => f.url);
-    return {
-      description: fields.Description || null,
-      photos:    allPhotoUrls.slice(0, 4),
-      allPhotos: allPhotoUrls,
-      city: fields.City || null,
-      type: fields.Type || null,
-    };
-  } catch {
-    return null;
-  }
-}
-
-async function findCandidates(supplierName) {
-  const token   = process.env.AIRTABLE_TOKEN;
-  const baseId  = process.env.AIRTABLE_BASE_ID;
-  const tableId = process.env.AIRTABLE_TABLE_ID || "Suppliers";
-  if (!token || !baseId) return [];
-
-  // Split into significant words (>2 chars), ignore common stop words
-  const stopWords = new Set(["the","and","per","del","dei","della","delle","degli","di","da","in","con","su","tra","fra"]);
+  const stopWords = new Set([
+    "the","and","per","del","dei","della","delle","degli","di","da",
+    "in","con","su","tra","fra","its","the",
+  ]);
   const words = supplierName.toLowerCase()
     .replace(/[^\w\s]/g, " ")
     .split(/\s+/)
-    .filter(w => w.length > 2 && !stopWords.has(w))
+    .filter(w => w.length > 1 && !stopWords.has(w))
     .map(w => w.replace(/"/g, '\\"'));
 
   if (!words.length) return [];
 
-  // OR search: any word matching is a candidate
   const orClauses = words.map(w => `SEARCH("${w}", LOWER({Name}))>0`).join(",");
-  const formula = encodeURIComponent(`OR(${orClauses})`);
-  const url = `https://api.airtable.com/v0/${baseId}/${tableId}?filterByFormula=${formula}&maxRecords=5&fields[]=${encodeURIComponent("Name")}&fields[]=${encodeURIComponent("City")}`;
+  const formula   = encodeURIComponent(`OR(${orClauses})`);
+  const fields    = ["Name","City","Description","Photos","Type"]
+    .map(f => `fields[]=${encodeURIComponent(f)}`).join("&");
+  const url = `https://api.airtable.com/v0/${baseId}/${tableId}?filterByFormula=${formula}&maxRecords=8&${fields}`;
 
   try {
     const resp = await fetch(url, {
@@ -67,10 +41,18 @@ async function findCandidates(supplierName) {
     });
     if (!resp.ok) return [];
     const data = await resp.json();
-    return (data.records || []).map(r => ({
-      name: r.fields.Name || "",
-      city: r.fields.City || "",
-    })).filter(c => c.name);
+    return (data.records || []).map(r => {
+      const f = r.fields;
+      const allPhotoUrls = (f.Photos || []).map(p => p.url);
+      return {
+        name:        f.Name        || "",
+        city:        f.City        || "",
+        description: f.Description || null,
+        photos:      allPhotoUrls.slice(0, 4),
+        allPhotos:   allPhotoUrls,
+        type:        f.Type        || null,
+      };
+    }).filter(r => r.name);
   } catch {
     return [];
   }
@@ -236,38 +218,51 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Template file not found" });
   }
 
-  // Step 1: Airtable lookup — exact search first
-  const airtableData = await searchAirtable(supplier.trim());
+  // Step 1: Smart keyword search — returns 0–8 Airtable records
+  const matches = await findSuppliers(supplier.trim());
 
-  // Step 1b: Fuzzy match — if exact not found, look for candidates
-  if (!airtableData?.description) {
-    const candidates = await findCandidates(supplier.trim());
-    if (candidates.length > 0) {
-      // Return candidates for frontend confirmation — don't burn AI credits yet
-      return res.status(200).json({ status: "fuzzy", candidates });
+  // Step 1b: Determine which record to use (or surface picker)
+  let selected = null;
+  if (matches.length > 0) {
+    const inputLower = supplier.trim().toLowerCase();
+    const exact = matches.find(m => m.name.toLowerCase() === inputLower);
+    if (exact) {
+      // Exact name match — proceed directly
+      selected = exact;
+    } else if (matches.length === 1) {
+      // Only one candidate — auto-proceed, no picker needed
+      selected = matches[0];
+    } else {
+      // Multiple partial matches — ask frontend to confirm
+      return res.status(200).json({
+        status:     "fuzzy",
+        candidates: matches.map(m => ({ name: m.name, city: m.city })),
+      });
     }
   }
 
   let profile;
-  if (airtableData?.description) {
-    const cityName = airtableData.city || "Rome";
+  if (selected?.description) {
+    const cityName = selected.city || "Rome";
     profile = {
       city:          cityName,
       country:       "Italy",
-      type:          airtableData.type || "activity",
-      description:   airtableData.description,
+      type:          selected.type || "activity",
+      description:   selected.description,
       tagline:       `An exclusive experience in ${cityName}`,
-      photo:         airtableData.photos?.[0] || null,
+      photo:         selected.photos?.[0] || null,
       photoPosition: "center center",
-      photos:        airtableData.photos?.slice(1, 4) || [],
-      allPhotos:     airtableData.allPhotos || [],
+      photos:        selected.photos?.slice(1, 4) || [],
+      allPhotos:     selected.allPhotos || [],
       cityPhoto:     `${cityName.toLowerCase()} italy aerial landmark`,
       fromAirtable:  true,
     };
   } else {
-    // Step 2: AI generation
+    // No Airtable record with description — fall back to AI
+    // Use the real Airtable name if we found one, otherwise the user's input
+    const nameForAI = selected?.name || supplier.trim();
     try {
-      const ai = await generateWithAI(supplier.trim(), apiKey);
+      const ai = await generateWithAI(nameForAI, apiKey);
       profile = {
         city:          ai.city || "Rome",
         country:       ai.country || "Italy",
@@ -286,7 +281,8 @@ export default async function handler(req, res) {
   }
 
   // Step 3: Build TRIP JSON
-  const supplierName = supplier.trim();
+  // Use the Airtable-confirmed name when available (correct capitalisation)
+  const supplierName = selected?.name || supplier.trim();
   const tripObj = {
     client:            "",
     projectRef:        "",

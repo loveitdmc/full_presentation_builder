@@ -711,10 +711,19 @@ body.edit-mode #edit-controls{ opacity:1; }
   outline-style:solid;
   background:rgba(201,169,110,.1);
 }
-/* In edit-mode text must sit ABOVE photo drop zones (z-index 50-60) */
+/* In edit-mode: raise content containers above photo drop zones (z-50).
+   pointer-events:none on container so the edit-zone behind is still clickable;
+   pointer-events:auto restored on individual editable elements. */
+body.edit-mode .content,
+body.edit-mode .content-center,
+body.edit-mode .content-dark{
+  z-index:55;
+  pointer-events:none;
+}
 body.edit-mode [contenteditable="true"]{
   position:relative;
-  z-index:65;
+  pointer-events:auto;
+  cursor:text;
 }
 
 /* ── Add slide button ─────────────────────────────────────────────────────── */

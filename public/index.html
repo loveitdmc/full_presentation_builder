@@ -341,7 +341,11 @@ async function generateSupplier(confirmedName) {
   if (data.status === 'fuzzy') {
     resetProgress();
     btnGenerateSup.disabled = !supplierInput.value.trim();
-    showFuzzyConfirm(data.candidates);
+    showFuzzyConfirm(
+      data.candidates,
+      (exactName) => { supplierInput.value = exactName; btnGenerateSup.disabled = false; generateSupplier(exactName); },
+      () => { btnGenerateSup.disabled = !supplierInput.value.trim(); }
+    );
     return;
   }
 
@@ -350,11 +354,14 @@ async function generateSupplier(confirmedName) {
   showResult(data, 'Scheda fornitore pronta', badge);
 }
 
-function showFuzzyConfirm(candidates) {
+// Generic fuzzy picker — onConfirm(name) called on selection, onCancel() on dismiss
+function showFuzzyConfirm(candidates, onConfirm, onCancel) {
   const box = document.getElementById('fuzzy-confirm');
   const btns = candidates.map(c => {
-    const city = c.city ? `<span class="fuzzy-city">${c.city}</span>` : '';
-    return `<button class="fuzzy-btn" data-name="${c.name.replace(/"/g,'&quot;')}">${c.name}${city}</button>`;
+    // Suppliers have .city, artists have .type — show whichever is present
+    const detail = c.city || c.type || '';
+    const detailHtml = detail ? `<span class="fuzzy-city">${detail}</span>` : '';
+    return `<button class="fuzzy-btn" data-name="${c.name.replace(/"/g,'&quot;')}">${c.name}${detailHtml}</button>`;
   }).join('');
   box.innerHTML = `
     <div class="fuzzy-label">Intendi forse…</div>
@@ -362,16 +369,11 @@ function showFuzzyConfirm(candidates) {
     <button class="fuzzy-cancel">Annulla</button>`;
   box.style.display = 'block';
   box.querySelectorAll('.fuzzy-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const exactName = btn.dataset.name;
-      supplierInput.value = exactName;
-      btnGenerateSup.disabled = false;
-      generateSupplier(exactName);
-    });
+    btn.addEventListener('click', () => onConfirm(btn.dataset.name));
   });
   box.querySelector('.fuzzy-cancel').addEventListener('click', () => {
     hideFuzzyConfirm();
-    btnGenerateSup.disabled = !supplierInput.value.trim();
+    if (onCancel) onCancel();
   });
 }
 
@@ -383,12 +385,12 @@ function hideFuzzyConfirm() {
 
 // GENERATE ACT
 btnGenerateAct.addEventListener('click', generateAct);
-async function generateAct() {
-  const name = actInput.value.trim();
+async function generateAct(confirmedName) {
+  const name = confirmedName || actInput.value.trim();
   if (!name) return;
   setStepLabels('act');
   btnGenerateAct.disabled = true;
-  hideError(); resetResult();
+  hideError(); hideFuzzyConfirm(); resetResult();
   progressEl.style.display = 'block'; setStep(1);
 
   const t = setTimeout(() => setStep(2), 2000);
@@ -398,11 +400,24 @@ async function generateAct() {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ act: name })
     });
-    clearTimeout(t); setStep(4);
+    clearTimeout(t);
     if (!resp.ok) { const e = await resp.json().catch(() => ({error:`HTTP ${resp.status}`})); throw new Error(e.error); }
     data = await resp.json();
   } catch(e) { clearTimeout(t); showError('Errore:\n' + e.message); resetProgress(); btnGenerateAct.disabled = !actInput.value.trim(); return; }
 
+  // Fuzzy match: multiple artists found, need user to pick one
+  if (data.status === 'fuzzy') {
+    resetProgress();
+    btnGenerateAct.disabled = !actInput.value.trim();
+    showFuzzyConfirm(
+      data.candidates,
+      (exactName) => { actInput.value = exactName; btnGenerateAct.disabled = false; generateAct(exactName); },
+      () => { btnGenerateAct.disabled = !actInput.value.trim(); }
+    );
+    return;
+  }
+
+  setStep(4);
   const parts = [`${data.photoCount || 0} foto`];
   if (data.videoCount > 0) parts.push(`${data.videoCount} video`);
   showResult(data, 'Scheda artista pronta', ' · ' + parts.join(' · '));
