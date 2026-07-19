@@ -54,9 +54,21 @@ async function fetchRoomRecords(roomIds, token, baseId) {
   if (!roomIds.length) return [];
   const idClauses = roomIds.slice(0,50).map(id => `RECORD_ID()="${id}"`).join(",");
   const formula   = encodeURIComponent(`OR(${idClauses})`);
-  const fields    = ["Meeting%20Room%20Name","Setting","Area%20m%C2%B2","Banquet%20Capacity","Theatre%20Capacity","Cocktail%20Capacity","Classroom%20Capacity","Boardroom%20Capacity","Operational%20Notes","Media"]
-    .map(f => `fields[]=${f}`).join("&");
-  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_ROOMS_ID}?filterByFormula=${formula}&${fields}&maxRecords=50`;
+  // Use field IDs for reliability (no encoding issues with special chars / spaces)
+  const ROOM_FIELDS = [
+    "fldeg4uG2doJWRJfO", // Meeting Room Name
+    "fldqEbguUNAeGuVcb", // Setting
+    "fld7TGupUXKEhv0gl", // Area m²
+    "fldDUuQ6PR0Gj9fN5", // Banquet Capacity
+    "fldNd8cMq8sipBF8w", // Theatre Capacity
+    "fldAuEO7MPwruK8Mx", // Cocktail Capacity
+    "fldkf0aJv1v4J9i6i", // Classroom Capacity
+    "fldcUw6U2vGvm7JtS", // Boardroom Capacity
+    "fldaASdJjqXRIycfk", // Operational Notes
+    "fldnvvLqifmGnGn5n", // Media (linked)
+  ];
+  const fieldsParam = ROOM_FIELDS.map(f => `fields[]=${f}`).join("&");
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_ROOMS_ID}?filterByFormula=${formula}&${fieldsParam}&maxRecords=50`;
   const resp = await fetch(url, { headers:{ Authorization:`Bearer ${token}` }, signal:AbortSignal.timeout(8000) });
   if (!resp.ok) return [];
   const data = await resp.json();
@@ -67,17 +79,32 @@ async function fetchRoomPhotos(mediaIds, token, baseId) {
   if (!mediaIds.length) return new Map();
   const idClauses = mediaIds.slice(0,50).map(id => `RECORD_ID()="${id}"`).join(",");
   const formula   = encodeURIComponent(`OR(${idClauses})`);
-  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_MEDIA_ID}?filterByFormula=${formula}&fields[]=File&maxRecords=100`;
+  // Use field ID for File attachment to avoid name encoding issues
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_MEDIA_ID}?filterByFormula=${formula}&fields[]=fldqQsLLwleNQAART&maxRecords=100`;
   const resp = await fetch(url, { headers:{ Authorization:`Bearer ${token}` }, signal:AbortSignal.timeout(7000) });
   if (!resp.ok) return new Map();
   const data = await resp.json();
   const map = new Map();
   for (const mr of (data.records||[])) {
-    const files = mr.fields.File || [];
-    const img = files.find(f => !/\.(mp4|webm|ogg)(\?|$)/i.test(f.filename||""));
-    if (img?.url) map.set(mr.id, img.url);
+    // fldqQsLLwleNQAART = "File" (attachments)
+    const files = mr.fields["fldqQsLLwleNQAART"] || [];
+    // Take first attachment regardless of type — floor plans / room photos are all valid
+    const first = files[0];
+    if (first?.url) map.set(mr.id, first.url);
   }
   return map;
+}
+
+// Strip sentences/clauses containing pricing or commercial commentary.
+// Keeps only technical info: dimensions, ceiling height, layout notes, access, features.
+function technicalNotesOnly(notes) {
+  if (!notes) return null;
+  const PRICE_RE = /€|£|\$|EUR|GBP|USD|\bfee\b|\bhire\b|\brent\b|\bspend\b|\bVAT\b|\bcost\b|\bprice\b|\brate\b|\bquot|\bminimum\b|\bopen.bar\b|\bcharge\b|\bsupplement\b|\bexclusive.use\b|\bexclusive use\b|\bper\s+(day|night|service|person|pax|event|hour)\b/i;
+  // Split on sentence boundaries (period + space, or semicolon + space)
+  const parts = notes.split(/(?<=[.;])\s+/);
+  const clean = parts.filter(s => !PRICE_RE.test(s));
+  const result = clean.join(' ').trim();
+  return result || null;
 }
 
 async function handleGetSpaces(req, res) {
@@ -104,17 +131,18 @@ async function handleGetSpaces(req, res) {
     .map(id => roomById.get(id)).filter(Boolean)
     .map(r => {
       const f = r.fields;
-      const firstMediaId = (f.Media||[])[0];
+      // Use field IDs to read (Airtable returns fields by ID when requested by ID)
+      const firstMediaId = (f["fldnvvLqifmGnGn5n"]||[])[0];
       return {
-        name:      f["Meeting Room Name"] || "",
-        setting:   f.Setting?.name || null,
-        area:      f["Area m²"]           || null,
-        banquet:   f["Banquet Capacity"]  || null,
-        theatre:   f["Theatre Capacity"]  || null,
-        cocktail:  f["Cocktail Capacity"] || null,
-        classroom: f["Classroom Capacity"]|| null,
-        boardroom: f["Boardroom Capacity"]|| null,
-        notes:     f["Operational Notes"] || null,
+        name:      f["fldeg4uG2doJWRJfO"] || "",
+        setting:   f["fldqEbguUNAeGuVcb"]?.name || null,
+        area:      f["fld7TGupUXKEhv0gl"] || null,
+        banquet:   f["fldDUuQ6PR0Gj9fN5"] || null,
+        theatre:   f["fldNd8cMq8sipBF8w"] || null,
+        cocktail:  f["fldAuEO7MPwruK8Mx"] || null,
+        classroom: f["fldkf0aJv1v4J9i6i"] || null,
+        boardroom: f["fldcUw6U2vGvm7JtS"] || null,
+        notes:     technicalNotesOnly(f["fldaASdJjqXRIycfk"]),
         photo:     firstMediaId ? (mediaMap.get(firstMediaId)||null) : null,
       };
     }).filter(r => r.name);

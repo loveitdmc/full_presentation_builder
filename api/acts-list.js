@@ -3,8 +3,8 @@ const TABLE_ACTS  = "tblbCAthb1HXfc13i";   // Artists
 const TABLE_MEDIA = "tblpKKKum1aFwPjgY";    // Media
 
 // Field names — use encodeURIComponent to handle spaces and commas correctly
-const FIELD_NAME  = encodeURIComponent("Artist or Act Name");
-const FIELD_TAGS  = encodeURIComponent("Artist Tags");
+const FIELD_NAME  = encodeURIComponent("Artist or Show Name");
+const FIELD_TAGS  = encodeURIComponent("Artist & Show Tags");
 const FIELD_MEDIA = encodeURIComponent("Consolidated Media");
 
 async function airtableFetch(url, token) {
@@ -70,10 +70,10 @@ export default async function handler(req, res) {
   // 4. Build artist list
   const artists = allRecords.map(r => {
     const f = r.fields;
-    const name = f["Artist or Act Name"] || "";
+    const name = f["Artist or Show Name"] || "";
     if (!name) return null;
-    // Artist Tags is a multipleSelects — array of strings
-    const tags = Array.isArray(f["Artist Tags"]) ? f["Artist Tags"].join(", ") : (f["Artist Tags"] || "");
+    // Artist & Show Tags is a multipleSelects — array of strings
+    const tags = Array.isArray(f["Artist & Show Tags"]) ? f["Artist & Show Tags"].join(", ") : (f["Artist & Show Tags"] || "");
     const firstMediaId = (f["Consolidated Media"] || [])[0];
     const thumbnail = firstMediaId ? (mediaMap.get(firstMediaId) || null) : null;
     return { name, type: tags, thumbnail };

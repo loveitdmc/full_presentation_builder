@@ -72,20 +72,20 @@ async function findActCandidates(actName, token, baseId) {
 
   if (!words.length) return [];
 
-  const orClauses = words.map(w => `SEARCH("${w}", LOWER({Artist or Act Name}))>0`).join(",");
+  const orClauses = words.map(w => `SEARCH("${w}", LOWER({Artist or Show Name}))>0`).join(",");
   const formula   = encodeURIComponent(`OR(${orClauses})`);
-  const nameField = encodeURIComponent("Artist or Act Name");
-  const tagsField = encodeURIComponent("Artist Tags");
+  const nameField = encodeURIComponent("Artist or Show Name");
+  const tagsField = encodeURIComponent("Artist & Show Tags");
   const url = `https://api.airtable.com/v0/${baseId}/${TABLE_ACTS}?filterByFormula=${formula}&maxRecords=8&fields[]=${nameField}&fields[]=${tagsField}`;
 
   try {
     const data = await airtableFetch(url, token);
     return (data.records || []).map(r => {
       const f    = r.fields;
-      const name = f["Artist or Act Name"] || "";
-      const tags = Array.isArray(f["Artist Tags"])
-        ? f["Artist Tags"].join(", ")
-        : (f["Artist Tags"] || "");
+      const name = f["Artist or Show Name"] || "";
+      const tags = Array.isArray(f["Artist & Show Tags"])
+        ? f["Artist & Show Tags"].join(", ")
+        : (f["Artist & Show Tags"] || "");
       return { name, type: tags };
     }).filter(c => c.name);
   } catch {
@@ -94,19 +94,19 @@ async function findActCandidates(actName, token, baseId) {
 }
 
 async function searchAct(actName, token, baseId) {
-  // Artists table — field name: "Artist or Act Name"
+  // Artists table — field name: "Artist or Show Name"
   const safe = actName.replace(/"/g, '\\"').toLowerCase();
-  const formula = encodeURIComponent(`SEARCH("${safe}", LOWER({Artist or Act Name}))>0`);
+  const formula = encodeURIComponent(`SEARCH("${safe}", LOWER({Artist or Show Name}))>0`);
   const url = `https://api.airtable.com/v0/${baseId}/${TABLE_ACTS}?filterByFormula=${formula}&maxRecords=1`;
   const data = await airtableFetch(url, token);
   if (!data.records?.length) return null;
   const r = data.records[0];
   const f = r.fields;
-  // Artist Tags is multipleSelects — array of strings
-  const tags = Array.isArray(f["Artist Tags"]) ? f["Artist Tags"].join(", ") : (f["Artist Tags"] || null);
+  // Artist & Show Tags is multipleSelects — array of strings
+  const tags = Array.isArray(f["Artist & Show Tags"]) ? f["Artist & Show Tags"].join(", ") : (f["Artist & Show Tags"] || null);
   return {
     id:          r.id,
-    name:        f["Artist or Act Name"] || actName,
+    name:        f["Artist or Show Name"] || actName,
     supplierIds: f.Supplier             || [],
     mediaIds:    f["Consolidated Media"] || [],
     notes:       f["Description and Operational Notes"] || null,
