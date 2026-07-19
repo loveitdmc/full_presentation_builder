@@ -14,8 +14,14 @@ async function findSuppliers(supplierName) {
   if (!token || !baseId || !supplierName) return [];
 
   const stopWords = new Set([
-    "the","and","per","del","dei","della","delle","degli","di","da",
-    "in","con","su","tra","fra","its",
+    // English
+    "the","and","its","of","at",
+    // Italian prepositions
+    "per","del","dei","della","delle","degli","di","da","in","con","su","tra","fra","al","alle","agli","allo","dal","dalla","dagli","dalle",
+    // Italian articles (critical: "la" alone matches hundreds of records)
+    "la","lo","le","il","gli","un","una","uno","i",
+    // Italian conjunctions
+    "e","o",
   ]);
   const words = supplierName.toLowerCase()
     .replace(/[^\w\s]/g, " ")
@@ -226,6 +232,22 @@ async function extractProgramme(text, apiKey) {
 
 // ─── AIRTABLE ENRICHMENT ─────────────────────────────────────────────────────
 
+// Score how well an Airtable name matches the input query.
+// Returns a value 0–1: fraction of meaningful query keywords found in the Airtable name.
+function matchScore(queryName, airtableName) {
+  const stopWords = new Set([
+    "the","and","its","of","at","per","del","dei","della","delle","degli","di","da","in","con","su","tra","fra","al","alle","agli","allo","dal","dalla","dagli","dalle",
+    "la","lo","le","il","gli","un","una","uno","i","e","o",
+  ]);
+  const keywords = queryName.toLowerCase()
+    .replace(/[^\w\s]/g, " ").split(/\s+/)
+    .filter(w => w.length > 1 && !stopWords.has(w));
+  if (!keywords.length) return 0;
+  const haystack = airtableName.toLowerCase();
+  const hits = keywords.filter(w => haystack.includes(w)).length;
+  return hits / keywords.length;
+}
+
 async function enrichWithAirtable(programme) {
   for (const day of (programme.days || [])) {
     for (const act of (day.activities || [])) {
@@ -234,11 +256,22 @@ async function enrichWithAirtable(programme) {
         const matches = await findSuppliers(act.supplierName);
         if (!matches.length) continue;
 
-        // Prefer exact name match, fall back to first partial match
+        // Prefer exact name match first
         const exact = matches.find(
           m => m.name.toLowerCase() === act.supplierName.toLowerCase()
         );
-        const sel = exact || matches[0];
+
+        let sel = exact;
+        if (!sel) {
+          // Score each candidate — require ≥ 50% keyword overlap to avoid false matches
+          const scored = matches
+            .map(m => ({ m, score: matchScore(act.supplierName, m.name) }))
+            .filter(({ score }) => score >= 0.5)
+            .sort((a, b) => b.score - a.score);
+          sel = scored[0]?.m || null;
+        }
+
+        if (!sel) continue; // no good-enough match — keep AI-generated data
 
         // Override description and photos with real Airtable data
         if (sel.description) act.description = sel.description;
