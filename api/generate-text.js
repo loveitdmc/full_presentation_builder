@@ -289,6 +289,39 @@ async function enrichWithAirtable(programme) {
   }
 }
 
+// ─── AI TEXT REWRITE (in-presentation editor) ────────────────────────────────
+
+async function handleRewrite(rewrite, res, apiKey) {
+  const { text, instruction, context } = rewrite || {};
+  if (!text?.trim()) return res.status(400).json({ error: "Missing text to rewrite" });
+
+  const client = new Anthropic({ apiKey });
+  const sys = `You are the senior copywriter of Love IT DMC, a luxury Italian destination management company.
+You rewrite short presentation texts (slide descriptions, taglines, headlines).
+Rules:
+- Return ONLY the rewritten text — no quotes, no preamble, no markdown.
+- Keep the same language as the original unless the instruction says otherwise.
+- Elegant, refined, concise luxury-hospitality tone.
+- Keep roughly the same length unless the instruction says otherwise.`;
+
+  const user = `${context ? `Slide context: ${context}\n` : ""}Instruction: ${instruction || "Improve this text: more elegant and refined."}
+
+Original text:
+${text.trim()}`;
+
+  try {
+    const resp = await client.messages.create({
+      model:      "claude-haiku-4-5-20251001",
+      max_tokens: 1024,
+      system:     sys,
+      messages:   [{ role: "user", content: user }],
+    });
+    return res.status(200).json({ text: resp.content[0].text.trim() });
+  } catch (e) {
+    return res.status(502).json({ error: `AI rewrite failed: ${e.message}` });
+  }
+}
+
 // ─── MAIN HANDLER ─────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -298,11 +331,15 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST")   return res.status(405).json({ error: "Method not allowed" });
 
-  const { programText } = req.body ?? {};
-  if (!programText?.trim()) return res.status(400).json({ error: "Missing programText" });
+  const { programText, rewrite } = req.body ?? {};
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "Missing ANTHROPIC_API_KEY" });
+
+  // Rewrite mode: quick AI edit of a single text from the in-presentation editor
+  if (rewrite) return handleRewrite(rewrite, res, apiKey);
+
+  if (!programText?.trim()) return res.status(400).json({ error: "Missing programText" });
 
   const templatePath = path.resolve(process.cwd(), "template", "loveit_template.html");
   let template;

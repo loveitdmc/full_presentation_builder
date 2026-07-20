@@ -695,6 +695,13 @@ body.edit-mode #edit-controls{ opacity:1; }
 .video-card-thumb:hover .video-card-play svg{ opacity:1; }
 .video-card-caption{ margin-top:.8rem;font-family:var(--sans);font-size:.72rem;letter-spacing:.06em;color:var(--warm-white);opacity:.75;line-height:1.5;text-align:center;padding:0 .3rem; }
 
+/* ── AI rewrite bar ───────────────────────────────────────────────────────── */
+.ai-bar{position:fixed;z-index:300;display:flex;gap:.35rem;background:rgba(15,13,10,.97);border:1px solid rgba(201,169,110,.4);border-radius:4px;padding:.4rem .5rem;box-shadow:0 8px 30px rgba(0,0,0,.5);}
+.ai-bar button{background:transparent;border:1px solid rgba(201,169,110,.25);border-radius:3px;color:rgba(201,169,110,.85);font-family:var(--sans);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;padding:.35rem .6rem;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.ai-bar button:hover{border-color:var(--gold);color:var(--warm-white);background:rgba(201,169,110,.12);}
+.ai-busy{opacity:.45;pointer-events:none;animation:aiPulse 1.2s ease-in-out infinite;}
+@keyframes aiPulse{0%,100%{opacity:.45}50%{opacity:.25}}
+
 /* ── Photo drop zones ─────────────────────────────────────────────────────── */
 .edit-zone{position:absolute;inset:0;z-index:50;display:grid;place-items:center;font-family:var(--sans);font-size:.58rem;font-weight:400;letter-spacing:.15em;text-transform:uppercase;color:transparent;background:transparent;border:1.5px dashed transparent;cursor:pointer;transition:background .18s,border-color .18s,color .18s;user-select:none;}
 .edit-zone:hover{ color:rgba(201,169,110,.9);background:rgba(0,0,0,.4);border-color:rgba(201,169,110,.5); }
@@ -1389,6 +1396,71 @@ try{ LoveitEditor=(function(){
     if(placeM) return `https://www.google.com/maps?q=${decodeURIComponent(placeM[1])}&output=embed`;
     return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&output=embed`;
   }
+
+  /* ── AI rewrite dei testi (Claude) ─────────────────────────────────────── */
+  let _aiBar=null,_aiTarget=null,_aiHideTimer=null;
+  const _AI_INS={
+    improve:'Migliora questo testo: più elegante e raffinato, stessa lingua e lunghezza simile.',
+    shorten:'Accorcia questo testo mantenendo eleganza e le informazioni chiave.',
+    expand:'Espandi leggermente questo testo con più dettagli evocativi, restando conciso.',
+    en:'Translate this text into refined English suitable for a luxury travel presentation.',
+    it:'Traduci questo testo in italiano elegante per una presentazione di viaggi di lusso.'
+  };
+  function _hideAiBar(){ if(_aiBar){_aiBar.remove();_aiBar=null;_aiTarget=null;} }
+  function _showAiBar(el){
+    _hideAiBar();
+    if(!(window.LOVEIT_API_BASE||'')) return;
+    _aiTarget=el;
+    _aiBar=document.createElement('div');
+    _aiBar.className='ai-bar';
+    _aiBar.innerHTML=`
+      <button data-ins="improve" title="Riscrivi più elegante">✨ Migliora</button>
+      <button data-ins="shorten" title="Riduci il testo">− Accorcia</button>
+      <button data-ins="expand" title="Aggiungi dettagli">+ Espandi</button>
+      <button data-ins="en" title="Traduci in inglese">EN</button>
+      <button data-ins="it" title="Traduci in italiano">IT</button>
+      <button data-ins="undo" title="Ripristina testo precedente">↩</button>`;
+    document.body.appendChild(_aiBar);
+    const r=el.getBoundingClientRect(),bw=_aiBar.offsetWidth;
+    _aiBar.style.left=Math.max(8,Math.min(window.innerWidth-bw-8,r.left+r.width/2-bw/2))+'px';
+    _aiBar.style.top=Math.max(8,r.top-48)+'px';
+    _aiBar.addEventListener('mousedown',e=>e.preventDefault()); // non perdere il focus
+    _aiBar.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>_aiRewrite(b.dataset.ins)));
+  }
+  async function _aiRewrite(ins){
+    const el=_aiTarget;if(!el) return;
+    if(ins==='undo'){
+      if(el.dataset.aiPrev!==undefined){ el.innerText=el.dataset.aiPrev;delete el.dataset.aiPrev; }
+      return;
+    }
+    const apiBase=window.LOVEIT_API_BASE||'';
+    const original=el.innerText.trim();if(!original) return;
+    const context=el.closest('section')?.querySelector('.headline,.gallery-title-small')?.innerText||'';
+    el.classList.add('ai-busy');
+    try{
+      const resp=await fetch(apiBase+'/api/generate-text',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({rewrite:{text:original,instruction:_AI_INS[ins],context}})
+      });
+      const data=await resp.json();
+      if(data.error) throw new Error(data.error);
+      if(data.text){ el.dataset.aiPrev=original;el.innerText=data.text; }
+    }catch(e){ alert('Errore AI: '+e.message); }
+    el.classList.remove('ai-busy');
+  }
+  document.addEventListener('focusin',e=>{
+    if(!textMode) return;
+    const el=e.target;
+    if(el.isContentEditable&&!el.closest('.ai-bar')){ clearTimeout(_aiHideTimer);_showAiBar(el); }
+  });
+  document.addEventListener('focusout',()=>{
+    clearTimeout(_aiHideTimer);
+    _aiHideTimer=setTimeout(()=>{
+      const a=document.activeElement;
+      if(!a||(!a.isContentEditable&&!a.closest('.ai-bar'))) _hideAiBar();
+    },250);
+  });
+  document.addEventListener('scroll',_hideAiBar,true);
 
   function _toVideoEmbed(url){
     if(!url) return null;

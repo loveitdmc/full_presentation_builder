@@ -8,6 +8,14 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v24 — 2026-07-20
+- **AI rewrite dei testi**: in modalità testo, cliccando su un testo editabile appare
+  una barra AI (✨ Migliora · − Accorcia · + Espandi · EN · IT · ↩ Ripristina).
+  Chiama Claude Haiku via `/api/generate-text` con body `{rewrite:{text,instruction,context}}`
+  e sostituisce il testo in-place; il precedente resta in `data-ai-prev` per l'undo.
+- `generate-text.js`: nuova `handleRewrite()` (copywriter Love IT, mantiene lingua e
+  lunghezza salvo istruzione diversa, restituisce solo il testo).
+
 ## v23 — 2026-07-20
 - Fix: titolo slide Video illeggibile (nero su nero) — `.videos-inner` ora imposta
   `color:var(--warm-white)`; `.headline` non ha colore proprio, lo eredita.
