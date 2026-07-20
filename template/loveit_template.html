@@ -518,37 +518,28 @@ section:hover .bg{transform:scale(1.02)}
     </section>`;
   }
 
-  function buildVideo(act, day, video, num, total, dayIdx, actIdx){
+  function buildVideosGrid(act, day, num, total, dayIdx, actIdx){
     const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
     const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
-    // YouTube: use thumbnail + play button (works even when embedding is disabled)
-    const ytMatch = video.embedUrl.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/);
-    if(ytMatch){
-      const ytId    = ytMatch[1];
-      const thumb   = `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`;
-      const watchUrl= `https://www.youtube.com/watch?v=${ytId}`;
-      return `
-    <section class="slide-video slide-video-yt"${dataAttrs} onclick="window.open('${watchUrl}','_blank')" style="cursor:pointer">
-      <div class="bg" style="background-image:url('${thumb}');background-size:cover;background-position:center"></div>
-      <div class="ov-dark"></div>
-      <div class="video-play-btn"><svg viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="38" fill="rgba(0,0,0,.55)" stroke="rgba(255,255,255,.6)" stroke-width="2"/><polygon points="32,24 32,56 60,40" fill="white"/></svg></div>
-      <div class="gallery-header">
-        <span class="gallery-label">Day ${day.number}</span>
-        <span class="gallery-title-small">${video.title || act.title}</span>
-      </div>
-      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
-    </section>`;
-    }
-    // Vimeo / Drive / direct file: embed as iframe/video
-    const mediaTag = video.isFile
-      ? `<video src="${video.embedUrl}" controls playsinline></video>`
-      : `<iframe src="${video.embedUrl}" allowfullscreen frameborder="0" allow="autoplay; fullscreen; picture-in-picture; web-share"></iframe>`;
+    const vids = act.videos || [];
+    const cols = vids.length===1?1:(vids.length===2||vids.length===4?2:3);
+    const cells = vids.map(v=>{
+      const yt = v.embedUrl.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/);
+      const thumb = yt ? `https://img.youtube.com/vi/${yt[1]}/hqdefault.jpg` : '';
+      const openUrl = (v.sourceUrl || (yt ? `https://www.youtube.com/watch?v=${yt[1]}` : v.embedUrl)).replace(/'/g,'%27').replace(/"/g,'&quot;');
+      return `<div class="video-card">
+        <div class="video-card-thumb" onclick="window.open('${openUrl}','_blank')" style="${thumb?`background-image:url('${thumb}')`:''}">
+          <div class="video-card-play"><svg viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="38" fill="rgba(0,0,0,.55)" stroke="rgba(255,255,255,.6)" stroke-width="2"/><polygon points="32,24 32,56 60,40" fill="white"/></svg></div>
+        </div>
+        <div class="video-card-caption">${v.title || 'Performance'}</div>
+      </div>`;
+    }).join('');
     return `
-    <section class="slide-video"${dataAttrs}>
-      <div class="video-frame">${mediaTag}</div>
+    <section class="slide-videos"${dataAttrs}>
+      <div class="videos-grid videos-grid-${cols}">${cells}</div>
       <div class="gallery-header">
-        <span class="gallery-label">Day ${day.number}</span>
-        <span class="gallery-title-small">${video.title || act.title}</span>
+        <span class="gallery-label">Video</span>
+        <span class="gallery-title-small">${act.title}</span>
       </div>
       <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
     </section>`;
@@ -585,10 +576,7 @@ section:hover .bg{transform:scale(1.02)}
           slideBuilders.push((num, total) => buildGallery(act, day, num, total, dayIdx, actIdx));
         }
         if(act.videos?.length){
-          act.videos.forEach(video=>{
-            const v=video;
-            slideBuilders.push((num, total) => buildVideo(act, day, v, num, total, dayIdx, actIdx));
-          });
+          slideBuilders.push((num, total) => buildVideosGrid(act, day, num, total, dayIdx, actIdx));
         }
       }
     });
