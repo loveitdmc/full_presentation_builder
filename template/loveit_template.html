@@ -696,9 +696,15 @@ body.edit-mode #edit-controls{ opacity:1; }
 .video-card-caption{ margin-top:.8rem;font-family:var(--sans);font-size:.72rem;letter-spacing:.06em;color:var(--warm-white);opacity:.75;line-height:1.5;text-align:center;padding:0 .3rem; }
 
 /* ── AI rewrite bar ───────────────────────────────────────────────────────── */
-.ai-bar{position:fixed;z-index:300;display:flex;gap:.35rem;background:rgba(15,13,10,.97);border:1px solid rgba(201,169,110,.4);border-radius:4px;padding:.4rem .5rem;box-shadow:0 8px 30px rgba(0,0,0,.5);}
+.ai-bar{position:fixed;z-index:300;display:flex;flex-direction:column;gap:.4rem;background:rgba(15,13,10,.97);border:1px solid rgba(201,169,110,.4);border-radius:4px;padding:.45rem .5rem;box-shadow:0 8px 30px rgba(0,0,0,.5);}
+.ai-bar-row{display:flex;gap:.35rem;}
 .ai-bar button{background:transparent;border:1px solid rgba(201,169,110,.25);border-radius:3px;color:rgba(201,169,110,.85);font-family:var(--sans);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;padding:.35rem .6rem;cursor:pointer;transition:all .15s;white-space:nowrap;}
 .ai-bar button:hover{border-color:var(--gold);color:var(--warm-white);background:rgba(201,169,110,.12);}
+.ai-bar-custom{display:flex;gap:.35rem;}
+.ai-bar-custom input{flex:1;min-width:0;background:rgba(255,255,255,.05);border:1px solid rgba(201,169,110,.2);border-radius:3px;color:var(--warm-white);font-family:var(--sans);font-size:.68rem;padding:.35rem .55rem;outline:none;transition:border-color .15s;}
+.ai-bar-custom input::placeholder{color:rgba(201,169,110,.35);}
+.ai-bar-custom input:focus{border-color:rgba(201,169,110,.6);}
+.ai-bar-custom button{text-transform:none;font-size:.68rem;}
 .ai-busy{opacity:.45;pointer-events:none;animation:aiPulse 1.2s ease-in-out infinite;}
 @keyframes aiPulse{0%,100%{opacity:.45}50%{opacity:.25}}
 
@@ -1414,20 +1420,31 @@ try{ LoveitEditor=(function(){
     _aiBar=document.createElement('div');
     _aiBar.className='ai-bar';
     _aiBar.innerHTML=`
-      <button data-ins="improve" title="Riscrivi più elegante">✨ Migliora</button>
-      <button data-ins="shorten" title="Riduci il testo">− Accorcia</button>
-      <button data-ins="expand" title="Aggiungi dettagli">+ Espandi</button>
-      <button data-ins="en" title="Traduci in inglese">EN</button>
-      <button data-ins="it" title="Traduci in italiano">IT</button>
-      <button data-ins="undo" title="Ripristina testo precedente">↩</button>`;
+      <div class="ai-bar-row">
+        <button data-ins="improve" title="Riscrivi più elegante">✨ Migliora</button>
+        <button data-ins="shorten" title="Riduci il testo">− Accorcia</button>
+        <button data-ins="expand" title="Aggiungi dettagli">+ Espandi</button>
+        <button data-ins="en" title="Traduci in inglese">EN</button>
+        <button data-ins="it" title="Traduci in italiano">IT</button>
+        <button data-ins="undo" title="Ripristina testo precedente">↩</button>
+      </div>
+      <div class="ai-bar-custom">
+        <input type="text" placeholder="✨ Istruzione libera… es. più formale, cita il tramonto" autocomplete="off"/>
+        <button data-ins="custom" title="Applica istruzione">→</button>
+      </div>`;
     document.body.appendChild(_aiBar);
-    const r=el.getBoundingClientRect(),bw=_aiBar.offsetWidth;
+    const r=el.getBoundingClientRect(),bw=_aiBar.offsetWidth,bh=_aiBar.offsetHeight;
     _aiBar.style.left=Math.max(8,Math.min(window.innerWidth-bw-8,r.left+r.width/2-bw/2))+'px';
-    _aiBar.style.top=Math.max(8,r.top-48)+'px';
-    _aiBar.addEventListener('mousedown',e=>e.preventDefault()); // non perdere il focus
-    _aiBar.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>_aiRewrite(b.dataset.ins)));
+    _aiBar.style.top=Math.max(8,r.top-bh-10)+'px';
+    _aiBar.addEventListener('mousedown',e=>{ if(e.target.tagName!=='INPUT') e.preventDefault(); }); // non perdere il focus
+    const inp=_aiBar.querySelector('.ai-bar-custom input');
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter'&&inp.value.trim()) _aiRewrite('custom',inp.value.trim()); });
+    _aiBar.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+      if(b.dataset.ins==='custom'){ if(inp.value.trim()) _aiRewrite('custom',inp.value.trim()); }
+      else _aiRewrite(b.dataset.ins);
+    }));
   }
-  async function _aiRewrite(ins){
+  async function _aiRewrite(ins,customInstruction){
     const el=_aiTarget;if(!el) return;
     if(ins==='undo'){
       if(el.dataset.aiPrev!==undefined){ el.innerText=el.dataset.aiPrev;delete el.dataset.aiPrev; }
@@ -1436,11 +1453,12 @@ try{ LoveitEditor=(function(){
     const apiBase=window.LOVEIT_API_BASE||'';
     const original=el.innerText.trim();if(!original) return;
     const context=el.closest('section')?.querySelector('.headline,.gallery-title-small')?.innerText||'';
+    const instruction=ins==='custom'?customInstruction:_AI_INS[ins];
     el.classList.add('ai-busy');
     try{
       const resp=await fetch(apiBase+'/api/generate-text',{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({rewrite:{text:original,instruction:_AI_INS[ins],context}})
+        body:JSON.stringify({rewrite:{text:original,instruction,context}})
       });
       const data=await resp.json();
       if(data.error) throw new Error(data.error);

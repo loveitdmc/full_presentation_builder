@@ -8,6 +8,10 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v25 — 2026-07-20
+- Barra AI: aggiunto campo di istruzione libera sotto i pulsanti rapidi
+  (es. "più formale", "cita il tramonto") — Invio o → per applicare.
+
 ## v24 — 2026-07-20
 - **AI rewrite dei testi**: in modalità testo, cliccando su un testo editabile appare
   una barra AI (✨ Migliora · − Accorcia · + Espandi · EN · IT · ↩ Ripristina).
