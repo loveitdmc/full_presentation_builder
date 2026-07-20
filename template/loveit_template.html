@@ -521,7 +521,7 @@ section:hover .bg{transform:scale(1.02)}
   function buildVideosGrid(act, day, num, total, dayIdx, actIdx){
     const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
     const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
-    const vids = act.videos || [];
+    const vids = (act.videos || []).slice(0,6);
     const cols = vids.length===1?1:(vids.length===2||vids.length===4?2:3);
     const cells = vids.map(v=>{
       const yt = v.embedUrl.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/);
@@ -536,10 +536,10 @@ section:hover .bg{transform:scale(1.02)}
     }).join('');
     return `
     <section class="slide-videos"${dataAttrs}>
-      <div class="videos-grid videos-grid-${cols}">${cells}</div>
-      <div class="gallery-header">
-        <span class="gallery-label">Video</span>
-        <span class="gallery-title-small">${act.title}</span>
+      <div class="videos-inner">
+        <div class="eyebrow">Video</div>
+        <h2 class="headline">${act.title}</h2>
+        <div class="videos-grid videos-grid-${cols}">${cells}</div>
       </div>
       <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
     </section>`;
@@ -679,19 +679,21 @@ body.edit-mode #edit-controls{ opacity:1; }
 .video-play-btn{ position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);z-index:5;width:80px;height:80px;transition:transform .2s,opacity .2s; }
 .slide-video-yt:hover .video-play-btn{ transform:translate(-50%,-60%) scale(1.12); }
 
-/* ── Slide Video multipli (griglia miniature) ─────────────────────────────── */
-.slide-videos{ background:#0d0d0d;align-items:center;justify-content:center;padding:5rem 5vw 6rem; }
-.videos-grid{ display:grid;gap:1.8rem 1.6rem;width:100%;max-width:1200px; }
-.videos-grid-1{ grid-template-columns:minmax(0,680px);justify-content:center; }
-.videos-grid-2{ grid-template-columns:repeat(2,1fr); }
+/* ── Slide Video (titolo centrale + griglia miniature, max 6) ─────────────── */
+.slide-videos{ background:#0d0d0d;align-items:center;justify-content:center;padding:4.5rem 5vw; }
+.videos-inner{ width:100%;max-width:1150px;margin:0 auto;text-align:center; }
+.videos-inner .eyebrow{ margin-bottom:1rem; }
+.videos-inner .headline{ margin-bottom:2.8rem; }
+.videos-grid{ display:grid;gap:2rem 1.8rem;justify-content:center; }
+.videos-grid-1{ grid-template-columns:minmax(0,640px); }
+.videos-grid-2{ grid-template-columns:repeat(2,minmax(0,460px)); }
 .videos-grid-3{ grid-template-columns:repeat(3,1fr); }
 .video-card-thumb{ aspect-ratio:16/9;background-color:#1a1a1a;background-size:cover;background-position:center;position:relative;border:1px solid rgba(201,169,110,.22);cursor:pointer;transition:transform .2s,border-color .2s; }
 .video-card-thumb:hover{ transform:scale(1.02);border-color:rgba(201,169,110,.65); }
 .video-card-play{ position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none; }
-.video-card-play svg{ width:52px;height:52px;opacity:.85;transition:opacity .2s; }
+.video-card-play svg{ width:48px;height:48px;opacity:.85;transition:opacity .2s; }
 .video-card-thumb:hover .video-card-play svg{ opacity:1; }
-.video-card-caption{ margin-top:.7rem;font-family:var(--sans);font-size:.75rem;letter-spacing:.05em;color:var(--warm-white);opacity:.8;line-height:1.45; }
-.slide-videos .gallery-header{ position:absolute;bottom:0;left:0;width:100%;padding:1.5rem 2rem;background:linear-gradient(to top, rgba(0,0,0,.75) 0%, transparent 100%);z-index:5; }
+.video-card-caption{ margin-top:.8rem;font-family:var(--sans);font-size:.72rem;letter-spacing:.06em;color:var(--warm-white);opacity:.75;line-height:1.5;text-align:center;padding:0 .3rem; }
 
 /* ── Photo drop zones ─────────────────────────────────────────────────────── */
 .edit-zone{position:absolute;inset:0;z-index:50;display:grid;place-items:center;font-family:var(--sans);font-size:.58rem;font-weight:400;letter-spacing:.15em;text-transform:uppercase;color:transparent;background:transparent;border:1.5px dashed transparent;cursor:pointer;transition:background .18s,border-color .18s,color .18s;user-select:none;}
@@ -1291,8 +1293,8 @@ try{ LoveitEditor=(function(){
         lastSec=sec2;
       }
 
-      // 3. Unica slide "Video": griglia di miniature con descrizione sotto
-      const vids=data.videos||[];
+      // 3. Unica slide "Video": titolo centrale + griglia miniature (max 6)
+      const vids=(data.videos||[]).slice(0,6);
       if(vids.length>0){
         const sec3=document.createElement('section');
         sec3.className='slide-videos';sec3.setAttribute('data-added','1');
@@ -1308,7 +1310,7 @@ try{ LoveitEditor=(function(){
             <div class="video-card-caption">${v.title||'Performance'}</div>
           </div>`;
         }).join('');
-        sec3.innerHTML=`<div class="videos-grid videos-grid-${cols}">${cells}</div><div class="gallery-header"><span class="gallery-label">Video</span><span class="gallery-title-small">${data.act||actName}</span></div>`;
+        sec3.innerHTML=`<div class="videos-inner"><div class="eyebrow">Video</div><h2 class="headline">${data.act||actName}</h2><div class="videos-grid videos-grid-${cols}">${cells}</div></div>`;
         sec3.querySelectorAll('.video-card-thumb').forEach(t=>{
           t.addEventListener('click',()=>window.open(t.dataset.url,'_blank'));
         });

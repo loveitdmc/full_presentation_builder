@@ -53,6 +53,27 @@ function parseVideoLinks(text) {
   return out;
 }
 
+// Fetch real video titles from YouTube oEmbed (no API key needed).
+// Mutates v.title in place; non-YouTube videos keep their existing title.
+async function enrichYouTubeTitles(videos) {
+  await Promise.all(videos.map(async v => {
+    const yt = v.embedUrl.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/);
+    if (!yt) return;
+    try {
+      const watchUrl = `https://www.youtube.com/watch?v=${yt[1]}`;
+      const r = await fetch(
+        `https://www.youtube.com/oembed?url=${encodeURIComponent(watchUrl)}&format=json`,
+        { signal: AbortSignal.timeout(4000) }
+      );
+      if (r.ok) {
+        const d = await r.json();
+        if (d.title) v.title = d.title;
+      }
+    } catch { /* keep existing title */ }
+  }));
+  return videos;
+}
+
 function isVideoLinkOrType(assetType, driveLink, fileUrls) {
   const t = (assetType || "").toLowerCase();
   if (t.includes("video")) return true;
@@ -199,6 +220,8 @@ async function handleActivity(activityName, res, token, baseId) {
   if (!photoUrls.length && !videos.length) {
     ({ photos: photoUrls, vids: videos } = buildAssets(mediaRecords));
   }
+  videos = videos.slice(0, 6);
+  await enrichYouTubeTitles(videos);
 
   const unsplashKey = process.env.UNSPLASH_ACCESS_KEY;
   const cityName    = supplier?.city || "Italy";
@@ -459,8 +482,9 @@ export default async function handler(req, res) {
     })
     .filter(Boolean);
 
-  // Prefer field videos if present, otherwise use Media videos
-  const videos = videosFromField.length > 0 ? videosFromField : videosFromMedia;
+  // Prefer field videos if present, otherwise use Media videos — max 6, real YT titles
+  const videos = (videosFromField.length > 0 ? videosFromField : videosFromMedia).slice(0, 6);
+  await enrichYouTubeTitles(videos);
 
   // 6. Cover photo
   const unsplashKey = process.env.UNSPLASH_ACCESS_KEY;
