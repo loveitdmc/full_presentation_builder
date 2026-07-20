@@ -322,6 +322,97 @@ ${text.trim()}`;
   }
 }
 
+// ─── DATABASE CHAT (natural-language queries over Airtable) ──────────────────
+
+async function atFetchAll(baseId, token, tableId, fields) {
+  const fieldsParam = fields.map(f => `fields[]=${encodeURIComponent(f)}`).join("&");
+  let all = [], offset = "";
+  do {
+    const url = `https://api.airtable.com/v0/${baseId}/${tableId}?${fieldsParam}&pageSize=100${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`;
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10000) });
+    if (!resp.ok) throw new Error(`Airtable ${resp.status} on ${tableId}`);
+    const data = await resp.json();
+    all = all.concat(data.records || []);
+    offset = data.offset || "";
+  } while (offset);
+  return all;
+}
+
+const _v = v => Array.isArray(v) ? v.map(x => x?.name || x).join(",")
+  : (typeof v === "object" && v?.name) ? v.name : (v ?? "");
+const _row = arr => arr.map(x => String(x ?? "").replace(/\|/g, "/").replace(/\s*\n\s*/g, " ").trim()).join("|");
+
+async function handleDbChat(dbchat, res, apiKey) {
+  const { question, history } = dbchat || {};
+  if (!question?.trim()) return res.status(400).json({ error: "Missing question" });
+  const token  = process.env.AIRTABLE_TOKEN;
+  const baseId = process.env.AIRTABLE_BASE_ID;
+  if (!token || !baseId) return res.status(500).json({ error: "Missing Airtable config" });
+
+  let suppliers, prices, rooms, activities, artists;
+  try {
+    [suppliers, prices, rooms, activities, artists] = await Promise.all([
+      atFetchAll(baseId, token, "tbl3rEBd03iC29uNb", ["Name","City","Type","Supplier Categories","Capacity","Rooms","Preferred Supplier","Features"]),
+      atFetchAll(baseId, token, "tbljeSwiqGWdJHvoQ", ["Price Line","Supplier","Category","Amount","Currency","Unit","VAT Included","Valid Until","Status","Quoted Guests","Effective Price per Person"]),
+      atFetchAll(baseId, token, "tbl4JXVw0K9Sz0dHC", ["Meeting Room Name","Supplier","Setting","Area m²","Banquet Capacity","Theatre Capacity","Cocktail Capacity","Classroom Capacity","Boardroom Capacity"]),
+      atFetchAll(baseId, token, "tblPIbMu1UDjOLYIK", ["Activity or Service Name","Supplier","Activity Type","Setting","Capacity","Duration","Current Fee EUR","Fee Basis"]),
+      atFetchAll(baseId, token, "tblbCAthb1HXfc13i", ["Artist or Show Name","Supplier","Artist & Show Tags","Number of Performers","Performance Duration","Current Fee EUR","Fee Basis"]),
+    ]);
+  } catch (e) {
+    return res.status(502).json({ error: `Airtable error: ${e.message}` });
+  }
+
+  const supName = new Map(suppliers.map(r => [r.id, r.fields.Name || ""]));
+  const sn = f => supName.get((f.Supplier || [])[0]) || "";
+
+  const db = `SUPPLIERS (Name|City|Type|Categories|Capacity|Rooms|Preferred|Features):
+${suppliers.map(r => { const f = r.fields; return _row([f.Name, f.City, f.Type, _v(f["Supplier Categories"]), f.Capacity, f.Rooms, f["Preferred Supplier"] ? "yes" : "", _v(f.Features)]); }).join("\n")}
+
+PRICES (Supplier|PriceLine|Category|Amount|Currency|Unit|VATincluded|ValidUntil|Status|QuotedGuests|EffectivePricePerPerson):
+${prices.map(r => { const f = r.fields; return _row([sn(f), f["Price Line"], _v(f.Category), f.Amount, _v(f.Currency), _v(f.Unit), f["VAT Included"] ? "yes" : "", f["Valid Until"], _v(f.Status), f["Quoted Guests"], f["Effective Price per Person"]]); }).join("\n")}
+
+MEETING ROOMS (Supplier|Room|Setting|Area m2|Banquet|Theatre|Cocktail|Classroom|Boardroom):
+${rooms.map(r => { const f = r.fields; return _row([sn(f), f["Meeting Room Name"], _v(f.Setting), f["Area m²"], f["Banquet Capacity"], f["Theatre Capacity"], f["Cocktail Capacity"], f["Classroom Capacity"], f["Boardroom Capacity"]]); }).join("\n")}
+
+ACTIVITIES (Supplier|Activity|Type|Setting|Capacity|Duration|FeeEUR|FeeBasis):
+${activities.map(r => { const f = r.fields; return _row([sn(f), f["Activity or Service Name"], _v(f["Activity Type"]), _v(f.Setting), f.Capacity, f.Duration, f["Current Fee EUR"], _v(f["Fee Basis"])]); }).join("\n")}
+
+ARTISTS & SHOWS (Supplier|Name|Tags|Performers|Duration|FeeEUR|FeeBasis):
+${artists.map(r => { const f = r.fields; return _row([sn(f), f["Artist or Show Name"], _v(f["Artist & Show Tags"]), f["Number of Performers"], f["Performance Duration"], f["Current Fee EUR"], _v(f["Fee Basis"])]); }).join("\n")}`;
+
+  const sys = `You are the database assistant of Love IT DMC, a luxury Italian DMC.
+Answer questions using ONLY the database snapshot below (pipe-separated tables).
+Rules:
+- Answer in the user's language (usually Italian). Be concise.
+- Format results as a short intro line followed by a bulleted list: "• **Name** — City — key details".
+- Include prices with currency and unit when relevant (e.g. "€65 per person, VAT included").
+- Prices marked with QuotedGuests are group totals; use EffectivePricePerPerson for per-head comparisons.
+- If nothing matches, say so clearly and suggest the closest alternatives from the data.
+- Never invent data that is not in the snapshot.
+
+DATABASE SNAPSHOT:
+${db}`;
+
+  const msgs = [];
+  for (const h of (history || []).slice(-4)) {
+    if (h.q && h.a) { msgs.push({ role: "user", content: h.q }); msgs.push({ role: "assistant", content: h.a }); }
+  }
+  msgs.push({ role: "user", content: question.trim() });
+
+  try {
+    const client = new Anthropic({ apiKey });
+    const resp = await client.messages.create({
+      model:      "claude-sonnet-4-6",
+      max_tokens: 1500,
+      system:     sys,
+      messages:   msgs,
+    });
+    return res.status(200).json({ answer: resp.content[0].text.trim() });
+  } catch (e) {
+    return res.status(502).json({ error: `AI error: ${e.message}` });
+  }
+}
+
 // ─── MAIN HANDLER ─────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -331,13 +422,16 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST")   return res.status(405).json({ error: "Method not allowed" });
 
-  const { programText, rewrite } = req.body ?? {};
+  const { programText, rewrite, dbchat } = req.body ?? {};
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "Missing ANTHROPIC_API_KEY" });
 
   // Rewrite mode: quick AI edit of a single text from the in-presentation editor
   if (rewrite) return handleRewrite(rewrite, res, apiKey);
+
+  // Database chat mode: natural-language questions over Airtable
+  if (dbchat) return handleDbChat(dbchat, res, apiKey);
 
   if (!programText?.trim()) return res.status(400).json({ error: "Missing programText" });
 

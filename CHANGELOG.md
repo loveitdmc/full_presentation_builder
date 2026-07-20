@@ -8,6 +8,14 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v29 — 2026-07-20
+- **Chat database**: pulsante 💬 flottante su index.html apre una chat per interrogare
+  Airtable in linguaggio naturale ("ristoranti a Roma con menù sotto i 70€").
+- `generate-text.js`: modalità `{dbchat:{question,history}}` — scarica snapshot compatto
+  di Suppliers/Prices/Meeting Rooms/Activities/Artists (formato pipe), lo passa a
+  claude-sonnet-4-6 come contesto, risponde con lista puntata. History ultimi 4 turni
+  per follow-up.
+
 ## v28 — 2026-07-20
 - Pannello: "Spazi" spostato in riga Documents. Riga Activity ora:
   Artista · Attività · Ristoranti (arancio) · Hotel (teal) · Venue (rosa).
