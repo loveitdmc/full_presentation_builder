@@ -841,6 +841,12 @@ body.edit-mode [contenteditable="true"]{
 .pp-divider::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(201,169,110,.15);}
 .pp-divider span{position:relative;background:rgba(8,8,8,.97);padding:0 .8rem;font-family:var(--sans);font-size:.5rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.25);}
 .pp-dropzone{width:100%;padding:.8rem 1rem;background:rgba(201,169,110,.06);border:1.5px dashed rgba(201,169,110,.3);color:rgba(201,169,110,.65);cursor:pointer;border-radius:2px;font-family:var(--sans);font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;}
+.pp-linkrow{display:flex;gap:.45rem;}
+.pp-linkrow input{flex:1;min-width:0;background:rgba(255,255,255,.05);border:1px solid rgba(201,169,110,.22);border-radius:2px;color:var(--warm-white);font-family:var(--sans);font-size:.72rem;padding:.55rem .7rem;outline:none;transition:border-color .15s;}
+.pp-linkrow input::placeholder{color:rgba(201,169,110,.35);}
+.pp-linkrow input:focus{border-color:rgba(201,169,110,.6);}
+.pp-linkrow button{background:transparent;border:1px solid rgba(201,169,110,.3);border-radius:2px;color:var(--gold);font-size:.85rem;padding:.4rem .85rem;cursor:pointer;transition:all .15s;}
+.pp-linkrow button:hover{border-color:var(--gold);background:rgba(201,169,110,.12);color:var(--warm-white);}
 .pp-dropzone:hover,.pp-dropzone.drag-over{background:rgba(201,169,110,.14);border-color:var(--gold);border-style:solid;color:var(--gold);}
 
 /* ── Split photo placeholder ─────────────────────────────────────────────── */
@@ -888,9 +894,12 @@ try{ LoveitEditor=(function(){
       e.stopPropagation();currentTarget=target;
       const sec=target.closest('section');
       const dIdx=sec?.dataset.day, aIdx=sec?.dataset.act;
-      const avail=(dIdx!==undefined&&aIdx!==undefined) ? (TRIP.days[+dIdx]?.activities[+aIdx]?.allPhotos||[]) : [];
-      if(avail.length>0){ _showPhotoPicker(target,avail); }
-      else { fi.value='';fi.click(); }
+      let avail=(dIdx!==undefined&&aIdx!==undefined) ? (TRIP.days[+dIdx]?.activities[+aIdx]?.allPhotos||[]) : [];
+      // Slide aggiunte dai picker (artisti/attività): foto salvate sulla sezione
+      if(!avail.length&&sec?.dataset.allPhotos){
+        try{ avail=JSON.parse(sec.dataset.allPhotos)||[]; }catch{}
+      }
+      _showPhotoPicker(target,avail);
     });
     z.addEventListener('dragover',e=>{ e.preventDefault();e.dataTransfer.dropEffect='copy';z.classList.add('drag-over'); });
     z.addEventListener('dragleave',()=>z.classList.remove('drag-over'));
@@ -922,12 +931,26 @@ try{ LoveitEditor=(function(){
     const hasPhotos=photos.length>0;
     panel.innerHTML=`
       <button class="pp-close" title="Chiudi">&times;</button>
-      <div class="pp-title">Foto del fornitore — clicca per sostituire</div>
+      <div class="pp-title">${hasPhotos?'Foto disponibili — clicca per sostituire':'Sostituisci foto'}</div>
       ${hasPhotos?`<div class="pp-grid">${photos.map((url,i)=>`<div class="pp-thumb" data-idx="${i}" style="background-image:url('${url}')"></div>`).join('')}</div><div class="pp-divider"><span>oppure</span></div>`:''}
-      <div class="pp-dropzone" id="pp-dz">&#8681;&nbsp; Trascina una foto qui, o clicca per sfogliare</div>`;
+      <div class="pp-dropzone" id="pp-dz">&#8681;&nbsp; Trascina una foto qui, o clicca per sfogliare</div>
+      <div class="pp-divider"><span>oppure</span></div>
+      <div class="pp-linkrow">
+        <input type="url" placeholder="&#128279;&nbsp; Incolla il link di una foto…" autocomplete="off"/>
+        <button title="Usa questo link">→</button>
+      </div>`;
     document.body.appendChild(panel);
     _photoPicker=panel;
     panel.querySelector('.pp-close').addEventListener('click',()=>{panel.remove();_photoPicker=null;});
+    const linkInp=panel.querySelector('.pp-linkrow input');
+    const _useLink=()=>{
+      const u=linkInp.value.trim();
+      if(!/^https?:\/\/\S+/i.test(u)){ linkInp.style.borderColor='rgba(220,60,60,.7)';return; }
+      applyUrl(u,target);panel.remove();_photoPicker=null;
+    };
+    panel.querySelector('.pp-linkrow button').addEventListener('click',_useLink);
+    linkInp.addEventListener('keydown',e=>{ if(e.key==='Enter') _useLink(); });
+    linkInp.addEventListener('input',()=>{ linkInp.style.borderColor=''; });
     if(hasPhotos){
       panel.querySelectorAll('.pp-thumb').forEach((thumb,i)=>{
         thumb.addEventListener('click',()=>{ applyUrl(photos[i],target);panel.remove();_photoPicker=null; });
@@ -1281,6 +1304,7 @@ try{ LoveitEditor=(function(){
       const mainPhoto=data.mainPhoto||(data.photos&&data.photos[0])||'';
       const sec1=document.createElement('section');
       sec1.className='slide-split slide-split-photo-left';sec1.setAttribute('data-added','1');
+      if((data.photos||[]).length) sec1.dataset.allPhotos=JSON.stringify(data.photos);
       sec1.innerHTML=`<div class="split-photo" style="background-image:url('${mainPhoto}')"></div><div class="split-content">${data.meta?`<div class="eyebrow" style="margin-bottom:.6rem">${data.meta}</div>`:''}<h2 class="headline">${data.act||actName}</h2><p class="body-text">${data.description||''}</p>${data.supplier?`<p class="body-text" style="margin-top:.75rem;opacity:.55;font-size:.85em">${data.supplier}</p>`:''}</div>`;
       lastSec.insertAdjacentElement('afterend',sec1);
       if(window._loveitIO) window._loveitIO.observe(sec1);
@@ -1294,6 +1318,7 @@ try{ LoveitEditor=(function(){
       if(extraPhotos.length>0){
         const sec2=document.createElement('section');
         sec2.className='slide-gallery';sec2.setAttribute('data-added','1');
+        if((data.photos||[]).length) sec2.dataset.allPhotos=JSON.stringify(data.photos);
         const layout=extraPhotos.length===1?'grid-1':'grid-3';
         const cells=extraPhotos.map(url=>`<div class="gallery-cell" style="background-image:url('${url}')"></div>`).join('');
         sec2.innerHTML=`<div class="gallery-grid ${layout}">${cells}</div><div class="gallery-header"><span class="gallery-label">Gallery</span><span class="gallery-title-small">${data.act||actName}</span></div>`;

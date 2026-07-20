@@ -8,6 +8,13 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v26 — 2026-07-20
+- Fix photo picker sulle slide artista/attività aggiunte dai picker: le foto vengono
+  salvate sulla sezione in `data-all-photos` (JSON) e `makeZone` le legge come fallback
+  quando mancano `data-day`/`data-act`.
+- Photo picker: nuovo campo "Incolla il link di una foto" (Enter o →, validazione URL).
+  Il picker si apre sempre (anche senza foto disponibili: dropzone + link).
+
 ## v25 — 2026-07-20
 - Barra AI: aggiunto campo di istruzione libera sotto i pulsanti rapidi
   (es. "più formale", "cita il tramonto") — Invio o → per applicare.
