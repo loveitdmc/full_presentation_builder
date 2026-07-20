@@ -8,6 +8,16 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v27 — 2026-07-20
+- Pannello aggiungi-slide riorganizzato in 3 righe con titoli:
+  **Template** (Singola, Grande sx/dx, Foto sx/dx — oro) ·
+  **Documents** (Mappa blu, PDF rosso, Video verde, Planimetria viola) ·
+  **Activity** (Artista, Attività, Spazi se presente).
+- Nuovo pulsante Planimetria: stesso flusso PDF ma la slide è etichettata "Planimetria";
+  il pulsante PDF ora etichetta "Documento" (`_showPdfInput`/`_insertPdfSlide` con kindLabel).
+- Layout a griglia 5 colonne per righe allineate; i picker nascondono tutte le righe
+  (`querySelectorAll('.asp-options,.asp-group-title')`).
+
 ## v26 — 2026-07-20
 - Fix photo picker sulle slide artista/attività aggiunte dai picker: le foto vengono
   salvate sulla sezione in `data-all-photos` (JSON) e `makeZone` le legge come fallback
