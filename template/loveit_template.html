@@ -691,6 +691,20 @@ body.edit-mode #edit-controls{ opacity:1; }
 .video-play-btn{ position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);z-index:5;width:80px;height:80px;transition:transform .2s,opacity .2s; }
 .slide-video-yt:hover .video-play-btn{ transform:translate(-50%,-60%) scale(1.12); }
 
+/* ── Slide Video multipli (griglia miniature) ─────────────────────────────── */
+.slide-videos{ background:#0d0d0d;align-items:center;justify-content:center;padding:5rem 5vw 6rem; }
+.videos-grid{ display:grid;gap:1.8rem 1.6rem;width:100%;max-width:1200px; }
+.videos-grid-1{ grid-template-columns:minmax(0,680px);justify-content:center; }
+.videos-grid-2{ grid-template-columns:repeat(2,1fr); }
+.videos-grid-3{ grid-template-columns:repeat(3,1fr); }
+.video-card-thumb{ aspect-ratio:16/9;background-color:#1a1a1a;background-size:cover;background-position:center;position:relative;border:1px solid rgba(201,169,110,.22);cursor:pointer;transition:transform .2s,border-color .2s; }
+.video-card-thumb:hover{ transform:scale(1.02);border-color:rgba(201,169,110,.65); }
+.video-card-play{ position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none; }
+.video-card-play svg{ width:52px;height:52px;opacity:.85;transition:opacity .2s; }
+.video-card-thumb:hover .video-card-play svg{ opacity:1; }
+.video-card-caption{ margin-top:.7rem;font-family:var(--sans);font-size:.75rem;letter-spacing:.05em;color:var(--warm-white);opacity:.8;line-height:1.45; }
+.slide-videos .gallery-header{ position:absolute;bottom:0;left:0;width:100%;padding:1.5rem 2rem;background:linear-gradient(to top, rgba(0,0,0,.75) 0%, transparent 100%);z-index:5; }
+
 /* ── Photo drop zones ─────────────────────────────────────────────────────── */
 .edit-zone{position:absolute;inset:0;z-index:50;display:grid;place-items:center;font-family:var(--sans);font-size:.58rem;font-weight:400;letter-spacing:.15em;text-transform:uppercase;color:transparent;background:transparent;border:1.5px dashed transparent;cursor:pointer;transition:background .18s,border-color .18s,color .18s;user-select:none;}
 .edit-zone:hover{ color:rgba(201,169,110,.9);background:rgba(0,0,0,.4);border-color:rgba(201,169,110,.5); }
@@ -1289,29 +1303,31 @@ try{ LoveitEditor=(function(){
         lastSec=sec2;
       }
 
-      // 3. Video slides
-      for(const video of (data.videos||[])){
-        const ytMatch=video.embedUrl.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/);
+      // 3. Unica slide "Video": griglia di miniature con descrizione sotto
+      const vids=data.videos||[];
+      if(vids.length>0){
         const sec3=document.createElement('section');
-        sec3.setAttribute('data-added','1');
-        if(ytMatch){
-          const ytId=ytMatch[1];
-          const thumb=`https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`;
-          const watchUrl=`https://www.youtube.com/watch?v=${ytId}`;
-          sec3.className='slide-video slide-video-yt';sec3.style.cursor='pointer';
-          sec3.onclick=()=>window.open(watchUrl,'_blank');
-          sec3.innerHTML=`<div class="bg" style="background-image:url('${thumb}');background-size:cover;background-position:center"></div><div class="ov-dark"></div><div class="video-play-btn"><svg viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="38" fill="rgba(0,0,0,.55)" stroke="rgba(255,255,255,.6)" stroke-width="2"/><polygon points="32,24 32,56 60,40" fill="white"/></svg></div><div class="gallery-header"><span class="gallery-label">Video</span><span class="gallery-title-small">${data.act||actName}</span></div>`;
-        } else {
-          sec3.className='slide-video';
-          const mediaTag=video.isFile
-            ?`<video src="${video.embedUrl}" controls playsinline></video>`
-            :`<iframe src="${video.embedUrl}" allowfullscreen frameborder="0" allow="autoplay; fullscreen; picture-in-picture"></iframe>`;
-          sec3.innerHTML=`<div class="video-frame">${mediaTag}</div><div class="gallery-header"><span class="gallery-label">Video</span><span class="gallery-title-small">${data.act||actName}</span></div>`;
-        }
+        sec3.className='slide-videos';sec3.setAttribute('data-added','1');
+        const cols=vids.length===1?1:(vids.length===2||vids.length===4?2:3);
+        const cells=vids.map(v=>{
+          const yt=v.embedUrl.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/);
+          const thumb=yt?`https://img.youtube.com/vi/${yt[1]}/hqdefault.jpg`:'';
+          const openUrl=v.sourceUrl||(yt?`https://www.youtube.com/watch?v=${yt[1]}`:v.embedUrl);
+          return `<div class="video-card">
+            <div class="video-card-thumb" data-url="${openUrl.replace(/"/g,'&quot;')}" style="${thumb?`background-image:url('${thumb}')`:''}">
+              <div class="video-card-play"><svg viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="38" fill="rgba(0,0,0,.55)" stroke="rgba(255,255,255,.6)" stroke-width="2"/><polygon points="32,24 32,56 60,40" fill="white"/></svg></div>
+            </div>
+            <div class="video-card-caption">${v.title||'Performance'}</div>
+          </div>`;
+        }).join('');
+        sec3.innerHTML=`<div class="videos-grid videos-grid-${cols}">${cells}</div><div class="gallery-header"><span class="gallery-label">Video</span><span class="gallery-title-small">${data.act||actName}</span></div>`;
+        sec3.querySelectorAll('.video-card-thumb').forEach(t=>{
+          t.addEventListener('click',()=>window.open(t.dataset.url,'_blank'));
+        });
         lastSec.insertAdjacentElement('afterend',sec3);
         if(window._loveitIO) window._loveitIO.observe(sec3);
         _insertDot(sec3);_addInsertBtn(sec3);if(editMode) _addDeleteBtn(sec3);
-        if(textMode) sec3.querySelectorAll(TEXT_SEL).forEach(el=>{el.contentEditable='true';el.spellcheck=false;});
+        if(textMode) sec3.querySelectorAll(TEXT_SEL+',.video-card-caption').forEach(el=>{el.contentEditable='true';el.spellcheck=false;});
         lastSec=sec3;
       }
 

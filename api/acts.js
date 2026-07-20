@@ -36,6 +36,23 @@ function extractUrls(text) {
   return (text.match(/https?:\/\/\S+/g) || []).map(u => u.replace(/[,;)>\]"']+$/, ''));
 }
 
+// Parse "Video Links" line by line: each line may carry a label before/after the URL.
+// e.g. "Gala Dinner Performance – https://youtu.be/xyz" → { url, label }
+function parseVideoLinks(text) {
+  if (!text) return [];
+  const out = [];
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.match(/(https?:\/\/\S+)/);
+    if (!m) continue;
+    const url = m[1].replace(/[,;)>\]"']+$/, '');
+    const label = line.replace(m[1], '')
+      .replace(/^[\s\-–—:•·|]+/, '').replace(/[\s\-–—:•·|]+$/, '')
+      .trim();
+    out.push({ url, label: label || null });
+  }
+  return out;
+}
+
 function isVideoLinkOrType(assetType, driveLink, fileUrls) {
   const t = (assetType || "").toLowerCase();
   if (t.includes("video")) return true;
@@ -168,6 +185,7 @@ async function handleActivity(activityName, res, token, baseId) {
         const embedUrl = toEmbedUrl(videoRawUrl);
         if (embedUrl) vids.push({
           embedUrl,
+          sourceUrl: videoRawUrl,
           isFile: /\.(mp4|webm|ogg)(\?|$)/i.test(videoRawUrl),
           title: m.description || "Video",
         });
@@ -419,6 +437,7 @@ export default async function handler(req, res) {
       if (embedUrl) {
         videosFromMedia.push({
           embedUrl,
+          sourceUrl: videoRawUrl,
           isFile: /\.(mp4|webm|ogg)(\?|$)/i.test(videoRawUrl),
           title: m.description || "Performance",
         });
@@ -427,14 +446,15 @@ export default async function handler(req, res) {
   }
 
   // 5. Build video list from "Video Links" field (more reliable source)
-  const videosFromField = extractUrls(actRecord.videoLinks)
-    .map(url => {
+  const videosFromField = parseVideoLinks(actRecord.videoLinks)
+    .map(({ url, label }) => {
       const embedUrl = toEmbedUrl(url);
       if (!embedUrl) return null;
       return {
         embedUrl,
+        sourceUrl: url,
         isFile: /\.(mp4|webm|ogg)(\?|$)/i.test(url),
-        title: "Performance",
+        title: label || "Performance",
       };
     })
     .filter(Boolean);
