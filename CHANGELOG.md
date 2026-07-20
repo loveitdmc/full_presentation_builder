@@ -8,6 +8,10 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v23 — 2026-07-20
+- Fix: titolo slide Video illeggibile (nero su nero) — `.videos-inner` ora imposta
+  `color:var(--warm-white)`; `.headline` non ha colore proprio, lo eredita.
+
 ## v22 — 2026-07-20
 - Slide Video ridisegnata: eyebrow "Video" + titolo artista centrale, sotto griglia
   di max 6 miniature con caption centrata. Vale per rendering statico
