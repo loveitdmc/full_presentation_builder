@@ -8,6 +8,15 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v28 — 2026-07-20
+- Pannello: "Spazi" spostato in riga Documents. Riga Activity ora:
+  Artista · Attività · Ristoranti (arancio) · Hotel (teal) · Venue (rosa).
+- Picker fornitori per categoria: `acts-list.js` `?kind=restaurants|hotels|venues`
+  (filtro su "Supplier Categories", thumbnail dai Photos attachments);
+  `acts.js` body `{supplier: nome}` → JSON slide (descrizione, meta City·Type·pax·rooms, foto).
+- `_insertArtistSlides` ora accetta mode 'act'|'activity'|'supplier'; le slide fornitore
+  ricevono `data-supplier` così il pulsante Spazi funziona anche da lì.
+
 ## v27 — 2026-07-20
 - Pannello aggiungi-slide riorganizzato in 3 righe con titoli:
   **Template** (Singola, Grande sx/dx, Foto sx/dx — oro) ·

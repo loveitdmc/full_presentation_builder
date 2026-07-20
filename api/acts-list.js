@@ -33,6 +33,37 @@ async function airtableFetch(url, token) {
   return resp.json();
 }
 
+// Suppliers filtered by category — thumbnails come straight from the Photos attachments
+const TABLE_SUPPLIERS = "tbl3rEBd03iC29uNb";
+const SUPPLIER_KINDS = { restaurants: "Restaurant", hotels: "Hotel", venues: "Venue" };
+
+async function handleSuppliersList(category, res, token, baseId) {
+  const formula = encodeURIComponent(`FIND("${category}", ARRAYJOIN({Supplier Categories}))>0`);
+  const fields  = ["Name", "City", "Photos"].map(f => `fields[]=${encodeURIComponent(f)}`).join("&");
+  let allRecords = [];
+  let offset = "";
+  try {
+    do {
+      const url = `https://api.airtable.com/v0/${baseId}/${TABLE_SUPPLIERS}?filterByFormula=${formula}&${fields}&maxRecords=100${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`;
+      const data = await airtableFetch(url, token);
+      allRecords = allRecords.concat(data.records || []);
+      offset = data.offset || "";
+    } while (offset);
+  } catch (e) {
+    return res.status(502).json({ error: `Airtable error: ${e.message}` });
+  }
+
+  const suppliers = allRecords.map(r => {
+    const f = r.fields;
+    if (!f.Name) return null;
+    const first = (f.Photos || [])[0];
+    const thumbnail = first ? (first.thumbnails?.large?.url || first.url) : null;
+    return { name: f.Name, type: f.City || "", thumbnail };
+  }).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
+
+  return res.status(200).json({ suppliers });
+}
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
@@ -43,6 +74,11 @@ export default async function handler(req, res) {
   const token  = process.env.AIRTABLE_TOKEN;
   const baseId = process.env.AIRTABLE_BASE_ID;
   if (!token || !baseId) return res.status(500).json({ error: "Missing Airtable config" });
+
+  // Supplier category kinds (restaurants / hotels / venues)
+  if (SUPPLIER_KINDS[req.query?.kind]) {
+    return handleSuppliersList(SUPPLIER_KINDS[req.query.kind], res, token, baseId);
+  }
 
   // Select kind: default artists, ?kind=activities for Activities table
   const kind = KINDS[req.query?.kind] || KINDS.artists;

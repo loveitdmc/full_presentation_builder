@@ -250,6 +250,39 @@ async function handleActivity(activityName, res, token, baseId) {
   });
 }
 
+// ─── SUPPLIER SLIDE (restaurants / hotels / venues pickers) ──────────────────
+
+async function handleSupplierSlide(name, res, token, baseId) {
+  let f;
+  try {
+    const safe = name.replace(/"/g, '\\"').toLowerCase();
+    const formula = encodeURIComponent(`SEARCH("${safe}", LOWER({Name}))>0`);
+    const url = `https://api.airtable.com/v0/${baseId}/${TABLE_SUPPLIERS}?filterByFormula=${formula}&maxRecords=1`;
+    const data = await airtableFetch(url, token);
+    if (!data.records?.length) return res.status(404).json({ error: `"${name}" not found in Suppliers.` });
+    f = data.records[0].fields;
+  } catch (e) {
+    return res.status(502).json({ error: `Airtable error: ${e.message}` });
+  }
+
+  const photos = (f.Photos || []).map(p => p.url).filter(Boolean);
+  const metaParts = [];
+  if (f.City)     metaParts.push(f.City);
+  if (f.Type)     metaParts.push(f.Type);
+  if (f.Capacity) metaParts.push(`Max ${f.Capacity} pax`);
+  if (f.Rooms)    metaParts.push(`${f.Rooms} rooms`);
+
+  return res.status(200).json({
+    act:         f.Name || name,
+    description: f.Description || "",
+    supplier:    null,
+    meta:        metaParts.join(" · ") || null,
+    mainPhoto:   photos[0] || null,
+    photos,
+    videos:      [],
+  });
+}
+
 async function getSupplier(supplierId, token, baseId) {
   const url = `https://api.airtable.com/v0/${baseId}/${TABLE_SUPPLIERS}/${supplierId}`;
   try {
@@ -368,17 +401,22 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { act, activity, format } = req.body ?? {};
-  if (!act?.trim() && !activity?.trim()) return res.status(400).json({ error: "Missing act or activity name" });
+  const { act, activity, supplier: supplierParam, format } = req.body ?? {};
+  if (!act?.trim() && !activity?.trim() && !supplierParam?.trim()) {
+    return res.status(400).json({ error: "Missing act, activity or supplier name" });
+  }
   const jsonOnly = format === "json";
 
   const token  = process.env.AIRTABLE_TOKEN;
   const baseId = process.env.AIRTABLE_BASE_ID;
   if (!token || !baseId) return res.status(500).json({ error: "Missing Airtable configuration (AIRTABLE_TOKEN or AIRTABLE_BASE_ID)" });
 
-  // Activities mode — always JSON (used by the in-presentation picker)
+  // Activities / Supplier modes — always JSON (used by the in-presentation pickers)
   if (activity?.trim()) {
     return handleActivity(activity.trim(), res, token, baseId);
+  }
+  if (supplierParam?.trim()) {
+    return handleSupplierSlide(supplierParam.trim(), res, token, baseId);
   }
 
   // For JSON-only mode we don't need the template
