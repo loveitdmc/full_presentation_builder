@@ -404,7 +404,13 @@ export default async function handler(req, res) {
   let _body = req.body ?? {};
   if (Buffer.isBuffer(_body)) { try { _body = JSON.parse(_body.toString("utf8")); } catch { _body = {}; } }
   else if (typeof _body === "string") { try { _body = JSON.parse(_body); } catch { _body = {}; } }
-  const _s = v => v == null ? v : (typeof v === "string" ? v : String(Array.isArray(v) ? (v[0] ?? "") : v));
+  const _s = v => {
+    if (v == null) return v;
+    if (typeof v === "string") return v;
+    if (Array.isArray(v)) v = v[0] ?? "";
+    if (v != null && typeof v === "object") return ""; // reject stray objects (e.g. serialized DOM event)
+    return String(v);
+  };
   const act = _s(_body.act), activity = _s(_body.activity), supplierParam = _s(_body.supplier), format = _body.format;
   if (!act?.trim() && !activity?.trim() && !supplierParam?.trim()) {
     return res.status(400).json({ error: "Missing act, activity or supplier name" });

@@ -420,9 +420,9 @@ async function generateFromText() {
 }
 
 // GENERATE SUPPLIER
-btnGenerateSup.addEventListener('click', generateSupplier);
+btnGenerateSup.addEventListener('click', () => generateSupplier());
 async function generateSupplier(confirmedName) {
-  const name = confirmedName || supplierInput.value.trim();
+  const name = (typeof confirmedName === 'string' && confirmedName.trim()) || supplierInput.value.trim();
   if (!name) return;
   setStepLabels('supplier');
   btnGenerateSup.disabled = true;
@@ -488,9 +488,9 @@ function hideFuzzyConfirm() {
 }
 
 // GENERATE ACT
-btnGenerateAct.addEventListener('click', generateAct);
+btnGenerateAct.addEventListener('click', () => generateAct());
 async function generateAct(confirmedName) {
-  const name = confirmedName || actInput.value.trim();
+  const name = (typeof confirmedName === 'string' && confirmedName.trim()) || actInput.value.trim();
   if (!name) return;
   setStepLabels('act');
   btnGenerateAct.disabled = true;

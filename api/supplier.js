@@ -339,7 +339,29 @@ async function generateWithAI(supplierName, apiKey) {
   const text = resp.content[0].text.trim()
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```\s*$/i, "");
-  return JSON.parse(text);
+  return extractJsonObject(text);
+}
+
+// Robust JSON extraction: the model sometimes adds text before/after the JSON.
+// Finds the first "{" and walks to its matching "}" (string-aware), then parses.
+function extractJsonObject(text) {
+  const start = text.indexOf("{");
+  if (start === -1) throw new Error("No JSON object in AI response");
+  let depth = 0, inStr = false, escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inStr) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inStr = false;
+    } else if (ch === '"') inStr = true;
+    else if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) return JSON.parse(text.slice(start, i + 1));
+    }
+  }
+  throw new Error("Unbalanced JSON in AI response");
 }
 
 // ─── MAIN HANDLER ─────────────────────────────────────────────────────────────
@@ -372,6 +394,9 @@ async function mainHandler(req, res) {
   else if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
   let supplier = body?.supplier;
   if (Array.isArray(supplier)) supplier = supplier[0];
+  // Reject plain objects (e.g. a stray DOM event serialized to {}) instead of
+  // silently stringifying to "[object Object]" — that produced confusing AI output.
+  if (supplier != null && typeof supplier === "object") supplier = "";
   if (supplier != null && typeof supplier !== "string") supplier = String(supplier);
   if (!supplier?.trim()) return res.status(400).json({ error: "Missing supplier name" });
 

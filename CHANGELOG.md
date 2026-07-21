@@ -8,6 +8,25 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v33 — 2026-07-21
+- **Trovata la vera causa del bug "iOS"**: non era mai iOS. `btnGenerateSup` e
+  `btnGenerateAct` erano collegati direttamente a `generateSupplier`/`generateAct`
+  (`addEventListener('click', generateSupplier)`) — il click passa il MouseEvent come
+  primo argomento, che essendo un oggetto "vero" sovrascriveva il testo digitato
+  nell'input. Su desktop probabilmente si premeva Invio (nessun argomento, funziona);
+  al tocco su mobile si usa il pulsante (bug). Fix: `addEventListener('click', () =>
+  generateSupplier())`. Il `String(supplier)` aggiunto in v31 mascherava il sintomo
+  trasformando l'oggetto in "[object Object]" invece di un errore chiaro — ora sia
+  `index.html` sia `supplier.js`/`acts.js` rifiutano gli oggetti (invece di stringificarli)
+  e mostrano/lasciano l'errore visibile.
+
+## v32 — 2026-07-21
+- Fix "AI generation failed: Unexpected non-whitespace character after JSON":
+  il modello a volte aggiunge testo dopo il JSON (errore intermittente, non legato a iOS).
+  Nuovo `extractJsonObject()` (estrae il primo blocco {...} bilanciato, string-aware)
+  usato in `supplier.js` (generateWithAI), `generate-text.js` (extractProgramme),
+  `generate.js` (parse TRIP dal PDF).
+
 ## v31 — 2026-07-21
 - **Fix iOS**: "supplier?.trim is not a function" — da iPhone/iPad il body POST arriva
   come stringa/Buffer non parsato (su Mac Vercel lo parsa in oggetto). Parsing tollerante

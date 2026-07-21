@@ -313,10 +313,10 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: `Claude API error: ${e.message}` });
   }
 
-  // Step 2: Parse JSON
+  // Step 2: Parse JSON (robust: extract first balanced {...}, model may add extra text)
   let tripObj;
   try {
-    tripObj = JSON.parse(tripJson);
+    tripObj = extractJsonObject(tripJson);
   } catch (e) {
     console.error("JSON parse error. Raw:", tripJson.slice(0, 300));
     return res.status(502).json({ error: "Claude returned invalid JSON. Try again.", raw: tripJson.slice(0, 500) });
@@ -355,4 +355,25 @@ export default async function handler(req, res) {
     client: resolvedTrip.client ?? "",
     destination: resolvedTrip.destination ?? "",
   });
+}
+
+// Robust JSON extraction: the model sometimes adds text before/after the JSON.
+function extractJsonObject(text) {
+  const start = text.indexOf("{");
+  if (start === -1) throw new Error("No JSON object in AI response");
+  let depth = 0, inStr = false, escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inStr) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inStr = false;
+    } else if (ch === '"') inStr = true;
+    else if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) return JSON.parse(text.slice(start, i + 1));
+    }
+  }
+  throw new Error("Unbalanced JSON in AI response");
 }
