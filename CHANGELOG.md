@@ -8,6 +8,12 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v30 — 2026-07-21
+- Debug: HTTP 500 "nudo" (non-JSON) su Genera Scheda Fornitore da iOS. Aggiunto guard
+  globale try/catch in `supplier.js` (`handler` → `mainHandler`) che restituisce
+  `{error: "Errore interno: …"}` con il messaggio reale del crash. In attesa di
+  riprodurre con il messaggio visibile.
+
 ## v29 — 2026-07-20
 - **Chat database**: pulsante 💬 flottante su index.html apre una chat per interrogare
   Airtable in linguaggio naturale ("ristoranti a Roma con menù sotto i 70€").

@@ -345,6 +345,17 @@ async function generateWithAI(supplierName, apiKey) {
 // ─── MAIN HANDLER ─────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
+  // Global guard: any unhandled crash returns a JSON error instead of a bare 500
+  try {
+    return await mainHandler(req, res);
+  } catch (e) {
+    console.error("supplier.js crash:", e);
+    try { return res.status(500).json({ error: `Errore interno: ${e.message}` }); }
+    catch { /* headers already sent */ }
+  }
+}
+
+async function mainHandler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
