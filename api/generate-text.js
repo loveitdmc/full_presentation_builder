@@ -422,7 +422,11 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST")   return res.status(405).json({ error: "Method not allowed" });
 
-  const { programText, rewrite, dbchat } = req.body ?? {};
+  let _body = req.body ?? {};
+  if (Buffer.isBuffer(_body)) { try { _body = JSON.parse(_body.toString("utf8")); } catch { _body = {}; } }
+  else if (typeof _body === "string") { try { _body = JSON.parse(_body); } catch { _body = {}; } }
+  const { rewrite, dbchat } = _body;
+  const programText = typeof _body.programText === "string" ? _body.programText : (_body.programText == null ? undefined : String(_body.programText));
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "Missing ANTHROPIC_API_KEY" });

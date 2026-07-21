@@ -401,7 +401,11 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { act, activity, supplier: supplierParam, format } = req.body ?? {};
+  let _body = req.body ?? {};
+  if (Buffer.isBuffer(_body)) { try { _body = JSON.parse(_body.toString("utf8")); } catch { _body = {}; } }
+  else if (typeof _body === "string") { try { _body = JSON.parse(_body); } catch { _body = {}; } }
+  const _s = v => v == null ? v : (typeof v === "string" ? v : String(Array.isArray(v) ? (v[0] ?? "") : v));
+  const act = _s(_body.act), activity = _s(_body.activity), supplierParam = _s(_body.supplier), format = _body.format;
   if (!act?.trim() && !activity?.trim() && !supplierParam?.trim()) {
     return res.status(400).json({ error: "Missing act, activity or supplier name" });
   }

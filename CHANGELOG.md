@@ -8,6 +8,12 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v31 — 2026-07-21
+- **Fix iOS**: "supplier?.trim is not a function" — da iPhone/iPad il body POST arriva
+  come stringa/Buffer non parsato (su Mac Vercel lo parsa in oggetto). Parsing tollerante
+  del body in tutti gli endpoint (`supplier.js`, `acts.js`, `generate-text.js`,
+  `generate.js`): Buffer→JSON.parse, string→JSON.parse, coercizione array/non-string.
+
 ## v30 — 2026-07-21
 - Debug: HTTP 500 "nudo" (non-JSON) su Genera Scheda Fornitore da iOS. Aggiunto guard
   globale try/catch in `supplier.js` (`handler` → `mainHandler`) che restituisce

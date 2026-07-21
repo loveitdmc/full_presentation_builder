@@ -266,7 +266,10 @@ export default async function handler(req, res) {
   }
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { pdf, filename } = req.body ?? {};
+  let _body = req.body ?? {};
+  if (Buffer.isBuffer(_body)) { try { _body = JSON.parse(_body.toString("utf8")); } catch { _body = {}; } }
+  else if (typeof _body === "string") { try { _body = JSON.parse(_body); } catch { _body = {}; } }
+  const { pdf, filename } = _body;
   if (!pdf) return res.status(400).json({ error: "Missing pdf field" });
 
   const apiKey = process.env.ANTHROPIC_API_KEY;

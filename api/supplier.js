@@ -365,7 +365,14 @@ async function mainHandler(req, res) {
   if (req.method === "GET") return handleGetSpaces(req, res);
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { supplier } = req.body ?? {};
+  // Tolerant body parsing — on some clients (iOS Safari) the body may arrive
+  // as a raw string/Buffer instead of a parsed object
+  let body = req.body ?? {};
+  if (Buffer.isBuffer(body)) { try { body = JSON.parse(body.toString("utf8")); } catch { body = {}; } }
+  else if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
+  let supplier = body?.supplier;
+  if (Array.isArray(supplier)) supplier = supplier[0];
+  if (supplier != null && typeof supplier !== "string") supplier = String(supplier);
   if (!supplier?.trim()) return res.status(400).json({ error: "Missing supplier name" });
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
