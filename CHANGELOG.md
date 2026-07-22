@@ -29,6 +29,18 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
   - Il riordino è un normale spostamento di nodo nel DOM (`insertBefore`), quindi
     viene intercettato automaticamente dal MutationObserver esistente: risulta
     "annullabile" con Undo/Redo (v37) senza bisogno di codice dedicato.
+- **Nuovi campi editabili**: i badge in copertina (date/pax/paese, `.meta-pill`)
+  e i valori di capienza sala nelle slide "Spazi" (`.room-cap-label`/`.room-cap-value`,
+  es. "Theatre 30") sono ora testo modificabile in Edit Mode, come titoli e paragrafi.
+- **Righe "Day" gestibili nella tabella Programme** (slide "Your journey at a glance").
+  Ogni riga (`Day N · data` + descrizione) ha ora una × per rimuoverla (lascia
+  sempre almeno una riga), e un pulsante "+ Aggiungi giorno" in fondo alla tabella
+  crea una nuova riga precompilata e già pronta per la digitazione (focus automatico).
+  Righe aggiunte/rimosse sono tracciate dal dirty-tracking e da Undo/Redo come le
+  altre modifiche (esteso `_isRealEdit` per riconoscere l'aggiunta/rimozione di `<tr>`).
+  Nota tecnica: i pulsanti stanno dentro `.content-dark`, che in edit-mode ha
+  `pointer-events:none` per lasciare cliccabili le zone-foto sottostanti — è stato
+  necessario un `pointer-events:auto` dedicato, altrimenti risultavano invisibili al click.
 
 ## v37 — 2026-07-22
 - **Fix bug critico**: cliccando "Chiudi anteprima" e poi "Annulla" sul dialog,
