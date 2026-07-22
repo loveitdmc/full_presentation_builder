@@ -8,6 +8,28 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v38 — 2026-07-22
+- **Nuovo: colonna miniature slide con riordino drag & drop** (`loveit_template.html`).
+  Visibile solo in Edit Mode (come gli altri strumenti di editing), si apre a
+  sinistra e sposta il contenuto della presentazione (`#scroll`, logo, barra
+  controlli) per non sovrapporsi.
+  - Ogni miniatura mostra la foto principale della slide (estratta dal primo
+    `background-image` trovato tra `.bg`/`.split-photo`/`.gallery-cell`/
+    `.video-card-thumb`) + un'etichetta breve (titolo/eyebrow, o un nome
+    generico per tipo: Copertina, Mappa, Planimetrie, Video, Gallery, Chiusura)
+    + il numero di slide. Si evidenzia in oro quella attualmente visibile
+    (IntersectionObserver dedicato) e si aggiorna da sola dopo ogni modifica
+    reale (stesso motore del dirty-tracking/undo), con un debounce leggero di
+    300ms.
+  - Trascinare una miniatura sopra un'altra sposta la `<section>` vera nel
+    deck (non solo l'anteprima): rilascio nella metà superiore = inserisci
+    prima, metà inferiore = inserisci dopo (indicatore visivo con riga dorata).
+    Dopo lo spostamento vengono ricostruiti sia i `#dots` di navigazione sia
+    la colonna miniature.
+  - Il riordino è un normale spostamento di nodo nel DOM (`insertBefore`), quindi
+    viene intercettato automaticamente dal MutationObserver esistente: risulta
+    "annullabile" con Undo/Redo (v37) senza bisogno di codice dedicato.
+
 ## v37 — 2026-07-22
 - **Fix bug critico**: cliccando "Chiudi anteprima" e poi "Annulla" sul dialog,
   l'anteprima si chiudeva comunque perdendo le modifiche. Causa: `index.html`

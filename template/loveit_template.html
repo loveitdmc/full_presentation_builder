@@ -403,9 +403,67 @@ section:hover .bg{transform:scale(1.02)}
 }
 
 @media print{
-  #dots,.logo-bar{display:none}
+  #dots,.logo-bar,#slide-rail{display:none!important}
   section{page-break-after:always}
 }
+
+/* ── Colonna miniature slide (riordino drag & drop) ─────────────────────────── */
+#slide-rail{
+  position:fixed;top:0;left:0;bottom:0;
+  width:0;overflow:hidden;
+  z-index:250;
+  background:rgba(8,8,8,.94);
+  border-right:1px solid rgba(201,169,110,.15);
+  backdrop-filter:blur(10px);
+  transition:width .25s ease;
+}
+body.edit-mode #slide-rail{ width:176px; }
+#slide-rail-inner{
+  width:176px;height:100%;
+  overflow-y:auto;overflow-x:hidden;
+  padding:1rem .7rem 5.5rem;
+  display:flex;flex-direction:column;gap:.6rem;
+}
+#slide-rail-inner::-webkit-scrollbar{width:5px}
+#slide-rail-inner::-webkit-scrollbar-thumb{background:rgba(201,169,110,.25);border-radius:3px}
+.rail-thumb{
+  position:relative;flex-shrink:0;
+  width:100%;aspect-ratio:16/9;
+  border-radius:3px;overflow:hidden;
+  cursor:grab;
+  border:1.5px solid rgba(201,169,110,.18);
+  background:#161616;
+  transition:border-color .2s;
+}
+.rail-thumb:active{ cursor:grabbing; }
+.rail-thumb:hover{ border-color:rgba(201,169,110,.5); }
+.rail-thumb.active{ border-color:var(--gold); }
+.rail-thumb.dragging{ opacity:.35; }
+.rail-thumb-img{ position:absolute;inset:0;background-size:cover;background-position:center; }
+.rail-thumb-num{
+  position:absolute;top:.3rem;left:.35rem;
+  font-family:var(--sans);font-size:.55rem;font-weight:600;
+  color:var(--warm-white);background:rgba(0,0,0,.55);
+  padding:.05rem .35rem;border-radius:2px;letter-spacing:.05em;
+}
+.rail-thumb-label{
+  position:absolute;left:0;right:0;bottom:0;
+  padding:.3rem .4rem .25rem;
+  font-family:var(--sans);font-size:.52rem;font-weight:500;
+  letter-spacing:.03em;color:var(--warm-white);
+  background:linear-gradient(to top,rgba(0,0,0,.85),rgba(0,0,0,0));
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.rail-thumb.drag-over-top::before,
+.rail-thumb.drag-over-bottom::after{
+  content:'';position:absolute;left:0;right:0;height:2px;background:var(--gold);z-index:5;
+}
+.rail-thumb.drag-over-top::before{ top:-4px; }
+.rail-thumb.drag-over-bottom::after{ bottom:-4px; }
+
+body.edit-mode #scroll{ margin-left:176px;width:calc(100% - 176px);transition:margin-left .25s ease,width .25s ease; }
+body.edit-mode .logo-bar{ left:calc(2.8rem + 176px);transition:left .25s ease; }
+body.edit-mode #edit-controls{ left:calc(2.4rem + 176px);transition:left .25s ease; }
 </style>
 </head>
 
@@ -416,6 +474,7 @@ section:hover .bg{transform:scale(1.02)}
 </div>
 
 <nav id="dots"></nav>
+<div id="slide-rail"><div id="slide-rail-inner"></div></div>
 <div id="scroll"></div>
 
 <script>
@@ -1016,6 +1075,7 @@ try{ LoveitEditor=(function(){
       if(window._loveitIO) window._loveitIO.observe(sec);
     });
     if(wasEdit) toggleEdit(); // riaccende: ricostruisce zone-foto/testo editabile/pulsanti sul DOM nuovo
+    _rebuildRail();
     _restoring=false;
     _markDirty();
   }
@@ -1042,13 +1102,128 @@ try{ LoveitEditor=(function(){
     else if((e.key==='z'&&e.shiftKey)||e.key==='y'){ e.preventDefault();redo(); }
   });
 
+  // ── Colonna miniature slide (riordino via drag & drop) ─────────────────────
+  // Ogni thumbnail mostra la foto principale della slide + un'etichetta breve
+  // (titolo/tipo). Si aggiorna da sola dopo ogni modifica reale, riusando lo
+  // stesso MutationObserver del dirty-tracking/undo. Trascinare una thumbnail
+  // sopra un'altra sposta la slide vera (<section>) nel deck; dots e IO di
+  // navigazione vengono ricostruiti di conseguenza.
+  let _railIO=null,_railTimer=null,_dragSrcIdx=null;
+
+  function _railThumbImage(sec){
+    const bgEl=sec.querySelector('.bg,.split-photo,.gallery-cell,.video-card-thumb');
+    if(bgEl){
+      const m=(bgEl.getAttribute('style')||'').match(/background-image:\s*url\(['"]?(.*?)['"]?\)/i);
+      if(m&&m[1]) return m[1];
+    }
+    return null;
+  }
+  function _railThumbLabel(sec,idx){
+    const el=sec.querySelector('.headline,.display,.gallery-title-small,.gallery-label,.eyebrow');
+    const txt=el?el.textContent.trim():'';
+    if(txt) return txt.length>34?txt.slice(0,33)+'…':txt;
+    if(sec.classList.contains('slide-cover')) return 'Copertina';
+    if(sec.classList.contains('slide-closing')) return 'Chiusura';
+    if(sec.classList.contains('slide-map')) return 'Mappa';
+    if(sec.classList.contains('slide-floorplans')) return 'Planimetrie';
+    if(sec.classList.contains('slide-videos')) return 'Video';
+    if(sec.classList.contains('slide-gallery')) return 'Gallery';
+    return `Slide ${idx+1}`;
+  }
+  function _ensureRailIO(){
+    if(_railIO) _railIO.disconnect();
+    const scrollEl=document.getElementById('scroll');
+    if(!scrollEl) return;
+    _railIO=new IntersectionObserver(entries=>{
+      entries.forEach(en=>{
+        if(en.isIntersecting){
+          const secs=Array.from(scrollEl.querySelectorAll('section'));
+          const idx=secs.indexOf(en.target);
+          if(idx>=0) document.querySelectorAll('.rail-thumb').forEach((t,i)=>t.classList.toggle('active',i===idx));
+        }
+      });
+    },{root:scrollEl,threshold:.6});
+    scrollEl.querySelectorAll('section').forEach(s=>_railIO.observe(s));
+  }
+  function _reorderSlide(from,to){
+    const scroll=document.getElementById('scroll');
+    let secs=Array.from(scroll.querySelectorAll('section'));
+    if(from<0||from>=secs.length||from===to) return;
+    const node=secs[from];
+    secs.splice(from,1);
+    let insertAt=to;
+    if(from<to) insertAt--;
+    insertAt=Math.max(0,Math.min(insertAt,secs.length));
+    const ref=secs[insertAt];
+    if(ref) scroll.insertBefore(node,ref); else scroll.appendChild(node);
+    // Ricostruisce i dots di navigazione nello stesso ordine delle slide
+    const dotsNav=document.getElementById('dots');
+    if(dotsNav){
+      dotsNav.innerHTML='';
+      scroll.querySelectorAll('section').forEach(s=>_insertDot(s));
+    }
+    _rebuildRail();
+    setTimeout(()=>node.scrollIntoView({behavior:'smooth'}),50);
+  }
+  function _rebuildRail(){
+    const rail=document.getElementById('slide-rail-inner');
+    if(!rail) return;
+    const secs=Array.from(document.querySelectorAll('#scroll section'));
+    rail.innerHTML='';
+    secs.forEach((sec,i)=>{
+      const thumb=document.createElement('div');
+      thumb.className='rail-thumb';
+      thumb.draggable=true;
+      thumb.title=`Slide ${i+1} — trascina per riordinare`;
+      const img=_railThumbImage(sec);
+      thumb.innerHTML=`${img?`<div class="rail-thumb-img" style="background-image:url('${img.replace(/"/g,'&quot;')}')"></div>`:''}<div class="rail-thumb-num">${i+1}</div><div class="rail-thumb-label">${_railThumbLabel(sec,i)}</div>`;
+      thumb.addEventListener('click',()=>sec.scrollIntoView({behavior:'smooth'}));
+      thumb.addEventListener('dragstart',e=>{
+        _dragSrcIdx=i;
+        thumb.classList.add('dragging');
+        e.dataTransfer.effectAllowed='move';
+        try{ e.dataTransfer.setData('text/plain',String(i)); }catch(_e){}
+      });
+      thumb.addEventListener('dragend',()=>{
+        thumb.classList.remove('dragging');
+        rail.querySelectorAll('.rail-thumb').forEach(t=>t.classList.remove('drag-over-top','drag-over-bottom'));
+      });
+      thumb.addEventListener('dragover',e=>{
+        e.preventDefault();
+        e.dataTransfer.dropEffect='move';
+        const rect=thumb.getBoundingClientRect();
+        const before=(e.clientY-rect.top)<rect.height/2;
+        thumb.classList.toggle('drag-over-top',before);
+        thumb.classList.toggle('drag-over-bottom',!before);
+      });
+      thumb.addEventListener('dragleave',()=>thumb.classList.remove('drag-over-top','drag-over-bottom'));
+      thumb.addEventListener('drop',e=>{
+        e.preventDefault();
+        thumb.classList.remove('drag-over-top','drag-over-bottom');
+        if(_dragSrcIdx===null) return;
+        const rect=thumb.getBoundingClientRect();
+        const before=(e.clientY-rect.top)<rect.height/2;
+        const to=before?i:i+1;
+        _reorderSlide(_dragSrcIdx,to);
+        _dragSrcIdx=null;
+      });
+      rail.appendChild(thumb);
+    });
+    _ensureRailIO();
+  }
+  function _scheduleRailRebuild(){
+    clearTimeout(_railTimer);
+    _railTimer=setTimeout(_rebuildRail,300);
+  }
+
   (function _startDirtyWatcher(){
     const go=()=>{
       const scrollEl=document.getElementById('scroll');
       if(!scrollEl) return;
       _history=[_snapshotScroll()];_historyIdx=0;_updateUndoRedoBtns();
+      _rebuildRail();
       new MutationObserver(muts=>{
-        if(_isRealEdit(muts)){ _markDirty();_scheduleHistoryCommit(); }
+        if(_isRealEdit(muts)){ _markDirty();_scheduleHistoryCommit();_scheduleRailRebuild(); }
       }).observe(scrollEl,{childList:true,subtree:true,attributes:true,attributeFilter:['style'],characterData:true});
     };
     if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',go); else go();
@@ -1162,6 +1337,7 @@ try{ LoveitEditor=(function(){
       document.querySelectorAll(TEXT_SEL).forEach(el=>{ el.contentEditable='true';el.spellcheck=false; });
       // Add + and − buttons to all sections
       document.querySelectorAll('#scroll section').forEach(sec=>{ _addInsertBtn(sec);_addDeleteBtn(sec); });
+      _rebuildRail();
     } else {
       // Deactivate photo zones
       photoMode=false;
