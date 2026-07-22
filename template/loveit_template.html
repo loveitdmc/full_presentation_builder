@@ -682,9 +682,12 @@ section:hover .bg{transform:scale(1.02)}
 body.edit-mode #edit-controls{ opacity:1; }
 #edit-controls button{font-family:var(--sans);font-size:.58rem;font-weight:500;letter-spacing:.13em;text-transform:uppercase;color:rgba(201,169,110,.8);background:rgba(10,10,10,.84);border:1px solid rgba(201,169,110,.22);padding:.42rem 1rem;cursor:pointer;border-radius:2px;backdrop-filter:blur(8px);transition:all .2s;}
 #edit-controls button:hover{ border-color:var(--gold);color:var(--gold); }
+#edit-controls button:disabled{ opacity:.28;cursor:default;pointer-events:none; }
 #edit-btn.active{ background:rgba(201,169,110,.15);border-color:var(--gold);color:var(--warm-white); }
 #save-btn{ display:none;color:var(--warm-white);background:rgba(201,169,110,.17);border-color:rgba(201,169,110,.4); }
 #save-btn:hover{ background:rgba(201,169,110,.3); }
+#undo-btn,#redo-btn{ display:none; }
+body.edit-mode #undo-btn,body.edit-mode #redo-btn{ display:inline-block; }
 #pdf-btn{ color:var(--warm-white);background:rgba(30,30,30,.9); }
 
 /* ── New gallery grid layouts ─────────────────────────────────────────────── */
@@ -905,13 +908,15 @@ body.edit-mode [contenteditable="true"]{
 </style>
 
 <div id="edit-controls">
+  <button id="undo-btn" onclick="LoveitEditor.undo()" title="Annulla (Ctrl+Z)" disabled>&#8630; Undo</button>
+  <button id="redo-btn" onclick="LoveitEditor.redo()" title="Ripeti (Ctrl+Shift+Z)" disabled>&#8631; Redo</button>
   <button id="edit-btn" onclick="LoveitEditor.toggleEdit()">&#9998; Edit</button>
   <button id="save-btn" onclick="LoveitEditor.save()">&#8595; Save HTML</button>
   <button id="pdf-btn"  onclick="window.print()">&#8681; PDF</button>
 </div>
 
 <script>
-let LoveitEditor={toggleEdit:()=>{},togglePhotos:()=>{},toggleText:()=>{},save:()=>{},pdf:()=>window.print()};
+let LoveitEditor={toggleEdit:()=>{},togglePhotos:()=>{},toggleText:()=>{},save:()=>{},pdf:()=>window.print(),undo:()=>{},redo:()=>{}};
 try{ LoveitEditor=(function(){
   let photoMode=false, textMode=false, editMode=false;
   const zones=[], addBtns=[], deleteBtns=[];
@@ -955,12 +960,96 @@ try{ LoveitEditor=(function(){
   }
   window._loveitIsDirty=()=>_dirty;
   window._loveitMarkClean=()=>{ _dirty=false; clearTimeout(_autosaveTimer); try{ localStorage.removeItem(AUTOSAVE_KEY); }catch(e){} };
+
+  // ── Undo / Redo (cronologia snapshot del contenuto) ─────────────────────────
+  // Riusa lo stesso MutationObserver del dirty-tracking: ogni modifica "vera"
+  // (aggiunta/rimozione slide, cambio foto, testo) pianifica un commit nella
+  // cronologia dopo un breve debounce, così una sequenza di mutazioni correlate
+  // (es. le 3-4 slide inserite da _insertArtistSlides, o i tasti premuti
+  // digitando) diventa UN solo passo di undo.
+  const MAX_HISTORY=50;
+  let _history=[], _historyIdx=-1, _historyTimer=null, _restoring=false;
+  function _snapshotScroll(){
+    const scroll=document.getElementById('scroll');
+    const clone=scroll.cloneNode(true);
+    clone.querySelectorAll('.edit-zone,.add-slide-btn,.delete-slide-btn').forEach(el=>el.remove());
+    clone.querySelectorAll('[contenteditable]').forEach(el=>el.removeAttribute('contenteditable'));
+    clone.querySelectorAll('.gallery-cell,.split-photo').forEach(c=>{
+      if(c.style.position==='relative') c.style.position='';
+      if(!c.getAttribute('style')?.trim()) c.removeAttribute('style');
+    });
+    return clone.innerHTML;
+  }
+  function _updateUndoRedoBtns(){
+    const u=document.getElementById('undo-btn'), r=document.getElementById('redo-btn');
+    if(u) u.disabled=_historyIdx<=0;
+    if(r) r.disabled=_historyIdx>=_history.length-1;
+  }
+  function _commitHistory(){
+    if(_restoring) return;
+    const snap=_snapshotScroll();
+    if(_history.length && _history[_historyIdx]===snap) return;
+    _history=_history.slice(0,_historyIdx+1);
+    _history.push(snap);
+    _historyIdx=_history.length-1;
+    while(_history.length>MAX_HISTORY){ _history.shift(); _historyIdx--; }
+    _updateUndoRedoBtns();
+  }
+  function _scheduleHistoryCommit(){
+    clearTimeout(_historyTimer);
+    _historyTimer=setTimeout(_commitHistory,700);
+  }
+  function _flushPendingHistory(){
+    if(_historyTimer){ clearTimeout(_historyTimer);_historyTimer=null;_commitHistory(); }
+  }
+  function _restoreSnapshot(html){
+    clearTimeout(_historyTimer);_historyTimer=null;
+    _restoring=true;
+    const scroll=document.getElementById('scroll');
+    const dotsNav=document.getElementById('dots');
+    const wasEdit=editMode;
+    if(wasEdit) toggleEdit(); // spegne: rimuove pulitamente zone-foto/pulsanti dal DOM vecchio
+    scroll.innerHTML=html;
+    dotsNav.innerHTML='';
+    scroll.querySelectorAll('section').forEach(sec=>{
+      _insertDot(sec);
+      if(window._loveitIO) window._loveitIO.observe(sec);
+    });
+    if(wasEdit) toggleEdit(); // riaccende: ricostruisce zone-foto/testo editabile/pulsanti sul DOM nuovo
+    _restoring=false;
+    _markDirty();
+  }
+  function undo(){
+    _flushPendingHistory();
+    if(_historyIdx<=0) return;
+    _historyIdx--;
+    _restoreSnapshot(_history[_historyIdx]);
+    _updateUndoRedoBtns();
+  }
+  function redo(){
+    if(_historyIdx>=_history.length-1) return;
+    _historyIdx++;
+    _restoreSnapshot(_history[_historyIdx]);
+    _updateUndoRedoBtns();
+  }
+  document.addEventListener('keydown', e=>{
+    const mod=e.metaKey||e.ctrlKey;
+    if(!mod) return;
+    const ae=document.activeElement;
+    const inField=ae && ae.matches && ae.matches('[contenteditable="true"],input,textarea');
+    if(inField) return; // lascia funzionare l'undo nativo del campo di testo
+    if(e.key==='z'&&!e.shiftKey){ e.preventDefault();undo(); }
+    else if((e.key==='z'&&e.shiftKey)||e.key==='y'){ e.preventDefault();redo(); }
+  });
+
   (function _startDirtyWatcher(){
     const go=()=>{
       const scrollEl=document.getElementById('scroll');
       if(!scrollEl) return;
-      new MutationObserver(muts=>{ if(_isRealEdit(muts)) _markDirty(); })
-        .observe(scrollEl,{childList:true,subtree:true,attributes:true,attributeFilter:['style'],characterData:true});
+      _history=[_snapshotScroll()];_historyIdx=0;_updateUndoRedoBtns();
+      new MutationObserver(muts=>{
+        if(_isRealEdit(muts)){ _markDirty();_scheduleHistoryCommit(); }
+      }).observe(scrollEl,{childList:true,subtree:true,attributes:true,attributeFilter:['style'],characterData:true});
     };
     if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',go); else go();
   })();
@@ -2092,7 +2181,7 @@ try{ LoveitEditor=(function(){
 
   function pdf(){ window.print(); }
 
-  return{toggleEdit,togglePhotos,toggleText,save,pdf};
+  return{toggleEdit,togglePhotos,toggleText,save,pdf,undo,redo};
 })(); } catch(e){ console.error('LoveitEditor init error:',e); document.getElementById('pdf-btn').title='Error: '+e.message; }
 </script>
 

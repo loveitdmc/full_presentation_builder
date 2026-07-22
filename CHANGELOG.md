@@ -8,6 +8,38 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v37 — 2026-07-22
+- **Fix bug critico**: cliccando "Chiudi anteprima" e poi "Annulla" sul dialog,
+  l'anteprima si chiudeva comunque perdendo le modifiche. Causa: `index.html`
+  nascondeva l'overlay (`display:none`) e resettava `previewFrame.src` in un
+  colpo solo, PRIMA che il browser mostrasse il suo dialog nativo "Leave site?"
+  (scatenato dal `beforeunload` interno del template quando cambia `src`
+  dell'iframe) — quindi l'anteprima spariva visivamente indipendentemente dalla
+  scelta dell'utente nel dialog. Fix: l'overlay ora si nasconde SOLO dopo
+  l'evento `load` dell'iframe, che scatta esclusivamente se la navigazione verso
+  `about:blank` è realmente avvenuta. Se l'utente preme "Annulla" sul dialog
+  nativo, la navigazione viene bloccata dal browser, `load` non scatta mai, e
+  l'anteprima resta visibile con le modifiche intatte.
+- **Nuovo: Undo / Redo** nell'editor in-presentazione (`loveit_template.html`):
+  - Cronologia a snapshot del contenuto di `#scroll` (fino a 50 passi), pulita
+    da elementi di editing (zone-foto, pulsanti +/−, `contenteditable`) prima
+    di essere salvata, così ogni passo rappresenta solo il contenuto reale.
+  - Riusa lo stesso MutationObserver del dirty-tracking (v36): ogni modifica
+    vera (slide aggiunta/rimossa, foto cambiata, testo modificato) pianifica un
+    "commit" nella cronologia dopo 700ms di quiete, così una sequenza di
+    mutazioni correlate (es. le 3-4 slide inserite in un colpo solo scegliendo
+    un artista/attività, o i tasti premuti scrivendo) diventa un solo passo di
+    undo — non uno per ogni singola mutazione.
+  - Ripristino di uno snapshot: se l'Edit Mode è attivo, viene spento e
+    riacceso per ricostruire correttamente zone-foto/testo editabile/pulsanti
+    sul DOM nuovo (altrimenti resterebbero agganciati a nodi rimossi); i dots
+    di navigazione e l'IntersectionObserver vengono ricreati per ogni sezione.
+  - Due nuovi pulsanti "Undo"/"Redo" nella barra di controllo (visibili solo in
+    Edit Mode, disabilitati quando non c'è nulla da annullare/ripetere) +
+    scorciatoie da tastiera Ctrl/Cmd+Z e Ctrl/Cmd+Shift+Z (o Ctrl+Y), disattivate
+    quando il focus è dentro un campo di testo per lasciare l'undo nativo del
+    browser sul singolo carattere.
+
 ## v36 — 2026-07-22
 - **Protezione modifiche non salvate**, per non perdere il lavoro cliccando per
   sbaglio "Chiudi anteprima", refresh, tasto indietro o chiusura scheda:

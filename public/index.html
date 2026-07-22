@@ -572,10 +572,22 @@ btnPreview.addEventListener('click', e => {
 });
 
 closePreview.addEventListener('click', () => {
+  // Avviso in italiano quando rileviamo modifiche non salvate.
   if (_iframeIsDirty() && !confirm('Hai modifiche non salvate in questa presentazione.\n\nSei sicuro di voler chiudere senza salvare?\n\nSuggerimento: usa "↓ Save HTML" nell\'editor prima di chiudere.')) {
     return;
   }
-  previewOverlay.style.display = 'none';
+  // IMPORTANTE: non nascondiamo subito l'overlay. Cambiare src sull'iframe
+  // scatena il beforeunload interno del template (stesso motore di dirty-check),
+  // che mostra il dialog nativo del browser "Leave site?" se ci sono modifiche.
+  // Nascondiamo l'overlay SOLO dopo che la navigazione a about:blank è
+  // realmente avvenuta (evento 'load'): se l'utente preme "Annulla" sul
+  // dialog nativo, la navigazione viene bloccata, 'load' non scatta mai,
+  // e l'anteprima resta visibile con le modifiche intatte.
+  const onLoaded = () => {
+    previewFrame.removeEventListener('load', onLoaded);
+    previewOverlay.style.display = 'none';
+  };
+  previewFrame.addEventListener('load', onLoaded);
   previewFrame.src = 'about:blank';
 });
 
