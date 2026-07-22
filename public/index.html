@@ -540,14 +540,53 @@ function showResult(data, title, badge = '') {
   setTimeout(() => { progressEl.style.display = 'none'; resultEl.style.display = 'block'; }, 600);
 }
 
-// PREVIEW
+// PREVIEW — protezione modifiche non salvate
+const AUTOSAVE_KEY = 'loveit_autosave_v1';
+
+function _iframeIsDirty() {
+  try { return !!(previewFrame.contentWindow && previewFrame.contentWindow._loveitIsDirty && previewFrame.contentWindow._loveitIsDirty()); }
+  catch { return false; }
+}
+
 btnPreview.addEventListener('click', e => {
   e.preventDefault();
   if (!generatedHtml) return;
-  previewFrame.src = URL.createObjectURL(new Blob([generatedHtml], {type:'text/html'}));
+
+  // Se esiste una bozza autosalvata (es. dopo un refresh accidentale), offri di recuperarla
+  let html = generatedHtml;
+  try {
+    const raw = localStorage.getItem(AUTOSAVE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      const savedWhen = new Date(saved.savedAt).toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'});
+      if (saved.html && confirm(`Trovata una bozza con modifiche non salvate ("${saved.title || 'presentazione'}") salvata automaticamente alle ${savedWhen}.\n\nVuoi recuperarla invece di ripartire da zero?`)) {
+        html = saved.html;
+      } else {
+        localStorage.removeItem(AUTOSAVE_KEY);
+      }
+    }
+  } catch { /* localStorage non disponibile — ignora */ }
+
+  previewFrame.src = URL.createObjectURL(new Blob([html], {type:'text/html'}));
   previewOverlay.style.display = 'block';
 });
-closePreview.addEventListener('click', () => { previewOverlay.style.display = 'none'; previewFrame.src = 'about:blank'; });
+
+closePreview.addEventListener('click', () => {
+  if (_iframeIsDirty() && !confirm('Hai modifiche non salvate in questa presentazione.\n\nSei sicuro di voler chiudere senza salvare?\n\nSuggerimento: usa "↓ Save HTML" nell\'editor prima di chiudere.')) {
+    return;
+  }
+  previewOverlay.style.display = 'none';
+  previewFrame.src = 'about:blank';
+});
+
+// Avvisa anche in caso di refresh, chiusura tab, o navigazione indietro
+window.addEventListener('beforeunload', e => {
+  if (previewOverlay.style.display === 'block' && _iframeIsDirty()) {
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
+  }
+});
 
 // RESET
 btnNew.addEventListener('click', () => {

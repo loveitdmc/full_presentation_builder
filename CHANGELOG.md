@@ -8,6 +8,41 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v36 — 2026-07-22
+- **Protezione modifiche non salvate**, per non perdere il lavoro cliccando per
+  sbaglio "Chiudi anteprima", refresh, tasto indietro o chiusura scheda:
+  - `loveit_template.html`: rilevamento modifiche "vere" tramite MutationObserver
+    mirato su `#scroll` — riconosce aggiunta/rimozione slide (`<section>`), modifica
+    foto (style su `.split-photo`/`.gallery-cell`/`.bg`), edit di testo
+    (characterData/text node), ignorando invece il rumore delle sole attivazioni di
+    Photo/Text Mode (che aggiungono solo overlay UI, non contenuto). Autosave
+    debounced (2s) su `localStorage` mentre ci sono modifiche non salvate;
+    `window._loveitIsDirty()`/`window._loveitMarkClean()` esposte per la pagina
+    esterna; "Save HTML" marca tutto come pulito e rimuove l'autosave.
+    Aggiunto anche `beforeunload` diretto (utile se il file viene salvato e
+    riaperto standalone in un'altra scheda).
+  - `index.html`: il pulsante "Chiudi anteprima" ora chiede conferma se l'iframe
+    risulta "dirty"; `beforeunload` sulla pagina principale avvisa anche su
+    refresh/tasto indietro/chiusura scheda mentre l'anteprima è aperta con
+    modifiche pendenti; all'apertura dell'anteprima, se esiste una bozza
+    autosalvata (stesso `localStorage`, condiviso perché l'iframe usa un blob:
+    URL dello stesso dominio) viene offerto il recupero prima di ripartire da zero.
+
+## v35 — 2026-07-22
+- Debug "planimetria non si vede" per Villa Miani: verificato su Airtable — i Media
+  con Asset Type "Floor Plan" esistono (nome + descrizione) ma **non hanno un file
+  allegato**. `getFloorPlans()` li scarta correttamente (nessun file → nessuna slide),
+  quindi non è un bug: sono record segnaposto senza planimetria caricata ancora.
+- Pulsante **Planimetria** ora apre un picker (come Spazi) che mostra le planimetrie
+  già presenti in Airtable per il fornitore della slide, con anteprima, nome e
+  descrizione: "Aggiungi tutte" per inserirle in un'unica slide, o click su una
+  singola per aggiungerla da sola. Se il fornitore non ne ha (come Villa Miani ora),
+  o in caso di errore di rete, ricade automaticamente sull'upload PDF manuale
+  esistente — sempre raggiungibile anche via link "Carica un PDF" nel picker.
+- Refactor: la costruzione della slide planimetrie è stata estratta in
+  `_insertFloorplanSlide()`, riusata sia dall'auto-inserimento (picker Venue/Hotel)
+  sia dal nuovo picker manuale — nessuna duplicazione di markup.
+
 ## v34 — 2026-07-22
 - **Slide "Planimetrie"** dopo le foto, per qualsiasi venue/hotel con planimetrie in Airtable
   (Media con Asset Type "Floor Plan"/"Floorplan"). Stesso template della slide Video:

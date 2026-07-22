@@ -918,6 +918,56 @@ try{ LoveitEditor=(function(){
   let currentTarget=null;
   const TEXT_SEL='.headline,.display,.body-text,.tagline,.eyebrow,.gallery-title-small,.gallery-label';
 
+  // ── Protezione modifiche non salvate (autosave + avviso prima di uscire) ───
+  // localStorage è condiviso con la pagina che genera l'anteprima (stesso
+  // dominio, anche via blob: URL), quindi il recupero funziona sia qui dentro
+  // sia nell'app principale (index.html) prima di chiudere l'anteprima.
+  const AUTOSAVE_KEY='loveit_autosave_v1';
+  let _dirty=false, _autosaveTimer=null;
+  function _isRealEdit(mutations){
+    for(const m of mutations){
+      if(m.type==='childList'){
+        for(const n of m.addedNodes) if(n.nodeType===1&&n.tagName==='SECTION'||n.nodeType===3) return true;
+        for(const n of m.removedNodes) if(n.nodeType===1&&n.tagName==='SECTION'||n.nodeType===3) return true;
+      } else if(m.type==='attributes'&&m.attributeName==='style'){
+        const c=m.target.classList;
+        if(c&&(c.contains('split-photo')||c.contains('gallery-cell')||c.contains('bg'))) return true;
+      } else if(m.type==='characterData'){
+        return true;
+      }
+    }
+    return false;
+  }
+  function _doAutosave(){
+    try{
+      const raw='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({
+        title: document.title||'Presentazione',
+        savedAt: Date.now(),
+        html: raw,
+      }));
+    }catch(e){ /* storage pieno o non disponibile — non bloccante */ }
+  }
+  function _markDirty(){
+    _dirty=true;
+    clearTimeout(_autosaveTimer);
+    _autosaveTimer=setTimeout(_doAutosave,2000);
+  }
+  window._loveitIsDirty=()=>_dirty;
+  window._loveitMarkClean=()=>{ _dirty=false; clearTimeout(_autosaveTimer); try{ localStorage.removeItem(AUTOSAVE_KEY); }catch(e){} };
+  (function _startDirtyWatcher(){
+    const go=()=>{
+      const scrollEl=document.getElementById('scroll');
+      if(!scrollEl) return;
+      new MutationObserver(muts=>{ if(_isRealEdit(muts)) _markDirty(); })
+        .observe(scrollEl,{childList:true,subtree:true,attributes:true,attributeFilter:['style'],characterData:true});
+    };
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',go); else go();
+  })();
+  window.addEventListener('beforeunload', e=>{
+    if(_dirty){ e.preventDefault(); e.returnValue=''; return ''; }
+  });
+
   const fi=document.createElement('input');
   fi.type='file';fi.accept='image/*';fi.style.display='none';
   document.body.appendChild(fi);
@@ -2037,6 +2087,7 @@ try{ LoveitEditor=(function(){
     const a=document.createElement('a');a.href=url;
     a.download=document.title.replace(/\s*[–—\xb7]\s*/g,' ').replace(/[^a-z0-9 ]/gi,'').trim().replace(/\s+/g,'_').toLowerCase()+'_edited.html';
     document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+    window._loveitMarkClean();
   }
 
   function pdf(){ window.print(); }
