@@ -337,6 +337,25 @@ section:hover .bg{transform:scale(1.02)}
   color:var(--warm-white);
   font-weight:300;
 }
+.days-table td.day-row-del{ width:26px;padding:.75rem 0 .75rem .5rem;text-align:right; }
+.del-day-row-btn{
+  display:none;
+  font-family:var(--sans);font-size:.95rem;line-height:1;
+  color:rgba(220,80,80,.5);background:transparent;border:none;cursor:pointer;
+  padding:.1rem .3rem;transition:color .18s;
+}
+.del-day-row-btn:hover{ color:#e55; }
+body.edit-mode .del-day-row-btn{ display:inline-block; }
+.add-day-row-btn{
+  display:none;
+  align-self:flex-start;
+  margin-top:1.2rem;
+  font-family:var(--sans);font-size:.62rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(201,169,110,.75);background:transparent;border:1px solid rgba(201,169,110,.3);
+  padding:.5rem 1.1rem;cursor:pointer;border-radius:2px;transition:all .2s;
+}
+.add-day-row-btn:hover{ border-color:var(--gold);color:var(--gold);background:rgba(201,169,110,.08); }
+body.edit-mode .add-day-row-btn{ display:inline-block; }
 
 /* ── GALLERY SLIDE ── */
 .slide-gallery{position:relative;}
@@ -522,8 +541,9 @@ body.edit-mode #edit-controls{ left:calc(2.4rem + 176px);transition:left .25s ea
   function buildOverview(trip, num, total){
     const rows = trip.days.map(d => `
       <tr>
-        <td>Day ${d.number} · ${d.date}</td>
+        <td class="day-num-col">Day ${d.number} · ${d.date}</td>
         <td class="day-label-col">${d.label}</td>
+        <td class="day-row-del"><button type="button" class="del-day-row-btn" title="Rimuovi riga">×</button></td>
       </tr>`).join('');
     return `
     <section class="slide-overview">
@@ -531,7 +551,8 @@ body.edit-mode #edit-controls{ left:calc(2.4rem + 176px);transition:left .25s ea
         <div class="eyebrow">The Programme</div>
         <h2 class="headline">Your journey<br><em>at a glance</em></h2>
         <div class="rule"></div>
-        <table class="days-table">${rows}</table>
+        <table class="days-table"><tbody>${rows}</tbody></table>
+        <button type="button" class="add-day-row-btn">+ Aggiungi giorno</button>
       </div>
       <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
     </section>`;
@@ -842,6 +863,11 @@ body.edit-mode [contenteditable="true"]{
   pointer-events:auto;
   cursor:text;
 }
+body.edit-mode .add-day-row-btn,
+body.edit-mode .del-day-row-btn{
+  position:relative;
+  pointer-events:auto;
+}
 
 /* ── Add slide button ─────────────────────────────────────────────────────── */
 .add-slide-btn{position:absolute;bottom:1.2rem;left:50%;transform:translateX(-50%);z-index:60;font-family:var(--sans);font-size:.56rem;font-weight:500;letter-spacing:.15em;text-transform:uppercase;color:rgba(201,169,110,.75);background:rgba(10,10,10,.88);border:1px solid rgba(201,169,110,.28);padding:.38rem 1.2rem;cursor:pointer;border-radius:2px;backdrop-filter:blur(8px);transition:all .2s;white-space:nowrap;}
@@ -980,7 +1006,7 @@ try{ LoveitEditor=(function(){
   let photoMode=false, textMode=false, editMode=false;
   const zones=[], addBtns=[], deleteBtns=[];
   let currentTarget=null;
-  const TEXT_SEL='.headline,.display,.body-text,.tagline,.eyebrow,.gallery-title-small,.gallery-label';
+  const TEXT_SEL='.headline,.display,.body-text,.tagline,.eyebrow,.gallery-title-small,.gallery-label,.meta-pill,.room-cap-label,.room-cap-value,.day-num-col,.day-label-col';
 
   // ── Protezione modifiche non salvate (autosave + avviso prima di uscire) ───
   // localStorage è condiviso con la pagina che genera l'anteprima (stesso
@@ -991,8 +1017,8 @@ try{ LoveitEditor=(function(){
   function _isRealEdit(mutations){
     for(const m of mutations){
       if(m.type==='childList'){
-        for(const n of m.addedNodes) if(n.nodeType===1&&n.tagName==='SECTION'||n.nodeType===3) return true;
-        for(const n of m.removedNodes) if(n.nodeType===1&&n.tagName==='SECTION'||n.nodeType===3) return true;
+        for(const n of m.addedNodes) if(n.nodeType===1&&(n.tagName==='SECTION'||n.tagName==='TR')||n.nodeType===3) return true;
+        for(const n of m.removedNodes) if(n.nodeType===1&&(n.tagName==='SECTION'||n.tagName==='TR')||n.nodeType===3) return true;
       } else if(m.type==='attributes'&&m.attributeName==='style'){
         const c=m.target.classList;
         if(c&&(c.contains('split-photo')||c.contains('gallery-cell')||c.contains('bg'))) return true;
@@ -1391,6 +1417,40 @@ try{ LoveitEditor=(function(){
     if(ab){ const ai=addBtns.indexOf(ab);if(ai>=0) addBtns.splice(ai,1); }
     sec.remove();
   }
+
+  // ── Righe "Day" nella tabella Programme (slide-overview) ────────────────────
+  // I pulsanti +/× sono renderizzati sempre nel markup (buildOverview) e nascosti
+  // via CSS finché non si è in edit-mode, quindi funzionano anche dopo un
+  // undo/redo che rimpiazza l'innerHTML della tabella (delegation su document,
+  // niente da ri-agganciare).
+  function _addDayRow(addBtn){
+    const tbody=addBtn.closest('.content-dark')?.querySelector('.days-table tbody');
+    if(!tbody) return;
+    const n=tbody.querySelectorAll('tr').length+1;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="day-num-col">Day ${n} · </td><td class="day-label-col">Nuovo giorno</td><td class="day-row-del"><button type="button" class="del-day-row-btn" title="Rimuovi riga">×</button></td>`;
+    tbody.appendChild(tr);
+    if(textMode) tr.querySelectorAll('.day-num-col,.day-label-col').forEach(el=>{ el.contentEditable='true';el.spellcheck=false; });
+    const first=tr.querySelector('.day-num-col');
+    if(first){
+      first.focus();
+      const range=document.createRange();range.selectNodeContents(first);range.collapse(false);
+      const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
+    }
+  }
+  document.addEventListener('click', e=>{
+    if(!editMode) return;
+    const delBtn=e.target.closest('.del-day-row-btn');
+    if(delBtn){
+      e.preventDefault();e.stopPropagation();
+      const tr=delBtn.closest('tr');
+      const tbody=tr?.closest('tbody');
+      if(tr && tbody && tbody.querySelectorAll('tr').length>1) tr.remove();
+      return;
+    }
+    const addBtn=e.target.closest('.add-day-row-btn');
+    if(addBtn){ e.preventDefault();e.stopPropagation();_addDayRow(addBtn); }
+  });
 
   function _closePanel(){
     const p=document.getElementById('add-slide-panel');if(p) p.remove();
