@@ -1260,7 +1260,7 @@ try{ LoveitEditor=(function(){
         const layout=btn.dataset.layout;
         if(layout==='map'){ _showMapInput(panel,afterSec); }
         else if(layout==='pdf'){ _showPdfInput(panel,afterSec,'Documento'); }
-        else if(layout==='plan'){ _showPdfInput(panel,afterSec,'Planimetria'); }
+        else if(layout==='plan'){ _showPlanimetriaPicker(panel,afterSec); }
         else if(layout==='video'){ _showVideoInput(panel,afterSec); }
         else if(layout==='artist'){ _showArtistPicker(panel,afterSec); }
         else if(layout==='activity'){ _showActivityPicker(panel,afterSec); }
@@ -1484,29 +1484,10 @@ try{ LoveitEditor=(function(){
         lastSec=sec2;
       }
 
-      // 2b. Slide "Planimetrie": stesso template dei video, con link scaricabile (max 6)
-      const fps=(data.floorplans||[]).slice(0,6);
-      if(fps.length>0){
-        const secFp=document.createElement('section');
-        secFp.className='slide-videos slide-floorplans';secFp.setAttribute('data-added','1');
-        const colsFp=fps.length===1?1:(fps.length===2||fps.length===4?2:3);
-        const cellsFp=fps.map(p=>{
-          const safeUrl=(p.fileUrl||'').replace(/"/g,'&quot;');
-          const safeName=(p.filename||'planimetria.pdf').replace(/"/g,'&quot;');
-          return `<div class="video-card">
-            <a class="video-card-thumb" href="${safeUrl}" target="_blank" rel="noopener" style="${p.thumb?`background-image:url('${p.thumb}')`:''}">
-              <div class="video-card-play video-card-download"><svg viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="38" fill="rgba(0,0,0,.55)" stroke="rgba(255,255,255,.6)" stroke-width="2"/><path d="M40 24 L40 46 M30 38 L40 48 L50 38 M28 54 L52 54" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div>
-            </a>
-            <div class="video-card-caption">${p.name||'Planimetria'}${p.description?`<span class="video-card-sub">${p.description}</span>`:''}</div>
-            <a class="fp-download-link" href="${safeUrl}" download="${safeName}" target="_blank" rel="noopener">&#8595; Scarica</a>
-          </div>`;
-        }).join('');
-        secFp.innerHTML=`<div class="videos-inner"><div class="eyebrow">Planimetrie</div><h2 class="headline">${data.act||actName}</h2><div class="videos-grid videos-grid-${colsFp}">${cellsFp}</div></div>`;
-        lastSec.insertAdjacentElement('afterend',secFp);
-        if(window._loveitIO) window._loveitIO.observe(secFp);
-        _insertDot(secFp);_addInsertBtn(secFp);if(editMode) _addDeleteBtn(secFp);
-        if(textMode) secFp.querySelectorAll(TEXT_SEL+',.video-card-caption').forEach(el=>{el.contentEditable='true';el.spellcheck=false;});
-        lastSec=secFp;
+      // 2b. Slide "Planimetrie" automatica se il fornitore ne ha (max 6)
+      if((data.floorplans||[]).length){
+        const secFp=_insertFloorplanSlide(lastSec,data.floorplans,data.act||actName,{scrollTo:false});
+        if(secFp) lastSec=secFp;
       }
 
       // 3. Unica slide "Video": titolo centrale + griglia miniature (max 6)
@@ -1560,6 +1541,95 @@ try{ LoveitEditor=(function(){
     };
     panel.querySelector('#asp-map-ok').addEventListener('click',confirm);
     inp.addEventListener('keydown',e=>{ if(e.key==='Enter') confirm(); });
+  }
+
+  // Slide "Planimetrie": stesso template dei video (griglia miniature + link scaricabile).
+  // Riusata sia dall'auto-inserimento (venue picker) sia dal picker manuale.
+  function _insertFloorplanSlide(afterSec,floorplans,title,opts){
+    const fps=(floorplans||[]).slice(0,6);
+    if(!fps.length) return null;
+    const sec=document.createElement('section');
+    sec.className='slide-videos slide-floorplans';sec.setAttribute('data-added','1');
+    const cols=fps.length===1?1:(fps.length===2||fps.length===4?2:3);
+    const cells=fps.map(p=>{
+      const safeUrl=(p.fileUrl||'').replace(/"/g,'&quot;');
+      const safeName=(p.filename||'planimetria.pdf').replace(/"/g,'&quot;');
+      return `<div class="video-card">
+        <a class="video-card-thumb" href="${safeUrl}" target="_blank" rel="noopener" style="${p.thumb?`background-image:url('${p.thumb}')`:''}">
+          <div class="video-card-play video-card-download"><svg viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="38" fill="rgba(0,0,0,.55)" stroke="rgba(255,255,255,.6)" stroke-width="2"/><path d="M40 24 L40 46 M30 38 L40 48 L50 38 M28 54 L52 54" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div>
+        </a>
+        <div class="video-card-caption">${p.name||'Planimetria'}${p.description?`<span class="video-card-sub">${p.description}</span>`:''}</div>
+        <a class="fp-download-link" href="${safeUrl}" download="${safeName}" target="_blank" rel="noopener">&#8595; Scarica</a>
+      </div>`;
+    }).join('');
+    sec.innerHTML=`<div class="videos-inner"><div class="eyebrow">Planimetrie</div><h2 class="headline">${title||''}</h2><div class="videos-grid videos-grid-${cols}">${cells}</div></div>`;
+    afterSec.insertAdjacentElement('afterend',sec);
+    if(window._loveitIO) window._loveitIO.observe(sec);
+    _insertDot(sec);_addInsertBtn(sec);if(editMode) _addDeleteBtn(sec);
+    if(textMode) sec.querySelectorAll(TEXT_SEL+',.video-card-caption').forEach(el=>{el.contentEditable='true';el.spellcheck=false;});
+    if(!opts || opts.scrollTo!==false) setTimeout(()=>sec.scrollIntoView({behavior:'smooth'}),150);
+    return sec;
+  }
+
+  // Picker "Planimetria": mostra le planimetrie già presenti in Airtable per il
+  // fornitore della slide (con anteprima), oppure ricade sul caricamento PDF manuale.
+  function _showPlanimetriaPicker(panel,afterSec){
+    const supName=afterSec.dataset.supplier||'';
+    if(!supName){ _showPdfInput(panel,afterSec,'Planimetria'); return; }
+    panel.querySelectorAll('.asp-options,.asp-group-title').forEach(el=>el.style.display='none');
+    panel.style.minWidth='480px';
+    const apiBase=window.LOVEIT_API_BASE||'';
+    const wrap=document.createElement('div');
+    wrap.innerHTML='<div class="asp-artist-loading">🗺️ Ricerca planimetrie…</div>';
+    panel.appendChild(wrap);
+    if(!apiBase){ _showPdfInput(panel,afterSec,'Planimetria'); return; }
+    fetch(apiBase+'/api/acts',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({supplier:supName,format:'json'})
+    })
+      .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(data=>{
+        const fps=data.floorplans||[];
+        if(!fps.length){
+          // Nessuna planimetria in Airtable per questo fornitore — upload manuale
+          wrap.remove();
+          _showPdfInput(panel,afterSec,'Planimetria');
+          return;
+        }
+        const listHtml=fps.map((p,i)=>`
+          <button class="asp-room-item" data-idx="${i}">
+            <div class="asp-room-thumb" style="${p.thumb?`background-image:url('${p.thumb.replace(/'/g,"\\'")}')`:''}">${!p.thumb?'&#128196;':''}</div>
+            <div>
+              <div class="asp-room-name">${p.name}</div>
+              ${p.description?`<div class="asp-room-meta">${p.description}</div>`:''}
+            </div>
+          </button>`).join('');
+        wrap.innerHTML=`
+          <div class="asp-title" style="margin-top:.5rem;margin-bottom:.5rem">${fps.length} planimetrie trovate — clicca per aggiungere</div>
+          <button class="asp-pdf-pick-btn" id="fp-add-all" style="margin-bottom:.6rem">&#8595;&nbsp; Aggiungi tutte (${fps.length})</button>
+          <div class="asp-rooms-list">${listHtml}</div>
+          <div class="asp-hint" style="margin-top:.7rem;text-align:center">Non trovi quella che cerchi? <span id="fp-manual-upload" style="text-decoration:underline;cursor:pointer;color:rgba(201,169,110,.8)">Carica un PDF</span></div>`;
+        wrap.querySelector('#fp-add-all').addEventListener('click',()=>{
+          _closePanel();
+          _insertFloorplanSlide(afterSec,fps,supName);
+        });
+        wrap.querySelectorAll('.asp-room-item').forEach(item=>{
+          item.addEventListener('click',()=>{
+            const p=fps[+item.dataset.idx];
+            _closePanel();
+            _insertFloorplanSlide(afterSec,[p],supName);
+          });
+        });
+        wrap.querySelector('#fp-manual-upload').addEventListener('click',()=>{
+          wrap.remove();
+          _showPdfInput(panel,afterSec,'Planimetria');
+        });
+      })
+      .catch(()=>{
+        // Errore rete — fallback silenzioso su upload manuale
+        wrap.remove();
+        _showPdfInput(panel,afterSec,'Planimetria');
+      });
   }
 
   function _showPdfInput(panel,afterSec,kindLabel){
