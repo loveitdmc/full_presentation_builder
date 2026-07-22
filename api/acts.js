@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { generateSupplierFullPage } from "./supplier.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -126,6 +127,65 @@ async function findActCandidates(actName, token, baseId) {
         ? f["Artist & Show Tags"].join(", ")
         : (f["Artist & Show Tags"] || "");
       return { name, type: tags };
+    }).filter(c => c.name);
+  } catch {
+    return [];
+  }
+}
+
+// Smart keyword search over Suppliers — same shape as findActCandidates, used
+// by the unified search (ricerca unica Suppliers + Artists & Shows + Activities).
+async function findSupplierCandidates(name, token, baseId) {
+  const stopWords = new Set([
+    "the","and","per","del","dei","della","delle","degli","di","da",
+    "in","con","su","tra","fra","its",
+  ]);
+  const words = name.toLowerCase()
+    .replace(/[^\w\s]/g, " ")
+    .split(/\s+/)
+    .filter(w => w.length > 1 && !stopWords.has(w))
+    .map(w => w.replace(/"/g, '\\"'));
+  if (!words.length) return [];
+
+  const orClauses = words.map(w => `SEARCH("${w}", LOWER({Name}))>0`).join(",");
+  const formula   = encodeURIComponent(`OR(${orClauses})`);
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_SUPPLIERS}?filterByFormula=${formula}&maxRecords=8&fields[]=Name&fields[]=City`;
+
+  try {
+    const data = await airtableFetch(url, token);
+    return (data.records || []).map(r => ({ name: r.fields.Name || "", city: r.fields.City || "" })).filter(c => c.name);
+  } catch {
+    return [];
+  }
+}
+
+// Smart keyword search over Activities — same shape as findActCandidates.
+async function findActivityCandidates(name, token, baseId) {
+  const stopWords = new Set([
+    "the","and","per","del","dei","della","delle","degli","di","da",
+    "in","con","su","tra","fra","its",
+  ]);
+  const words = name.toLowerCase()
+    .replace(/[^\w\s]/g, " ")
+    .split(/\s+/)
+    .filter(w => w.length > 1 && !stopWords.has(w))
+    .map(w => w.replace(/"/g, '\\"'));
+  if (!words.length) return [];
+
+  const orClauses = words.map(w => `SEARCH("${w}", LOWER({Activity or Service Name}))>0`).join(",");
+  const formula   = encodeURIComponent(`OR(${orClauses})`);
+  const nameField = encodeURIComponent("Activity or Service Name");
+  const typeField = encodeURIComponent("Activity Type");
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_ACTIVITIES}?filterByFormula=${formula}&maxRecords=8&fields[]=${nameField}&fields[]=${typeField}`;
+
+  try {
+    const data = await airtableFetch(url, token);
+    return (data.records || []).map(r => {
+      const f = r.fields;
+      const name = f["Activity or Service Name"] || "";
+      const t = f["Activity Type"];
+      const type = typeof t === "object" ? (t?.name || "") : (t || "");
+      return { name, type };
     }).filter(c => c.name);
   } catch {
     return [];
@@ -450,9 +510,10 @@ export default async function handler(req, res) {
     if (v != null && typeof v === "object") return ""; // reject stray objects (e.g. serialized DOM event)
     return String(v);
   };
-  const act = _s(_body.act), activity = _s(_body.activity), supplierParam = _s(_body.supplier), format = _body.format;
-  if (!act?.trim() && !activity?.trim() && !supplierParam?.trim()) {
-    return res.status(400).json({ error: "Missing act, activity or supplier name" });
+  const act = _s(_body.act), activity = _s(_body.activity), supplierParam = _s(_body.supplier),
+        search = _s(_body.search), kindHint = _s(_body.kind), format = _body.format;
+  if (!act?.trim() && !activity?.trim() && !supplierParam?.trim() && !search?.trim()) {
+    return res.status(400).json({ error: "Missing act, activity, supplier or search name" });
   }
   const jsonOnly = format === "json";
 
@@ -466,6 +527,20 @@ export default async function handler(req, res) {
   }
   if (supplierParam?.trim()) {
     return handleSupplierSlide(supplierParam.trim(), res, token, baseId);
+  }
+
+  // Unified search mode (single box: Suppliers + Artists & Shows + Activities)
+  if (search?.trim()) {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: "Missing ANTHROPIC_API_KEY" });
+    const templatePath = path.resolve(process.cwd(), "template", "loveit_template.html");
+    let searchTemplate;
+    try {
+      searchTemplate = fs.readFileSync(templatePath, "utf8");
+    } catch {
+      return res.status(500).json({ error: "Template file not found" });
+    }
+    return handleUnifiedSearch(search.trim(), kindHint?.trim() || null, res, token, baseId, searchTemplate, req, apiKey);
   }
 
   // For JSON-only mode we don't need the template
@@ -505,16 +580,21 @@ export default async function handler(req, res) {
     return res.status(200).json({ status: "fuzzy", candidates });
   }
 
-  // 1b. Fetch full record for the selected artist
-  let actRecord;
+  // 1b. Fetch full record + build the page (or JSON slide data in picker mode)
   try {
-    actRecord = await searchAct(selectedName, token, baseId);
+    const result = await generateActFullPage(selectedName, token, baseId, template, req, jsonOnly);
+    return res.status(200).json(result);
   } catch (e) {
-    return res.status(502).json({ error: `Airtable fetch error: ${e.message}` });
+    return res.status(502).json({ error: e.message });
   }
-  if (!actRecord) {
-    return res.status(404).json({ error: `"${selectedName}" not found.` });
-  }
+}
+
+// ─── FULL-PAGE GENERATORS (shared by legacy `act`/`activity` params and by the
+//     unified search below) ────────────────────────────────────────────────────
+
+async function generateActFullPage(selectedName, token, baseId, template, req, jsonOnly) {
+  const actRecord = await searchAct(selectedName, token, baseId);
+  if (!actRecord) throw new Error(`"${selectedName}" not found.`);
 
   // 2. Fetch linked supplier
   let supplier = null;
@@ -624,16 +704,16 @@ export default async function handler(req, res) {
     },
   };
 
-  // 8a. JSON-only mode: return slide data without rendering HTML
+  // 8a. JSON-only mode: return slide data without rendering HTML (in-presentation picker)
   if (jsonOnly) {
-    return res.status(200).json({
+    return {
       act:         actName,
       description,
       supplier:    supplier?.name || null,
       mainPhoto,
       photos:      photoUrls,
       videos,
-    });
+    };
   }
 
   // 8. Inject into template
@@ -641,7 +721,7 @@ export default async function handler(req, res) {
   try {
     finalHtml = injectTrip(template, tripObj);
   } catch (e) {
-    return res.status(500).json({ error: `Template error: ${e.message}` });
+    throw new Error(`Template error: ${e.message}`);
   }
 
   // 9. Hide cover / overview / closing + inject API base for in-presentation features
@@ -655,12 +735,168 @@ export default async function handler(req, res) {
 
   const safeFilename = actName.replace(/[^a-zA-Z0-9_\-]/g, "_").slice(0, 60);
 
-  return res.status(200).json({
+  return {
     html:       finalHtml,
     filename:   `${safeFilename}_scheda.html`,
     act:        actName,
     city:       cityName,
     photoCount: photoUrls.length,
     videoCount: videos.length,
-  });
+  };
+}
+
+// Full standalone page for an Activities-table record (no equivalent existed before —
+// handleActivity() above only ever returns JSON for the in-presentation picker).
+async function generateActivityFullPage(selectedName, token, baseId, template, req) {
+  const rec = await searchActivity(selectedName, token, baseId);
+  if (!rec) throw new Error(`"${selectedName}" not found in Activities.`);
+
+  let supplier = null;
+  if (rec.supplierIds.length > 0) {
+    supplier = await getSupplier(rec.supplierIds[0], token, baseId);
+  }
+
+  const mediaRecords = await getMediaRecords(rec.mediaIds, token, baseId);
+  const buildAssets = recs => {
+    const photos = [], vids = [];
+    for (const m of recs) {
+      photos.push(...m.fileUrls.filter(u => !/\.(mp4|webm|ogg)(\?|$)/i.test(u)));
+      const videoRawUrl = m.driveLink
+        || m.fileUrls.find(u => /\.(mp4|webm|ogg)(\?|$)/i.test(u)) || null;
+      if (videoRawUrl) {
+        const embedUrl = toEmbedUrl(videoRawUrl);
+        if (embedUrl) vids.push({
+          embedUrl,
+          sourceUrl: videoRawUrl,
+          isFile: /\.(mp4|webm|ogg)(\?|$)/i.test(videoRawUrl),
+          title: m.description || "Video",
+        });
+      }
+    }
+    return { photos, vids };
+  };
+
+  // Media linked to only THIS activity are specific; shared/generic assets are fallback only
+  const specific = mediaRecords.filter(m => m.activityCount <= 1);
+  let { photos: photoUrls, vids: videos } = buildAssets(specific);
+  if (!photoUrls.length && !videos.length) {
+    ({ photos: photoUrls, vids: videos } = buildAssets(mediaRecords));
+  }
+  videos = videos.slice(0, 6);
+  await enrichYouTubeTitles(videos);
+
+  const unsplashKey = process.env.UNSPLASH_ACCESS_KEY;
+  const cityName    = supplier?.city || "Italy";
+  const mainPhoto   = photoUrls[0]
+    || await unsplashSearch(`${cityName} italy ${rec.type || "experience"}`, unsplashKey);
+
+  const description = rec.notes
+    || supplier?.description
+    || `An exclusive experience: ${rec.name}.`;
+
+  const tripObj = {
+    client: "", projectRef: "",
+    title: rec.name, destination: cityName, country: "Italy",
+    dates: "", nights: 0, pax: 0,
+    tagline: `An exclusive experience in ${cityName}`,
+    cityPhoto: mainPhoto, cityPhotoPosition: "center center",
+    days: [{
+      number: 1, date: "", label: rec.name,
+      activities: [{
+        showSlide: true,
+        type:          rec.type || "activity",
+        title:         rec.name,
+        description,
+        supplierName:  supplier?.name || rec.name,
+        photo:         mainPhoto,
+        photoPosition: "center center",
+        photos:        photoUrls.slice(1, 4),
+        allPhotos:     photoUrls,
+        videos,
+        options: [],
+      }],
+    }],
+    closing: {
+      photo: mainPhoto, photoPosition: "center center",
+      headline: "Let's make it happen.",
+      subline: `Contact us to include ${rec.name} in your programme.`,
+      contact: "marco@loveit-dmc.com",
+    },
+  };
+
+  let finalHtml;
+  try {
+    finalHtml = injectTrip(template, tripObj);
+  } catch (e) {
+    throw new Error(`Template error: ${e.message}`);
+  }
+
+  const proto = req.headers["x-forwarded-proto"] || "https";
+  const apiBase = `${proto}://${req.headers.host}`;
+  const css = `<style>
+    .slide-cover, .slide-overview, .slide-closing { display: none !important; }
+  </style>`;
+  const apiScript = `<script>window.LOVEIT_API_BASE="${apiBase}";</script>`;
+  finalHtml = finalHtml.replace("</head>", css + "\n" + apiScript + "\n</head>");
+
+  const safeFilename = rec.name.replace(/[^a-zA-Z0-9_\-]/g, "_").slice(0, 60);
+
+  return {
+    html:       finalHtml,
+    filename:   `${safeFilename}_scheda.html`,
+    act:        rec.name,
+    city:       cityName,
+    photoCount: photoUrls.length,
+    videoCount: videos.length,
+  };
+}
+
+// ─── UNIFIED SEARCH (Suppliers + Artists & Shows + Activities in one box) ─────
+
+async function handleUnifiedSearch(query, kindHint, res, token, baseId, template, req, apiKey) {
+  let kind = kindHint, name = query;
+
+  if (!kind) {
+    const [acts, suppliers, activities] = await Promise.all([
+      findActCandidates(query, token, baseId).catch(() => []),
+      findSupplierCandidates(query, token, baseId).catch(() => []),
+      findActivityCandidates(query, token, baseId).catch(() => []),
+    ]);
+    const merged = [
+      ...acts.map(c => ({ name: c.name, detail: c.type || "", kind: "act" })),
+      ...suppliers.map(c => ({ name: c.name, detail: c.city || "", kind: "supplier" })),
+      ...activities.map(c => ({ name: c.name, detail: c.type || "", kind: "activity" })),
+    ];
+    if (!merged.length) {
+      return res.status(404).json({ error: `"${query}" non trovato in Suppliers, Artists & Shows o Activities.` });
+    }
+    const inputLower = query.toLowerCase();
+    const exact = merged.find(c => c.name.toLowerCase() === inputLower);
+    if (exact) {
+      kind = exact.kind; name = exact.name;
+    } else if (merged.length === 1) {
+      kind = merged[0].kind; name = merged[0].name;
+    } else {
+      return res.status(200).json({ status: "fuzzy", candidates: merged });
+    }
+  }
+
+  try {
+    if (kind === "supplier") {
+      const result = await generateSupplierFullPage(name, apiKey, template, req);
+      if (result.status === "fuzzy") {
+        return res.status(200).json({
+          status: "fuzzy",
+          candidates: result.candidates.map(c => ({ name: c.name, detail: c.city || "", kind: "supplier" })),
+        });
+      }
+      return res.status(200).json(result);
+    }
+    if (kind === "activity") {
+      return res.status(200).json(await generateActivityFullPage(name, token, baseId, template, req));
+    }
+    return res.status(200).json(await generateActFullPage(name, token, baseId, template, req, false));
+  } catch (e) {
+    return res.status(502).json({ error: e.message });
+  }
 }

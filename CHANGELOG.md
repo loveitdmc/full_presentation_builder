@@ -8,6 +8,32 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v39 — 2026-07-23
+- **Unificati i tab "Scheda Fornitore" e "Artists & Shows"** in un unico tab
+  "🔍 Cerca nel Database" (`public/index.html`) con un solo campo di ricerca.
+  - Backend: nuovo branch `search` in `api/acts.js` (`handleUnifiedSearch`) che
+    cerca in parallelo su Suppliers, Artists & Shows e Activities (keyword OR-search,
+    come i picker esistenti). Match esatto o unico → genera subito; più match →
+    picker fuzzy con etichetta di provenienza (Fornitore/Artista-Show/Attività).
+  - Refactor `api/supplier.js`: la pipeline di generazione (ricerca → fallback AI →
+    TRIP → template) è ora `export async function generateSupplierFullPage(...)`,
+    riusata sia dal suo handler POST sia dalla ricerca unificata in `acts.js`
+    (import diretto tra file esistenti — non è un nuovo file in `api/`, quindi
+    non viola la Regola 2).
+  - Nuova capability in `api/acts.js`: `generateActivityFullPage(...)` — prima
+    d'ora la tabella Activities produceva solo JSON per il picker interno
+    (`handleActivity`, invariato), non una pagina scheda completa.
+  - Frontend: `showFuzzyConfirm` ora porta anche il `kind` di ciascun candidato,
+    così al click su un candidato la generazione salta la ri-ricerca e va dritta
+    alla tabella giusta (evita ambiguità se lo stesso nome esiste altrove).
+- **La ricerca "Da Preventivo" ora considera anche Artists & Shows e Activities**,
+  non solo Suppliers (`api/generate.js` e `api/generate-text.js`). Per ogni
+  attività estratta dal PDF/testo: se il nome non trova un fornitore/venue,
+  si prova come artista/show, poi come attività prenotabile — foto risolte
+  tramite la tabella Media (che Artists & Shows/Activities usano al posto di
+  un campo Photos diretto). Verificato con test mirati (fetch mockato) per
+  entrambi i livelli di fallback, oltre alla suite sulla ricerca unificata.
+
 ## v38 — 2026-07-22
 - **Nuovo: colonna miniature slide con riordino drag & drop** (`loveit_template.html`).
   Visibile solo in Edit Mode (come gli altri strumenti di editing), si apre a

@@ -61,6 +61,78 @@ async function findSuppliers(supplierName) {
   }
 }
 
+// Same keyword OR-search as findSuppliers, but generic over table/field/extra fields —
+// used to also check Artists & Shows and Activities when a Suppliers match isn't found.
+async function findByNameField(query, tableId, nameField, extraFields) {
+  const token  = process.env.AIRTABLE_TOKEN;
+  const baseId = process.env.AIRTABLE_BASE_ID;
+  if (!token || !baseId || !query) return [];
+  const stopWords = new Set([
+    "the","and","its","of","at","per","del","dei","della","delle","degli","di","da",
+    "in","con","su","tra","fra","al","alle","agli","allo","dal","dalla","dagli","dalle",
+    "la","lo","le","il","gli","un","una","uno","i","e","o",
+  ]);
+  const words = query.toLowerCase()
+    .replace(/[^\w\s]/g, " ").split(/\s+/)
+    .filter(w => w.length > 1 && !stopWords.has(w))
+    .map(w => w.replace(/"/g, '\\"'));
+  if (!words.length) return [];
+
+  const orClauses = words.map(w => `SEARCH("${w}", LOWER({${nameField}}))>0`).join(",");
+  const formula   = encodeURIComponent(`OR(${orClauses})`);
+  const fields    = [nameField, ...extraFields].map(f => `fields[]=${encodeURIComponent(f)}`).join("&");
+  const url = `https://api.airtable.com/v0/${baseId}/${tableId}?filterByFormula=${formula}&maxRecords=5&${fields}`;
+
+  try {
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000) });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return (data.records || []).map(r => ({ name: r.fields[nameField] || "", fields: r.fields })).filter(r => r.name);
+  } catch {
+    return [];
+  }
+}
+
+const TABLE_ACTS_ID       = "tblbCAthb1HXfc13i"; // Artists & Shows
+const TABLE_ACTIVITIES_ID = "tblPIbMu1UDjOLYIK"; // Activities
+const TABLE_MEDIA_ID      = "tblpKKKum1aFwPjgY"; // Media
+
+// Resolves linked Media record IDs into direct image URLs (skips video files).
+async function fetchMediaPhotos(mediaIds) {
+  const token  = process.env.AIRTABLE_TOKEN;
+  const baseId = process.env.AIRTABLE_BASE_ID;
+  if (!mediaIds?.length || !token || !baseId) return [];
+  const idClauses = mediaIds.slice(0, 30).map(id => `RECORD_ID()="${id}"`).join(",");
+  const formula = encodeURIComponent(`OR(${idClauses})`);
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_MEDIA_ID}?filterByFormula=${formula}&fields[]=File&maxRecords=50`;
+  try {
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(6000) });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    const urls = [];
+    for (const r of (data.records || [])) {
+      for (const f of (r.fields.File || [])) {
+        if (f.url && !/\.(mp4|webm|ogg)(\?|$)/i.test(f.url)) urls.push(f.url);
+      }
+    }
+    return urls;
+  } catch {
+    return [];
+  }
+}
+
+// Picks the best candidate: exact name match first, else best keyword-overlap ≥ 50%.
+function pickBest(matches, query, getName) {
+  if (!matches.length) return null;
+  const exact = matches.find(m => getName(m).toLowerCase() === query.toLowerCase());
+  if (exact) return exact;
+  const scored = matches
+    .map(m => ({ m, score: matchScore(query, getName(m)) }))
+    .filter(({ score }) => score >= 0.5)
+    .sort((a, b) => b.score - a.score);
+  return scored[0]?.m || null;
+}
+
 // ─── UNSPLASH ────────────────────────────────────────────────────────────────
 
 const FALLBACK_PHOTOS = [
@@ -274,35 +346,52 @@ async function enrichWithAirtable(programme) {
     for (const act of (day.activities || [])) {
       if (!act.supplierName) continue;
       try {
-        const matches = await findSuppliers(act.supplierName);
-        if (!matches.length) continue;
+        // 1) Suppliers table (existing behaviour, unchanged)
+        const supMatches = await findSuppliers(act.supplierName);
+        const sup = pickBest(supMatches, act.supplierName, m => m.name);
+        if (sup) {
+          if (sup.description) act.description = sup.description;
+          if (sup.photos?.length) {
+            act.photo     = sup.photos[0];
+            act.photos    = sup.photos.slice(1, 4);
+            act.allPhotos = sup.allPhotos || [];
+          }
+          act.supplierName = sup.name;
+          act._airtable    = true;
+          continue;
+        }
 
-        // Prefer exact name match first
-        const exact = matches.find(
-          m => m.name.toLowerCase() === act.supplierName.toLowerCase()
+        // 2) Artists & Shows — the quote may reference a performer/show, not a venue
+        const actMatches = await findByNameField(
+          act.supplierName, TABLE_ACTS_ID, "Artist or Show Name",
+          ["Description and Operational Notes", "Consolidated Media"]
         );
-
-        let sel = exact;
-        if (!sel) {
-          // Score each candidate — require ≥ 50% keyword overlap to avoid false matches
-          const scored = matches
-            .map(m => ({ m, score: matchScore(act.supplierName, m.name) }))
-            .filter(({ score }) => score >= 0.5)
-            .sort((a, b) => b.score - a.score);
-          sel = scored[0]?.m || null;
+        const artist = pickBest(actMatches, act.supplierName, m => m.name);
+        if (artist) {
+          const notes = artist.fields["Description and Operational Notes"];
+          if (notes) act.description = notes;
+          const photos = await fetchMediaPhotos(artist.fields["Consolidated Media"]);
+          if (photos.length) { act.photo = photos[0]; act.photos = photos.slice(1, 4); act.allPhotos = photos; }
+          act.supplierName = artist.name;
+          act._airtable    = true;
+          continue;
         }
 
-        if (!sel) continue; // no good-enough match — keep AI-generated data
-
-        // Override description and photos with real Airtable data
-        if (sel.description) act.description = sel.description;
-        if (sel.photos?.length) {
-          act.photo     = sel.photos[0];          // real URL — resolvePhotos will keep it
-          act.photos    = sel.photos.slice(1, 4);
-          act.allPhotos = sel.allPhotos || [];
+        // 3) Activities — a bookable experience/service rather than a supplier or act
+        const actyMatches = await findByNameField(
+          act.supplierName, TABLE_ACTIVITIES_ID, "Activity or Service Name",
+          ["Description and Operational Notes", "Media"]
+        );
+        const activityRec = pickBest(actyMatches, act.supplierName, m => m.name);
+        if (activityRec) {
+          const notes = activityRec.fields["Description and Operational Notes"];
+          if (notes) act.description = notes;
+          const photos = await fetchMediaPhotos(activityRec.fields["Media"]);
+          if (photos.length) { act.photo = photos[0]; act.photos = photos.slice(1, 4); act.allPhotos = photos; }
+          act.supplierName = activityRec.name;
+          act._airtable    = true;
         }
-        act.supplierName  = sel.name;             // canonical capitalisation
-        act._airtable     = true;
+        // No match anywhere — keep the AI-generated data as-is
       } catch {
         // non-fatal — continue with AI-generated data
       }

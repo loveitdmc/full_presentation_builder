@@ -449,13 +449,26 @@ async function mainHandler(req, res) {
     return res.status(500).json({ error: "Template file not found" });
   }
 
+  let result;
+  try {
+    result = await generateSupplierFullPage(supplier.trim(), apiKey, template, req);
+  } catch (e) {
+    return res.status(502).json({ error: e.message });
+  }
+  return res.status(200).json(result);
+}
+
+// ─── REUSABLE PIPELINE (also called from acts.js unified search) ─────────────
+// Returns either { status:'fuzzy', candidates } when the name is ambiguous, or
+// the full { html, filename, supplier, city, fromAirtable } page payload.
+export async function generateSupplierFullPage(supplierNameRaw, apiKey, template, req) {
   // Step 1: Smart keyword search — returns 0–8 Airtable records
-  const matches = await findSuppliers(supplier.trim());
+  const matches = await findSuppliers(supplierNameRaw);
 
   // Step 1b: Determine which record to use (or surface picker)
   let selected = null;
   if (matches.length > 0) {
-    const inputLower = supplier.trim().toLowerCase();
+    const inputLower = supplierNameRaw.toLowerCase();
     const exact = matches.find(m => m.name.toLowerCase() === inputLower);
     if (exact) {
       // Exact name match — proceed directly
@@ -465,10 +478,10 @@ async function mainHandler(req, res) {
       selected = matches[0];
     } else {
       // Multiple partial matches — ask frontend to confirm
-      return res.status(200).json({
+      return {
         status:     "fuzzy",
         candidates: matches.map(m => ({ name: m.name, city: m.city })),
-      });
+      };
     }
   }
 
@@ -491,7 +504,7 @@ async function mainHandler(req, res) {
   } else {
     // No Airtable record with description — fall back to AI
     // Use the real Airtable name if we found one, otherwise the user's input
-    const nameForAI = selected?.name || supplier.trim();
+    const nameForAI = selected?.name || supplierNameRaw;
     try {
       const ai = await generateWithAI(nameForAI, apiKey);
       profile = {
@@ -507,7 +520,7 @@ async function mainHandler(req, res) {
         fromAirtable:  false,
       };
     } catch (e) {
-      return res.status(502).json({ error: `AI generation failed: ${e.message}` });
+      throw new Error(`AI generation failed: ${e.message}`);
     }
   }
 
@@ -523,7 +536,7 @@ async function mainHandler(req, res) {
 
   // Step 3: Build TRIP JSON
   // Use the Airtable-confirmed name when available (correct capitalisation)
-  const supplierName = selected?.name || supplier.trim();
+  const supplierName = selected?.name || supplierNameRaw;
   const tripObj = {
     client:            "",
     projectRef:        "",
@@ -573,7 +586,7 @@ async function mainHandler(req, res) {
   try {
     finalHtml = injectTrip(template, resolvedTrip);
   } catch (e) {
-    return res.status(500).json({ error: `Template error: ${e.message}` });
+    throw new Error(`Template error: ${e.message}`);
   }
 
   // Step 6: Hide slides not needed in supplier mode + inject API base
@@ -587,11 +600,11 @@ async function mainHandler(req, res) {
 
   const safeFilename = supplierName.replace(/[^a-zA-Z0-9_\-]/g, "_").slice(0, 60);
 
-  return res.status(200).json({
+  return {
     html:         finalHtml,
     filename:     `${safeFilename}_scheda.html`,
     supplier:     supplierName,
     city:         profile.city,
     fromAirtable: profile.fromAirtable,
-  });
+  };
 }

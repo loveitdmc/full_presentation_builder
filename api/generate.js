@@ -110,6 +110,55 @@ async function searchAirtable(supplierName) {
   }
 }
 
+// Fallback lookup for when the name isn't a Suppliers venue: tries Artists & Shows,
+// then Activities. Both link photos via the Media table instead of a direct field.
+const TABLE_ACTS_ID       = "tblbCAthb1HXfc13i"; // Artists & Shows
+const TABLE_ACTIVITIES_ID = "tblPIbMu1UDjOLYIK"; // Activities
+const TABLE_MEDIA_ID      = "tblpKKKum1aFwPjgY"; // Media
+
+async function fetchMediaPhotos(mediaIds) {
+  const token   = process.env.AIRTABLE_TOKEN;
+  const baseId  = process.env.AIRTABLE_BASE_ID;
+  if (!mediaIds?.length || !token || !baseId) return [];
+  const idClauses = mediaIds.slice(0, 30).map((id) => `RECORD_ID()="${id}"`).join(",");
+  const formula = encodeURIComponent(`OR(${idClauses})`);
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_MEDIA_ID}?filterByFormula=${formula}&fields[]=File&maxRecords=50`;
+  try {
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(6000) });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    const urls = [];
+    for (const r of (data.records || [])) {
+      for (const f of (r.fields.File || [])) {
+        if (f.url && !/\.(mp4|webm|ogg)(\?|$)/i.test(f.url)) urls.push(f.url);
+      }
+    }
+    return urls;
+  } catch {
+    return [];
+  }
+}
+
+async function searchByNameField(name, tableId, nameField, notesField, mediaField) {
+  const token  = process.env.AIRTABLE_TOKEN;
+  const baseId = process.env.AIRTABLE_BASE_ID;
+  if (!token || !baseId || !name) return null;
+  const safeName = name.replace(/"/g, '\\"').toLowerCase();
+  const formula  = encodeURIComponent(`SEARCH("${safeName}", LOWER({${nameField}}))>0`);
+  const url = `https://api.airtable.com/v0/${baseId}/${tableId}?filterByFormula=${formula}&maxRecords=1`;
+  try {
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(6000) });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (!data.records?.length) return null;
+    const f = data.records[0].fields;
+    const photos = await fetchMediaPhotos(f[mediaField]);
+    return { name: f[nameField] || name, description: f[notesField] || null, photos: photos.slice(0, 4), allPhotos: photos };
+  } catch {
+    return null;
+  }
+}
+
 async function enrichFromAirtable(tripObj) {
   if (!tripObj.days) return tripObj;
 
@@ -119,7 +168,20 @@ async function enrichFromAirtable(tripObj) {
         (day.activities || []).map(async (activity) => {
           if (!activity.showSlide || !activity.supplierName) return activity;
 
-          const match = await searchAirtable(activity.supplierName);
+          // 1) Suppliers (venue/vendor), 2) Artists & Shows (performer), 3) Activities (service)
+          let match = await searchAirtable(activity.supplierName);
+          if (!match) {
+            match = await searchByNameField(
+              activity.supplierName, TABLE_ACTS_ID, "Artist or Show Name",
+              "Description and Operational Notes", "Consolidated Media"
+            );
+          }
+          if (!match) {
+            match = await searchByNameField(
+              activity.supplierName, TABLE_ACTIVITIES_ID, "Activity or Service Name",
+              "Description and Operational Notes", "Media"
+            );
+          }
           if (!match) return activity;
 
           console.log(`Airtable match for "${activity.supplierName}":`, {
