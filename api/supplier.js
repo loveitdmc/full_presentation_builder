@@ -178,7 +178,7 @@ async function findSuppliers(supplierName) {
 
   const orClauses = words.map(w => `SEARCH("${w}", LOWER({Name}))>0`).join(",");
   const formula   = encodeURIComponent(`OR(${orClauses})`);
-  const fields    = ["Name","City","Description","Photos","Type"]
+  const fields    = ["Name","City","Description","Photos","Type","Media"]
     .map(f => `fields[]=${encodeURIComponent(f)}`).join("&");
   const url = `https://api.airtable.com/v0/${baseId}/${tableId}?filterByFormula=${formula}&maxRecords=8&${fields}`;
 
@@ -199,8 +199,46 @@ async function findSuppliers(supplierName) {
         photos:      allPhotoUrls.slice(0, 4),
         allPhotos:   allPhotoUrls,
         type:        f.Type        || null,
+        mediaIds:    f.Media       || [],
       };
     }).filter(r => r.name);
+  } catch {
+    return [];
+  }
+}
+
+// Floor plans are Media records with Asset Type "Floor Plan" / "Floorplan".
+// Airtable auto-generates a thumbnail for images AND PDFs.
+const FLOORPLAN_ASSET_TYPES = new Set(["Floor Plan", "Floorplan"]);
+
+async function getFloorPlans(mediaIds, token, baseId) {
+  if (!mediaIds || !mediaIds.length) return [];
+  const idClauses = mediaIds.map(id => `RECORD_ID()="${id}"`).join(",");
+  const formula = encodeURIComponent(`OR(${idClauses})`);
+  const url = `https://api.airtable.com/v0/${baseId}/tblpKKKum1aFwPjgY?filterByFormula=${formula}&maxRecords=50`;
+  try {
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(7000) });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return (data.records || [])
+      .map(r => {
+        const f = r.fields;
+        const atRaw = f["Asset Type"];
+        const assetType = typeof atRaw === "object" ? (atRaw?.name || "") : (atRaw || "");
+        if (!FLOORPLAN_ASSET_TYPES.has(assetType)) return null;
+        const file = (f.File || [])[0];
+        if (!file) return null;
+        const thumb = file.thumbnails?.large?.url || file.thumbnails?.small?.url
+          || (file.type?.startsWith("image/") ? file.url : null);
+        return {
+          name:        f["Asset Name"] || "Floor Plan",
+          description: f.Description || null,
+          fileUrl:     file.url,
+          filename:    file.filename || "floorplan.pdf",
+          thumb,
+        };
+      })
+      .filter(Boolean);
   } catch {
     return [];
   }
@@ -473,6 +511,16 @@ async function mainHandler(req, res) {
     }
   }
 
+  // Step 2b: Floor plans (only available when we have a real Airtable record)
+  let floorplans = [];
+  if (selected?.mediaIds?.length) {
+    floorplans = await getFloorPlans(
+      selected.mediaIds,
+      process.env.AIRTABLE_TOKEN,
+      process.env.AIRTABLE_BASE_ID
+    );
+  }
+
   // Step 3: Build TRIP JSON
   // Use the Airtable-confirmed name when available (correct capitalisation)
   const supplierName = selected?.name || supplier.trim();
@@ -502,6 +550,7 @@ async function mainHandler(req, res) {
         photoPosition: profile.photoPosition,
         photos:       profile.photos,
         allPhotos:    profile.allPhotos || [],
+        floorplans,
         options:      [],
         _airtable:    profile.fromAirtable,
       }],

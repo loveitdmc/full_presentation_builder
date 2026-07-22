@@ -8,6 +8,24 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v34 — 2026-07-22
+- **Slide "Planimetrie"** dopo le foto, per qualsiasi venue/hotel con planimetrie in Airtable
+  (Media con Asset Type "Floor Plan"/"Floorplan"). Stesso template della slide Video:
+  eyebrow "Planimetrie" + nome centrale + griglia miniature (max 6, thumbnail Airtable
+  anche per PDF), sotto ogni miniatura nome + descrizione, link "↓ Scarica" separato
+  (icona download al posto del play).
+- Implementata in entrambi i percorsi che generano schede fornitore:
+  - `acts.js` `handleSupplierSlide` (picker Ristoranti/Hotel/Venue in-presentazione)
+  - `supplier.js` POST (tab "Scheda Fornitore" standalone) — `findSuppliers` ora
+    richiede anche il campo `Media`, nuova `getFloorPlans()`, `floorplans` aggiunto
+    all'attività nel TRIP JSON.
+  - `loveit_template.html`: nuova `buildFloorplansGrid()` nella pipeline statica
+    (dopo la gallery, prima dei video) + blocco equivalente in `_insertArtistSlides`
+    per il picker in-presentazione. Nuove classi CSS `.slide-floorplans`,
+    `.video-card-download`, `.video-card-sub`, `.fp-download-link`.
+- Compare automaticamente solo se il fornitore ha planimetrie collegate — nessuna
+  azione manuale richiesta ("sempre" quando i dati ci sono).
+
 ## v33 — 2026-07-21
 - **Trovata la vera causa del bug "iOS"**: non era mai iOS. `btnGenerateSup` e
   `btnGenerateAct` erano collegati direttamente a `generateSupplier`/`generateAct`

@@ -545,6 +545,33 @@ section:hover .bg{transform:scale(1.02)}
     </section>`;
   }
 
+  function buildFloorplansGrid(act, day, num, total, dayIdx, actIdx){
+    const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
+    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
+    const fps = (act.floorplans || []).slice(0,6);
+    const cols = fps.length===1?1:(fps.length===2||fps.length===4?2:3);
+    const cells = fps.map(p=>{
+      const safeUrl = (p.fileUrl||'').replace(/'/g,'%27').replace(/"/g,'&quot;');
+      const safeName = (p.filename||'planimetria.pdf').replace(/"/g,'&quot;');
+      return `<div class="video-card">
+        <a class="video-card-thumb" href="${safeUrl}" target="_blank" rel="noopener" style="${p.thumb?`background-image:url('${p.thumb}')`:''}">
+          <div class="video-card-play video-card-download"><svg viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="38" fill="rgba(0,0,0,.55)" stroke="rgba(255,255,255,.6)" stroke-width="2"/><path d="M40 24 L40 46 M30 38 L40 48 L50 38 M28 54 L52 54" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div>
+        </a>
+        <div class="video-card-caption">${p.name||'Planimetria'}${p.description?`<span class="video-card-sub">${p.description}</span>`:''}</div>
+        <a class="fp-download-link" href="${safeUrl}" download="${safeName}" target="_blank" rel="noopener">&#8595; Scarica</a>
+      </div>`;
+    }).join('');
+    return `
+    <section class="slide-videos slide-floorplans"${dataAttrs}>
+      <div class="videos-inner">
+        <div class="eyebrow">Planimetrie</div>
+        <h2 class="headline">${act.title}</h2>
+        <div class="videos-grid videos-grid-${cols}">${cells}</div>
+      </div>
+      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
+    </section>`;
+  }
+
   function buildClosing(trip, num, total){
     const c = trip.closing || {};
     return `
@@ -574,6 +601,9 @@ section:hover .bg{transform:scale(1.02)}
         const galleryPhotos = (act.photos || []).filter(Boolean);
         if(galleryPhotos.length > 0){
           slideBuilders.push((num, total) => buildGallery(act, day, num, total, dayIdx, actIdx));
+        }
+        if(act.floorplans?.length){
+          slideBuilders.push((num, total) => buildFloorplansGrid(act, day, num, total, dayIdx, actIdx));
         }
         if(act.videos?.length){
           slideBuilders.push((num, total) => buildVideosGrid(act, day, num, total, dayIdx, actIdx));
@@ -694,6 +724,11 @@ body.edit-mode #edit-controls{ opacity:1; }
 .video-card-play svg{ width:48px;height:48px;opacity:.85;transition:opacity .2s; }
 .video-card-thumb:hover .video-card-play svg{ opacity:1; }
 .video-card-caption{ margin-top:.8rem;font-family:var(--sans);font-size:.72rem;letter-spacing:.06em;color:var(--warm-white);opacity:.75;line-height:1.5;text-align:center;padding:0 .3rem; }
+.slide-floorplans .video-card-thumb{ display:block;text-decoration:none; }
+.video-card-download svg{ width:44px;height:44px; }
+.video-card-sub{ display:block;margin-top:.25rem;font-size:.66rem;opacity:.65;font-style:italic;font-weight:400; }
+.fp-download-link{display:block;margin-top:.45rem;font-family:var(--sans);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(201,169,110,.7);text-decoration:none;text-align:center;transition:color .15s;}
+.fp-download-link:hover{color:var(--gold);}
 
 /* ── AI rewrite bar ───────────────────────────────────────────────────────── */
 .ai-bar{position:fixed;z-index:300;display:flex;flex-direction:column;gap:.4rem;background:rgba(15,13,10,.97);border:1px solid rgba(201,169,110,.4);border-radius:4px;padding:.45rem .5rem;box-shadow:0 8px 30px rgba(0,0,0,.5);}
@@ -1447,6 +1482,31 @@ try{ LoveitEditor=(function(){
         if(textMode) sec2.querySelectorAll(TEXT_SEL).forEach(el=>{el.contentEditable='true';el.spellcheck=false;});
         _addInsertBtn(sec2);if(editMode) _addDeleteBtn(sec2);
         lastSec=sec2;
+      }
+
+      // 2b. Slide "Planimetrie": stesso template dei video, con link scaricabile (max 6)
+      const fps=(data.floorplans||[]).slice(0,6);
+      if(fps.length>0){
+        const secFp=document.createElement('section');
+        secFp.className='slide-videos slide-floorplans';secFp.setAttribute('data-added','1');
+        const colsFp=fps.length===1?1:(fps.length===2||fps.length===4?2:3);
+        const cellsFp=fps.map(p=>{
+          const safeUrl=(p.fileUrl||'').replace(/"/g,'&quot;');
+          const safeName=(p.filename||'planimetria.pdf').replace(/"/g,'&quot;');
+          return `<div class="video-card">
+            <a class="video-card-thumb" href="${safeUrl}" target="_blank" rel="noopener" style="${p.thumb?`background-image:url('${p.thumb}')`:''}">
+              <div class="video-card-play video-card-download"><svg viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="38" fill="rgba(0,0,0,.55)" stroke="rgba(255,255,255,.6)" stroke-width="2"/><path d="M40 24 L40 46 M30 38 L40 48 L50 38 M28 54 L52 54" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div>
+            </a>
+            <div class="video-card-caption">${p.name||'Planimetria'}${p.description?`<span class="video-card-sub">${p.description}</span>`:''}</div>
+            <a class="fp-download-link" href="${safeUrl}" download="${safeName}" target="_blank" rel="noopener">&#8595; Scarica</a>
+          </div>`;
+        }).join('');
+        secFp.innerHTML=`<div class="videos-inner"><div class="eyebrow">Planimetrie</div><h2 class="headline">${data.act||actName}</h2><div class="videos-grid videos-grid-${colsFp}">${cellsFp}</div></div>`;
+        lastSec.insertAdjacentElement('afterend',secFp);
+        if(window._loveitIO) window._loveitIO.observe(secFp);
+        _insertDot(secFp);_addInsertBtn(secFp);if(editMode) _addDeleteBtn(secFp);
+        if(textMode) secFp.querySelectorAll(TEXT_SEL+',.video-card-caption').forEach(el=>{el.contentEditable='true';el.spellcheck=false;});
+        lastSec=secFp;
       }
 
       // 3. Unica slide "Video": titolo centrale + griglia miniature (max 6)

@@ -252,6 +252,42 @@ async function handleActivity(activityName, res, token, baseId) {
 
 // ─── SUPPLIER SLIDE (restaurants / hotels / venues pickers) ──────────────────
 
+// Floor plans are Media records with Asset Type "Floor Plan" / "Floorplan".
+// Airtable auto-generates a thumbnail for images AND PDFs, so we can show a
+// preview even for PDF floor plans.
+const FLOORPLAN_ASSET_TYPES = new Set(["Floor Plan", "Floorplan"]);
+
+async function getFloorPlans(mediaIds, token, baseId) {
+  if (!mediaIds.length) return [];
+  const idClauses = mediaIds.map(id => `RECORD_ID()="${id}"`).join(",");
+  const formula = encodeURIComponent(`OR(${idClauses})`);
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_MEDIA}?filterByFormula=${formula}&maxRecords=50`;
+  try {
+    const data = await airtableFetch(url, token);
+    return (data.records || [])
+      .map(r => {
+        const f = r.fields;
+        const atRaw = f["Asset Type"];
+        const assetType = typeof atRaw === "object" ? (atRaw?.name || "") : (atRaw || "");
+        if (!FLOORPLAN_ASSET_TYPES.has(assetType)) return null;
+        const file = (f.File || [])[0];
+        if (!file) return null;
+        const thumb = file.thumbnails?.large?.url || file.thumbnails?.small?.url
+          || (file.type?.startsWith("image/") ? file.url : null);
+        return {
+          name:        f["Asset Name"] || "Floor Plan",
+          description: f.Description || null,
+          fileUrl:     file.url,
+          filename:    file.filename || "floorplan.pdf",
+          thumb,
+        };
+      })
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 async function handleSupplierSlide(name, res, token, baseId) {
   let f;
   try {
@@ -272,6 +308,8 @@ async function handleSupplierSlide(name, res, token, baseId) {
   if (f.Capacity) metaParts.push(`Max ${f.Capacity} pax`);
   if (f.Rooms)    metaParts.push(`${f.Rooms} rooms`);
 
+  const floorplans = await getFloorPlans(f.Media || [], token, baseId);
+
   return res.status(200).json({
     act:         f.Name || name,
     description: f.Description || "",
@@ -280,6 +318,7 @@ async function handleSupplierSlide(name, res, token, baseId) {
     mainPhoto:   photos[0] || null,
     photos,
     videos:      [],
+    floorplans,
   });
 }
 
