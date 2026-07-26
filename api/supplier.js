@@ -192,12 +192,14 @@ async function findSuppliers(supplierName) {
     return (data.records || []).map(r => {
       const f = r.fields;
       const allPhotoUrls = (f.Photos || []).map(p => p.url);
+      const allPhotosMeta = (f.Photos || []).filter(p => p.url).map(p => ({ url: p.url, name: p.filename || "" }));
       return {
         name:        f.Name        || "",
         city:        f.City        || "",
         description: f.Description || null,
         photos:      allPhotoUrls.slice(0, 4),
         allPhotos:   allPhotoUrls,
+        allPhotosMeta,
         type:        f.Type        || null,
         mediaIds:    f.Media       || [],
       };
@@ -498,6 +500,7 @@ export async function generateSupplierFullPage(supplierNameRaw, apiKey, template
       photoPosition: "center center",
       photos:        selected.photos?.slice(1, 4) || [],
       allPhotos:     selected.allPhotos || [],
+      allPhotosMeta: selected.allPhotosMeta || [],
       cityPhoto:     `${cityName.toLowerCase()} italy aerial landmark`,
       fromAirtable:  true,
     };
@@ -563,6 +566,7 @@ export async function generateSupplierFullPage(supplierNameRaw, apiKey, template
         photoPosition: profile.photoPosition,
         photos:       profile.photos,
         allPhotos:    profile.allPhotos || [],
+        allPhotosMeta: profile.allPhotosMeta || [],
         floorplans,
         options:      [],
         _airtable:    profile.fromAirtable,

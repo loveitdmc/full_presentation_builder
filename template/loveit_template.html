@@ -664,6 +664,31 @@ body.edit-mode .add-flowitem-btn{ display:inline-block;pointer-events:auto; }
     </section>`;
   }
 
+  // ── Nomi foto → didascalie automatiche ─────────────────────────────────────
+  // Mappa globale url→nome (da Airtable: Asset Name / Description / filename),
+  // condivisa con l'editor (window) e alimentata anche dai picker.
+  window._PHOTO_NAMES = window._PHOTO_NAMES || {};
+  window._registerPhotoNames = function(meta){
+    (meta || []).forEach(m => { if(m && m.url && m.name) window._PHOTO_NAMES[m.url] = m.name; });
+  };
+  window._cleanPhotoName = function(raw){
+    if(!raw) return '';
+    let s = String(raw)
+      .replace(/\.[a-z0-9]{2,5}$/i, '')        // estensione
+      .replace(/[_\-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    // Nomi "tecnici" (IMG_1234, DSC0001…) non sono didascalie utili
+    if(!s || /^(img|image|dsc|dscf|foto|photo|pic|screenshot|whatsapp)?[\s\d.]*$/i.test(s)) return '';
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  };
+  window._photoCaption = function(url, idx){
+    const n = window._cleanPhotoName(window._PHOTO_NAMES[url]);
+    return n || `Foto ${idx + 1}`;
+  };
+  // Registra i nomi foto forniti dal backend nel TRIP
+  (TRIP.days || []).forEach(d => (d.activities || []).forEach(a => window._registerPhotoNames(a.allPhotosMeta)));
+
   // Risolve le foto di un'attività per il layout "2 full-page + galleria":
   // main = foto principale, second = seconda inquadratura, gallery = il resto (max 6).
   function _actPhotoSets(act){
@@ -696,19 +721,19 @@ body.edit-mode .add-flowitem-btn{ display:inline-block;pointer-events:auto; }
   function buildGallery(act, day, num, total, dayIdx, actIdx){
     const photos = _actPhotoSets(act).gallery;
     if(!photos.length) return '';
-    const layout = {1:'grid-1',2:'grid-2',3:'grid-3',4:'grid-4'}[photos.length] || 'grid-6';
+    const cols = photos.length===1 ? 1 : (photos.length===2||photos.length===4 ? 2 : 3);
     const cells = photos.map((url, i) =>
-      `<div class="gallery-cell" style="background-image:url('${url}')"><div class="gallery-cell-caption">Foto ${i+1}</div></div>`
+      `<div class="gallery-cell" style="background-image:url('${url}')"><div class="gallery-cell-caption">${window._photoCaption(url,i)}</div></div>`
     ).join('');
     const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
     const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
     return `
-    <section class="slide-gallery"${dataAttrs}>
-      <div class="gallery-grid ${layout}">${cells}</div>
-      <div class="gallery-header">
-        <span class="gallery-label">Day ${day.number}</span>
-        <span class="gallery-title-small">${act.title}</span>
+    <section class="slide-gallery gallery-cards"${dataAttrs}>
+      <div class="gc-header">
+        <div class="eyebrow">${act.supplierName || 'Day '+day.number}</div>
+        <h2 class="headline">${act.title}</h2>
       </div>
+      <div class="gallery-grid gc-cols-${cols}">${cells}</div>
       <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
     </section>`;
   }
@@ -902,6 +927,57 @@ body.edit-mode #undo-btn,body.edit-mode #redo-btn{ display:inline-block; }
   background:linear-gradient(to top,rgba(0,0,0,.78) 0%,rgba(0,0,0,0) 100%);
   font-family:var(--sans);font-size:.72rem;font-weight:500;color:var(--warm-white);
   pointer-events:none;
+}
+
+/* ── Galleria a card (stile "Villa Miani"): header + griglia con margini ───── */
+.slide-gallery.gallery-cards{
+  display:flex;flex-direction:column;align-items:stretch;
+  background:var(--nero);
+  padding:3.2rem 3.8rem 2.6rem;
+}
+.gallery-cards .gc-header{ flex:0 0 auto;margin-bottom:1.6rem; }
+.gallery-cards .gc-header .eyebrow{ margin-bottom:.55rem; }
+.gallery-cards .gc-header .headline{ font-size:2.1rem;margin:0; }
+.gallery-cards .gallery-grid{
+  position:static;inset:auto;flex:1 1 auto;min-height:0;
+  display:grid;gap:1.25rem;grid-auto-rows:1fr;background:transparent;
+}
+.gallery-cards .gc-cols-1{ grid-template-columns:1fr; }
+.gallery-cards .gc-cols-2{ grid-template-columns:repeat(2,1fr); }
+.gallery-cards .gc-cols-3{ grid-template-columns:repeat(3,1fr); }
+.gallery-cards .gallery-cell{ min-height:0;border-radius:2px;overflow:hidden; }
+.gallery-cards .gallery-cell:hover{ transform:none; }
+.gallery-cards .gallery-cell-caption{
+  background:rgba(8,8,8,.6);backdrop-filter:blur(4px);
+  padding:.55rem .85rem;font-size:.7rem;letter-spacing:.02em;
+}
+.gallery-cards .counter{ position:absolute;bottom:1.1rem;right:1.5rem; }
+
+/* Fix: placeholder/zone foto dentro .content-dark (opt-card) devono ricevere i click */
+body.edit-mode .opt-card-photo,
+body.edit-mode .opt-card-photo *{ pointer-events:auto; }
+
+/* ── Focal point (riposiziona inquadratura foto full-page in edit mode) ────── */
+.focal-btn{
+  position:absolute;top:1.2rem;right:1.5rem;z-index:60;
+  font-family:var(--sans);font-size:.56rem;font-weight:500;letter-spacing:.15em;text-transform:uppercase;
+  color:rgba(201,169,110,.75);background:rgba(10,10,10,.88);
+  border:1px solid rgba(201,169,110,.28);padding:.38rem 1.2rem;cursor:pointer;border-radius:2px;
+  backdrop-filter:blur(8px);transition:all .2s;white-space:nowrap;
+}
+.focal-btn:hover{ border-color:var(--gold);color:var(--gold);background:rgba(201,169,110,.1); }
+.focal-btn.active{ border-color:var(--gold);color:var(--nero);background:var(--gold); }
+.focal-overlay{
+  position:absolute;inset:0;z-index:58;cursor:grab;
+  background:rgba(0,0,0,.12);
+  outline:2px dashed rgba(201,169,110,.55);outline-offset:-2px;
+}
+.focal-overlay.dragging{ cursor:grabbing; }
+.focal-overlay .focal-hint{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-family:var(--sans);font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--warm-white);background:rgba(10,10,10,.72);padding:.5rem 1.1rem;border-radius:2px;
+  pointer-events:none;white-space:nowrap;
 }
 
 /* ── Map slide ────────────────────────────────────────────────────────────── */
@@ -1101,6 +1177,15 @@ body.edit-mode .del-day-row-btn{
 .pp-linkrow button{background:transparent;border:1px solid rgba(201,169,110,.3);border-radius:2px;color:var(--gold);font-size:.85rem;padding:.4rem .85rem;cursor:pointer;transition:all .15s;}
 .pp-linkrow button:hover{border-color:var(--gold);background:rgba(201,169,110,.12);color:var(--warm-white);}
 .pp-dropzone:hover,.pp-dropzone.drag-over{background:rgba(201,169,110,.14);border-color:var(--gold);border-style:solid;color:var(--gold);}
+/* Sezione "Scegli dal database" del photo picker */
+.pp-db-btn{width:100%;padding:.7rem 1rem;background:rgba(201,169,110,.08);border:1px solid rgba(201,169,110,.3);color:rgba(201,169,110,.8);cursor:pointer;border-radius:2px;font-family:var(--sans);font-size:.57rem;letter-spacing:.12em;text-transform:uppercase;transition:all .2s;}
+.pp-db-btn:hover{background:rgba(201,169,110,.16);border-color:var(--gold);color:var(--gold);}
+.pp-kind-tabs{display:flex;gap:.4rem;margin-bottom:.8rem;flex-wrap:wrap;}
+.pp-kind{font-family:var(--sans);font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;padding:.35rem .7rem;background:transparent;border:1px solid rgba(201,169,110,.22);border-radius:2px;color:rgba(201,169,110,.55);cursor:pointer;transition:all .2s;}
+.pp-kind:hover{border-color:rgba(201,169,110,.6);color:var(--gold);}
+.pp-kind.active{background:rgba(201,169,110,.15);border-color:var(--gold);color:var(--gold);}
+.pp-db-back{background:none;border:none;color:rgba(201,169,110,.55);cursor:pointer;font-family:var(--sans);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;padding:.2rem 0;margin-bottom:.5rem;transition:color .2s;}
+.pp-db-back:hover{color:var(--gold);}
 
 /* ── Split photo placeholder ─────────────────────────────────────────────── */
 .split-photo-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7rem;cursor:pointer;border:1.5px dashed rgba(201,169,110,.28);color:rgba(201,169,110,.45);font-family:var(--sans);font-size:.54rem;letter-spacing:.18em;text-transform:uppercase;transition:all .2s;}
@@ -1116,7 +1201,7 @@ body.edit-mode .del-day-row-btn{
   #scroll{ overflow:visible!important;height:auto!important;display:block!important; }
   section{ width:16in!important;height:9in!important;page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid;overflow:hidden!important;display:flex!important; }
   .bg,.gallery-cell,.gallery-grid,.slide-overview,.slide-closing{ -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important; }
-  #dots,.logo-bar,#edit-controls,.edit-zone,.add-slide-btn,#add-slide-panel{ display:none!important; }
+  #dots,.logo-bar,#edit-controls,.edit-zone,.add-slide-btn,#add-slide-panel,.focal-btn,.focal-overlay{ display:none!important; }
   [contenteditable]{ border-bottom:none!important;background:transparent!important; }
 }
 </style>
@@ -1193,7 +1278,7 @@ try{ LoveitEditor=(function(){
   function _snapshotScroll(){
     const scroll=document.getElementById('scroll');
     const clone=scroll.cloneNode(true);
-    clone.querySelectorAll('.edit-zone,.add-slide-btn,.delete-slide-btn').forEach(el=>el.remove());
+    clone.querySelectorAll('.edit-zone,.add-slide-btn,.delete-slide-btn,.focal-btn,.focal-overlay').forEach(el=>el.remove());
     clone.querySelectorAll('[contenteditable]').forEach(el=>el.removeAttribute('contenteditable'));
     clone.querySelectorAll('.gallery-cell,.split-photo').forEach(c=>{
       if(c.style.position==='relative') c.style.position='';
@@ -1432,6 +1517,12 @@ try{ LoveitEditor=(function(){
   function applyUrl(url,target){
     target.style.backgroundImage=`url('${url}')`;
     target.querySelector('.split-photo-placeholder')?.remove();
+    // Didascalia automatica: se la cella ha una caption e la foto ha un nome noto
+    const cap=target.querySelector('.gallery-cell-caption');
+    if(cap&&window._cleanPhotoName){
+      const n=window._cleanPhotoName(window._PHOTO_NAMES?.[url]);
+      if(n) cap.textContent=n;
+    }
     if(target.animate) target.animate([{opacity:.4},{opacity:1}],{duration:280});
   }
 
@@ -1450,7 +1541,9 @@ try{ LoveitEditor=(function(){
       <div class="pp-linkrow">
         <input type="url" placeholder="&#128279;&nbsp; Incolla il link di una foto…" autocomplete="off"/>
         <button title="Usa questo link">→</button>
-      </div>`;
+      </div>
+      <div class="pp-divider"><span>oppure</span></div>
+      <button class="pp-db-btn">&#128269;&nbsp; Scegli dal database (fornitori, artisti, attività)</button>`;
     document.body.appendChild(panel);
     _photoPicker=panel;
     panel.querySelector('.pp-close').addEventListener('click',()=>{panel.remove();_photoPicker=null;});
@@ -1468,6 +1561,7 @@ try{ LoveitEditor=(function(){
         thumb.addEventListener('click',()=>{ applyUrl(photos[i],target);panel.remove();_photoPicker=null; });
       });
     }
+    panel.querySelector('.pp-db-btn').addEventListener('click',()=>_dbBrowse(target));
     const dz=panel.querySelector('#pp-dz');
     dz.addEventListener('click',()=>{ currentTarget=target;fi.value='';fi.click();panel.remove();_photoPicker=null; });
     dz.addEventListener('dragover',e=>{ e.preventDefault();dz.classList.add('drag-over'); });
@@ -1477,6 +1571,115 @@ try{ LoveitEditor=(function(){
       const f=e.dataTransfer.files[0];
       if(f&&f.type.startsWith('image/')){ applyFile(f,target);panel.remove();_photoPicker=null; }
     });
+  }
+
+  // ── Focal point: trascina per riposizionare l'inquadratura delle foto full-page ──
+  function _addFocalBtn(bg){
+    const sec=bg.parentElement;
+    if(!sec||sec.querySelector('.focal-btn')) return;
+    const btn=document.createElement('button');
+    btn.type='button';btn.className='focal-btn';btn.textContent='✥ Inquadra';
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const existing=sec.querySelector('.focal-overlay');
+      if(existing){ existing.remove();btn.classList.remove('active');btn.textContent='✥ Inquadra';return; }
+      btn.classList.add('active');btn.textContent='✓ Fatto';
+      const ov=document.createElement('div');
+      ov.className='focal-overlay';
+      ov.innerHTML='<span class="focal-hint">Trascina la foto per riposizionarla</span>';
+      sec.appendChild(ov);
+      const parsePos=()=>{
+        const m=(bg.style.backgroundPosition||'').match(/([\d.]+)%\s+([\d.]+)%/);
+        return m?[+m[1],+m[2]]:[50,50];
+      };
+      let sx=0,sy=0,px=50,py=50,dragging=false;
+      ov.addEventListener('pointerdown',ev=>{
+        ev.preventDefault();dragging=true;ov.classList.add('dragging');
+        sx=ev.clientX;sy=ev.clientY;[px,py]=parsePos();
+        if(ov.setPointerCapture){ try{ov.setPointerCapture(ev.pointerId);}catch{} }
+      });
+      ov.addEventListener('pointermove',ev=>{
+        if(!dragging) return;
+        const r=sec.getBoundingClientRect();
+        const w=r.width||1,h=r.height||1;
+        const nx=Math.max(0,Math.min(100,px-(ev.clientX-sx)/w*160));
+        const ny=Math.max(0,Math.min(100,py-(ev.clientY-sy)/h*160));
+        bg.style.backgroundPosition=nx.toFixed(1)+'% '+ny.toFixed(1)+'%';
+      });
+      const end=()=>{ dragging=false;ov.classList.remove('dragging'); };
+      ov.addEventListener('pointerup',end);
+      ov.addEventListener('pointercancel',end);
+    });
+    sec.appendChild(btn);
+    zones.push(btn); // così viene rimosso automaticamente uscendo dall'edit mode
+  }
+
+  // ── "Scegli dal database": naviga fornitori/artisti/attività e applica una foto ──
+  const _DB_KINDS=[['venues','\u{1F3DB}️','Venue'],['restaurants','\u{1F37D}️','Ristoranti'],['hotels','\u{1F3E8}','Hotel'],['artists','\u{1F3A4}','Artisti'],['activities','\u{1F3AF}','Attività']];
+  function _dbBrowse(target){
+    const apiBase=window.LOVEIT_API_BASE||'';
+    if(_photoPicker){_photoPicker.remove();_photoPicker=null;}
+    const panel=document.createElement('div');
+    panel.id='photo-picker-panel';
+    document.body.appendChild(panel);_photoPicker=panel;
+    const render=kind=>{
+      panel.innerHTML=`
+        <button class="pp-close" title="Chiudi">&times;</button>
+        <div class="pp-title">Scegli dal database</div>
+        <div class="pp-kind-tabs">${_DB_KINDS.map(([k,e,l])=>`<button class="pp-kind${k===kind?' active':''}" data-kind="${k}">${e} ${l}</button>`).join('')}</div>
+        <div class="pp-db-body"><div class="asp-artist-loading">Caricamento…</div></div>`;
+      panel.querySelector('.pp-close').addEventListener('click',()=>{panel.remove();_photoPicker=null;});
+      panel.querySelectorAll('.pp-kind').forEach(b=>b.addEventListener('click',()=>render(b.dataset.kind)));
+      const body=panel.querySelector('.pp-db-body');
+      if(!apiBase){ body.innerHTML='<p class="asp-artist-err">Funzione disponibile solo dalla versione online (Vercel).</p>'; return; }
+      const q=kind==='artists'?'':('?kind='+kind);
+      fetch(apiBase+'/api/acts-list'+q)
+        .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+        .then(data=>{
+          const items=data.suppliers||data.artists||data.activities||[];
+          if(!items.length){ body.innerHTML='<p class="asp-artist-err">Nessun risultato in questa categoria.</p>'; return; }
+          body.innerHTML=`
+            <input class="asp-artist-search" type="text" placeholder="\u{1F50D}  Filtra per nome…" autocomplete="off"/>
+            <div class="asp-artist-grid">${items.map((a,i)=>`
+              <div class="asp-artist-card" data-idx="${i}" data-name="${a.name.toLowerCase()}">
+                <div class="asp-artist-thumb" style="${a.thumbnail?`background-image:url('${a.thumbnail.replace(/'/g,"\\'")}');`:''}">${!a.thumbnail?'<div class="asp-artist-no-thumb">\u{1F4F7}</div>':''}</div>
+                <div class="asp-artist-name">${a.name}</div>
+                ${a.type?`<div class="asp-artist-type">${a.type}</div>`:''}
+              </div>`).join('')}</div>`;
+          const inp=body.querySelector('.asp-artist-search'),grid=body.querySelector('.asp-artist-grid');
+          inp.addEventListener('input',()=>{ const s=inp.value.toLowerCase().trim();grid.querySelectorAll('.asp-artist-card').forEach(c=>{c.style.display=(!s||c.dataset.name.includes(s))?'':'none';}); });
+          grid.querySelectorAll('.asp-artist-card').forEach(card=>card.addEventListener('click',()=>{
+            _dbPhotos(target,panel,items[+card.dataset.idx].name,kind);
+          }));
+        })
+        .catch(e=>{ body.innerHTML=`<p class="asp-artist-err">Errore connessione: ${e.message}</p>`; });
+    };
+    render('venues');
+  }
+  function _dbPhotos(target,panel,name,kind){
+    const apiBase=window.LOVEIT_API_BASE||'';
+    const body=panel.querySelector('.pp-db-body');
+    body.innerHTML='<div class="asp-artist-loading">Caricamento foto…</div>';
+    const reqBody=kind==='activities'?{activity:name,format:'json'}
+                :kind==='artists'?{act:name,format:'json'}
+                :{supplier:name,format:'json'};
+    fetch(apiBase+'/api/acts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(reqBody)})
+      .then(r=>r.json())
+      .then(data=>{
+        if(data.error) throw new Error(data.error);
+        const photos=(data.photos||[]).filter(Boolean);
+        if(window._registerPhotoNames) window._registerPhotoNames(data.photosMeta);
+        if(!photos.length){ body.innerHTML='<p class="asp-artist-err">Nessuna foto per questa scheda.</p>'; return; }
+        body.innerHTML=`
+          <button class="pp-db-back">← Indietro</button>
+          <div class="pp-title" style="margin-bottom:.6rem">${data.act||name} — clicca una foto</div>
+          <div class="pp-grid">${photos.map((u,i)=>`<div class="pp-thumb" data-idx="${i}" style="background-image:url('${u}')"></div>`).join('')}</div>`;
+        body.querySelector('.pp-db-back').addEventListener('click',()=>_dbBrowse(target));
+        body.querySelectorAll('.pp-thumb').forEach((t,i)=>t.addEventListener('click',()=>{
+          applyUrl(photos[i],target);panel.remove();_photoPicker=null;
+        }));
+      })
+      .catch(e=>{ body.innerHTML=`<p class="asp-artist-err">Errore: ${e.message}</p>`; });
   }
 
   function _syncSaveBtn(){
@@ -1492,7 +1695,7 @@ try{ LoveitEditor=(function(){
     if(editMode){
       // Activate photo zones
       photoMode=true;
-      document.querySelectorAll('.bg').forEach(bg=>{ const z=makeZone(bg);bg.parentElement.appendChild(z);zones.push(z); });
+      document.querySelectorAll('.bg').forEach(bg=>{ const z=makeZone(bg);bg.parentElement.appendChild(z);zones.push(z);_addFocalBtn(bg); });
       document.querySelectorAll('.gallery-cell,.split-photo').forEach(cell=>{ if(getComputedStyle(cell).position==='static') cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z); });
       // Activate text editing
       textMode=true;
@@ -1505,6 +1708,7 @@ try{ LoveitEditor=(function(){
       photoMode=false;
       zones.forEach(z=>{ const p=z.parentElement;z.remove();if(p&&(p.classList.contains('gallery-cell')||p.classList.contains('split-photo'))) p.style.position=''; });
       zones.length=0;
+      document.querySelectorAll('.focal-overlay').forEach(o=>o.remove());
       _closePanel();
       if(_photoPicker){_photoPicker.remove();_photoPicker=null;}
       // Deactivate text editing
@@ -2102,6 +2306,8 @@ try{ LoveitEditor=(function(){
       const mainPhoto=data.mainPhoto||allPhotos[0]||'';
       const secondPhoto=allPhotos.find(p=>p!==mainPhoto)||mainPhoto;
       const allPhotosJson=allPhotos.length?JSON.stringify(allPhotos):'';
+      // Registra i nomi foto (per le didascalie automatiche)
+      if(window._registerPhotoNames) window._registerPhotoNames(data.photosMeta);
 
       const sec1=document.createElement('section');
       sec1.setAttribute('data-added','1');
@@ -2111,7 +2317,7 @@ try{ LoveitEditor=(function(){
       lastSec.insertAdjacentElement('afterend',sec1);
       if(window._loveitIO) window._loveitIO.observe(sec1);
       _insertDot(sec1);_addInsertBtn(sec1);if(editMode) _addDeleteBtn(sec1);
-      if(photoMode){ const bg=sec1.querySelector('.bg');if(bg){const z=makeZone(bg);bg.parentElement.appendChild(z);zones.push(z);} }
+      if(photoMode){ const bg=sec1.querySelector('.bg');if(bg){const z=makeZone(bg);bg.parentElement.appendChild(z);zones.push(z);_addFocalBtn(bg);} }
       if(textMode) sec1.querySelectorAll(TEXT_SEL).forEach(el=>{el.contentEditable='true';el.spellcheck=false;});
       lastSec=sec1;
 
@@ -2123,7 +2329,7 @@ try{ LoveitEditor=(function(){
       lastSec.insertAdjacentElement('afterend',sec1b);
       if(window._loveitIO) window._loveitIO.observe(sec1b);
       _insertDot(sec1b);_addInsertBtn(sec1b);if(editMode) _addDeleteBtn(sec1b);
-      if(photoMode){ const bg=sec1b.querySelector('.bg');if(bg){const z=makeZone(bg);bg.parentElement.appendChild(z);zones.push(z);} }
+      if(photoMode){ const bg=sec1b.querySelector('.bg');if(bg){const z=makeZone(bg);bg.parentElement.appendChild(z);zones.push(z);_addFocalBtn(bg);} }
       if(textMode) sec1b.querySelectorAll(TEXT_SEL).forEach(el=>{el.contentEditable='true';el.spellcheck=false;});
       lastSec=sec1b;
 
@@ -2131,11 +2337,12 @@ try{ LoveitEditor=(function(){
       const galleryPhotos=allPhotos.filter(p=>p!==mainPhoto&&p!==secondPhoto).slice(0,6);
       if(galleryPhotos.length>0){
         const sec2=document.createElement('section');
-        sec2.className='slide-gallery';sec2.setAttribute('data-added','1');
+        sec2.className='slide-gallery gallery-cards';sec2.setAttribute('data-added','1');
         if(allPhotosJson) sec2.dataset.allPhotos=allPhotosJson;
-        const layout={1:'grid-1',2:'grid-2',3:'grid-3',4:'grid-4'}[galleryPhotos.length]||'grid-6';
-        const cells=galleryPhotos.map((url,i)=>`<div class="gallery-cell" style="background-image:url('${url}')"><div class="gallery-cell-caption">Foto ${i+1}</div></div>`).join('');
-        sec2.innerHTML=`<div class="gallery-grid ${layout}">${cells}</div><div class="gallery-header"><span class="gallery-label">Gallery</span><span class="gallery-title-small">${data.act||actName}</span></div>`;
+        const cols=galleryPhotos.length===1?1:(galleryPhotos.length===2||galleryPhotos.length===4?2:3);
+        const cap=(url,i)=>window._photoCaption?window._photoCaption(url,i):`Foto ${i+1}`;
+        const cells=galleryPhotos.map((url,i)=>`<div class="gallery-cell" style="background-image:url('${url}')"><div class="gallery-cell-caption">${cap(url,i)}</div></div>`).join('');
+        sec2.innerHTML=`<div class="gc-header"><div class="eyebrow">${data.act||actName}</div><h2 class="headline">Gallery</h2></div><div class="gallery-grid gc-cols-${cols}">${cells}</div>`;
         lastSec.insertAdjacentElement('afterend',sec2);
         if(window._loveitIO) window._loveitIO.observe(sec2);
         _insertDot(sec2);
@@ -2734,7 +2941,7 @@ try{ LoveitEditor=(function(){
   function save(){
     const raw='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
     const doc=new DOMParser().parseFromString(raw,'text/html');
-    doc.querySelectorAll('.edit-zone,.add-slide-btn,.delete-slide-btn,#add-slide-panel,#photo-picker-panel').forEach(el=>el.remove());
+    doc.querySelectorAll('.edit-zone,.add-slide-btn,.delete-slide-btn,.focal-btn,.focal-overlay,#add-slide-panel,#photo-picker-panel').forEach(el=>el.remove());
     doc.querySelectorAll('.gallery-cell').forEach(c=>{ c.style.position='';if(!c.getAttribute('style')?.trim()) c.removeAttribute('style'); });
     doc.querySelectorAll('[contenteditable]').forEach(el=>el.removeAttribute('contenteditable'));
     doc.body.classList.remove('photo-mode','text-mode','edit-mode');

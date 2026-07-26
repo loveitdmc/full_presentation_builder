@@ -47,12 +47,14 @@ async function findSuppliers(supplierName) {
     return (data.records || []).map(r => {
       const f = r.fields;
       const allPhotoUrls = (f.Photos || []).map(p => p.url);
+      const allPhotosMeta = (f.Photos || []).filter(p => p.url).map(p => ({ url: p.url, name: p.filename || "" }));
       return {
         name:        f.Name        || "",
         city:        f.City        || "",
         description: f.Description || null,
         photos:      allPhotoUrls.slice(0, 4),
         allPhotos:   allPhotoUrls,
+        allPhotosMeta,
         type:        f.Type        || null,
       };
     }).filter(r => r.name);
@@ -104,18 +106,21 @@ async function fetchMediaPhotos(mediaIds) {
   if (!mediaIds?.length || !token || !baseId) return [];
   const idClauses = mediaIds.slice(0, 30).map(id => `RECORD_ID()="${id}"`).join(",");
   const formula = encodeURIComponent(`OR(${idClauses})`);
-  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_MEDIA_ID}?filterByFormula=${formula}&fields[]=File&maxRecords=50`;
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_MEDIA_ID}?filterByFormula=${formula}&fields[]=File&fields[]=${encodeURIComponent("Asset Name")}&fields[]=Description&maxRecords=50`;
   try {
     const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(6000) });
     if (!resp.ok) return [];
     const data = await resp.json();
-    const urls = [];
+    // Returns [{url, name}] — for automatic gallery captions
+    const metas = [];
     for (const r of (data.records || [])) {
-      for (const f of (r.fields.File || [])) {
-        if (f.url && !/\.(mp4|webm|ogg)(\?|$)/i.test(f.url)) urls.push(f.url);
+      const atts = (r.fields.File || []).filter(f => f.url && !/\.(mp4|webm|ogg)(\?|$)/i.test(f.url));
+      const recName = r.fields["Asset Name"] || r.fields.Description || null;
+      for (const f of atts) {
+        metas.push({ url: f.url, name: (atts.length === 1 && recName) ? recName : (f.filename || recName || "") });
       }
     }
-    return urls;
+    return metas;
   } catch {
     return [];
   }
@@ -355,6 +360,7 @@ async function enrichWithAirtable(programme) {
             act.photo     = sup.photos[0];
             act.photos    = sup.photos.slice(1, 4);
             act.allPhotos = sup.allPhotos || [];
+            act.allPhotosMeta = sup.allPhotosMeta || [];
           }
           act.supplierName = sup.name;
           act._airtable    = true;
@@ -370,8 +376,9 @@ async function enrichWithAirtable(programme) {
         if (artist) {
           const notes = artist.fields["Description and Operational Notes"];
           if (notes) act.description = notes;
-          const photos = await fetchMediaPhotos(artist.fields["Consolidated Media"]);
-          if (photos.length) { act.photo = photos[0]; act.photos = photos.slice(1, 4); act.allPhotos = photos; }
+          const photoMetas = await fetchMediaPhotos(artist.fields["Consolidated Media"]);
+          const photos = photoMetas.map(m => m.url);
+          if (photos.length) { act.photo = photos[0]; act.photos = photos.slice(1, 4); act.allPhotos = photos; act.allPhotosMeta = photoMetas; }
           act.supplierName = artist.name;
           act._airtable    = true;
           continue;
@@ -386,8 +393,9 @@ async function enrichWithAirtable(programme) {
         if (activityRec) {
           const notes = activityRec.fields["Description and Operational Notes"];
           if (notes) act.description = notes;
-          const photos = await fetchMediaPhotos(activityRec.fields["Media"]);
-          if (photos.length) { act.photo = photos[0]; act.photos = photos.slice(1, 4); act.allPhotos = photos; }
+          const photoMetas = await fetchMediaPhotos(activityRec.fields["Media"]);
+          const photos = photoMetas.map(m => m.url);
+          if (photos.length) { act.photo = photos[0]; act.photos = photos.slice(1, 4); act.allPhotos = photos; act.allPhotosMeta = photoMetas; }
           act.supplierName = activityRec.name;
           act._airtable    = true;
         }

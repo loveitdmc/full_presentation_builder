@@ -98,11 +98,13 @@ async function searchAirtable(supplierName) {
 
     const fields = data.records[0].fields;
     const photoUrls = (fields.Photos || []).map((f) => f.url);
+    const photosMeta = (fields.Photos || []).filter((f) => f.url).map((f) => ({ url: f.url, name: f.filename || "" }));
 
     return {
       description: fields.Description || null,
       photos: photoUrls.slice(0, 4).length ? photoUrls.slice(0, 4) : null,
       allPhotos: photoUrls,
+      allPhotosMeta: photosMeta,
     };
   } catch (e) {
     console.warn("Airtable search failed for", supplierName, ":", e.message);
@@ -122,18 +124,22 @@ async function fetchMediaPhotos(mediaIds) {
   if (!mediaIds?.length || !token || !baseId) return [];
   const idClauses = mediaIds.slice(0, 30).map((id) => `RECORD_ID()="${id}"`).join(",");
   const formula = encodeURIComponent(`OR(${idClauses})`);
-  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_MEDIA_ID}?filterByFormula=${formula}&fields[]=File&maxRecords=50`;
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_MEDIA_ID}?filterByFormula=${formula}&fields[]=File&fields[]=${encodeURIComponent("Asset Name")}&fields[]=Description&maxRecords=50`;
   try {
     const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(6000) });
     if (!resp.ok) return [];
     const data = await resp.json();
-    const urls = [];
+    // Returns [{url, name}] — name from Asset Name/Description (single-image records)
+    // or the attachment filename, used for automatic gallery captions.
+    const metas = [];
     for (const r of (data.records || [])) {
-      for (const f of (r.fields.File || [])) {
-        if (f.url && !/\.(mp4|webm|ogg)(\?|$)/i.test(f.url)) urls.push(f.url);
+      const atts = (r.fields.File || []).filter((f) => f.url && !/\.(mp4|webm|ogg)(\?|$)/i.test(f.url));
+      const recName = r.fields["Asset Name"] || r.fields.Description || null;
+      for (const f of atts) {
+        metas.push({ url: f.url, name: (atts.length === 1 && recName) ? recName : (f.filename || recName || "") });
       }
     }
-    return urls;
+    return metas;
   } catch {
     return [];
   }
@@ -152,8 +158,9 @@ async function searchByNameField(name, tableId, nameField, notesField, mediaFiel
     const data = await resp.json();
     if (!data.records?.length) return null;
     const f = data.records[0].fields;
-    const photos = await fetchMediaPhotos(f[mediaField]);
-    return { name: f[nameField] || name, description: f[notesField] || null, photos: photos.slice(0, 4), allPhotos: photos };
+    const photoMetas = await fetchMediaPhotos(f[mediaField]);
+    const photos = photoMetas.map((m) => m.url);
+    return { name: f[nameField] || name, description: f[notesField] || null, photos: photos.slice(0, 4), allPhotos: photos, allPhotosMeta: photoMetas };
   } catch {
     return null;
   }
@@ -195,6 +202,7 @@ async function enrichFromAirtable(tripObj) {
             photo:       match.photos?.[0] || activity.photo,
             photos:      match.photos?.slice(1, 4) || activity.photos,
             allPhotos:   match.allPhotos || [],
+            allPhotosMeta: match.allPhotosMeta || [],
             _airtable:   true,
           };
         })

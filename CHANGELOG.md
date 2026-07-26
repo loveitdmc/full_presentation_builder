@@ -8,6 +8,39 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v43 — 2026-07-26
+- **Galleria in stile "Villa Miani"** (screenshot fornito dall'utente): la slide
+  galleria è ora una griglia a card con margini su sfondo scuro, header in alto
+  (eyebrow = fornitore, headline = titolo, entrambi editabili) e didascalia su
+  barra scura in basso a ogni foto. Nuova classe `.gallery-cards` + `gc-cols-1/2/3`
+  (colonne in base al numero di foto); le vecchie gallerie full-bleed nei file
+  salvati restano com'erano.
+- **Didascalie automatiche dai nomi foto in Airtable.** Il backend ora restituisce
+  nome per ogni foto (`photosMeta`/`allPhotosMeta`: Asset Name/Description del
+  record Media, o filename dell'allegato) in acts.js, supplier.js, generate.js e
+  generate-text.js. Il template pulisce il nome (via estensione/underscore,
+  maiuscola iniziale) e lo usa come didascalia; i nomi "tecnici" (IMG_1234,
+  DSC…) ricadono su "Foto N". Quando si sostituisce una foto dal picker, la
+  didascalia della cella si aggiorna da sola.
+- **Fix "Scegli una foto" nel Confronto Opzioni** — i click non arrivavano al
+  placeholder perché dentro `.content-dark` (pointer-events:none in edit mode);
+  aggiunta l'eccezione CSS per `.opt-card-photo`.
+- **Nuovo "Scegli dal database" nel photo picker** (ovunque, non solo opt-card):
+  in fondo al picker foto c'è ora un pulsante che apre la navigazione del
+  database per categoria (Venue / Ristoranti / Hotel / Artisti / Attività, via
+  `/api/acts-list`), con filtro per nome; scelto il fornitore ne mostra le foto
+  (via `/api/acts` `format:'json'`) e un click applica la foto al riquadro.
+- **Focal point sulle foto full-page** («foto troppo croppate»): in edit mode
+  ogni slide full-bleed ha il pulsante "✥ Inquadra" in alto a destra; si apre
+  un overlay e si trascina la foto per riposizionare l'inquadratura
+  (`background-position` in %, clampato 0-100). Il valore è salvato inline,
+  quindi persiste nel salvataggio; il tracking Undo/dirty era già attivo per le
+  mutazioni `style` su `.bg`. Pulsanti/overlay rimossi da snapshot undo,
+  salvataggio HTML, stampa PDF e all'uscita dall'edit mode.
+- Verifica jsdom end-to-end: galleria generata con didascalie corrette (mock a
+  8 foto con nomi misti), inserimento fornitore, picker database completo
+  (tab → fornitore → foto → applicazione su opt-card), focal drag e cleanup.
+
 ## v42 — 2026-07-26
 - **Fix: il nuovo layout "2 slide full-page + galleria con didascalie" ora si
   applica anche alle presentazioni GENERATE (da PDF/testo/Airtable)**, non solo

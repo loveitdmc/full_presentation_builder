@@ -257,9 +257,10 @@ async function handleActivity(activityName, res, token, baseId) {
   // Media linked to only THIS activity are specific; media linked to 2+ activities
   // are generic supplier assets shared across tours — use them only as fallback.
   const buildAssets = recs => {
-    const photos = [], vids = [];
+    const photos = [], vids = [], photosMeta = [];
     for (const m of recs) {
       photos.push(...m.fileUrls.filter(u => !/\.(mp4|webm|ogg)(\?|$)/i.test(u)));
+      photosMeta.push(...(m.fileMeta || []).filter(x => !/\.(mp4|webm|ogg)(\?|$)/i.test(x.url)));
       const videoRawUrl = m.driveLink
         || m.fileUrls.find(u => /\.(mp4|webm|ogg)(\?|$)/i.test(u)) || null;
       if (videoRawUrl) {
@@ -272,13 +273,13 @@ async function handleActivity(activityName, res, token, baseId) {
         });
       }
     }
-    return { photos, vids };
+    return { photos, vids, photosMeta };
   };
 
   const specific = mediaRecords.filter(m => m.activityCount <= 1);
-  let { photos: photoUrls, vids: videos } = buildAssets(specific);
+  let { photos: photoUrls, vids: videos, photosMeta } = buildAssets(specific);
   if (!photoUrls.length && !videos.length) {
-    ({ photos: photoUrls, vids: videos } = buildAssets(mediaRecords));
+    ({ photos: photoUrls, vids: videos, photosMeta } = buildAssets(mediaRecords));
   }
   videos = videos.slice(0, 6);
   await enrichYouTubeTitles(videos);
@@ -306,6 +307,7 @@ async function handleActivity(activityName, res, token, baseId) {
     meta:        metaParts.join(" · ") || null,
     mainPhoto,
     photos:      photoUrls,
+    photosMeta,
     videos,
   });
 }
@@ -362,6 +364,7 @@ async function handleSupplierSlide(name, res, token, baseId) {
   }
 
   const photos = (f.Photos || []).map(p => p.url).filter(Boolean);
+  const photosMeta = (f.Photos || []).filter(p => p.url).map(p => ({ url: p.url, name: p.filename || "" }));
   const metaParts = [];
   if (f.City)     metaParts.push(f.City);
   if (f.Type)     metaParts.push(f.Type);
@@ -377,6 +380,7 @@ async function handleSupplierSlide(name, res, token, baseId) {
     meta:        metaParts.join(" · ") || null,
     mainPhoto:   photos[0] || null,
     photos,
+    photosMeta,
     videos:      [],
     floorplans,
   });
@@ -409,11 +413,19 @@ async function getMediaRecords(mediaIds, token, baseId) {
       const assetType = typeof f["Asset Type"] === "object"
         ? f["Asset Type"]?.name || ""
         : f["Asset Type"] || "";
-      const fileUrls = (f.File || []).map(att => att.url).filter(Boolean);
+      const atts = (f.File || []).filter(att => att.url);
+      const fileUrls = atts.map(att => att.url);
+      // Nome per didascalia: Asset Name/Description del record Media se ha UNA sola
+      // immagine, altrimenti il filename del singolo allegato
+      const recName = f["Asset Name"] || f.Description || null;
+      const fileMeta = atts.map(att => ({
+        url:  att.url,
+        name: (atts.length === 1 && recName) ? recName : (att.filename || recName || ""),
+      }));
       // How many Activities this media record is linked to — used to detect
       // generic/shared assets (linked to many activities) vs specific ones
       const activityCount = Array.isArray(f.Activities) ? f.Activities.length : 0;
-      return { assetType, fileUrls, driveLink: f["Drive Link"] || null, description: f.Description || null, activityCount };
+      return { assetType, fileUrls, fileMeta, driveLink: f["Drive Link"] || null, description: f.Description || null, activityCount };
     });
   } catch {
     return [];
@@ -611,12 +623,14 @@ async function generateActFullPage(selectedName, token, baseId, template, req, j
   // Rule: always extract image file attachments as photos; only extract an embeddable
   // video from the Drive Link field (or explicit video file URLs in File).
   const photoUrls = [];
+  const photosMeta = [];
   const videosFromMedia = [];
 
   for (const m of mediaRecords) {
     // Always extract image attachments (filter out video file extensions)
     const imageUrls = m.fileUrls.filter(u => !/\.(mp4|webm|ogg)(\?|$)/i.test(u));
     photoUrls.push(...imageUrls);
+    photosMeta.push(...(m.fileMeta || []).filter(x => !/\.(mp4|webm|ogg)(\?|$)/i.test(x.url)));
 
     // Extract video: Drive Link first (YouTube/Vimeo/GDrive), then explicit video files
     const videoRawUrl = m.driveLink
@@ -691,6 +705,7 @@ async function generateActFullPage(selectedName, token, baseId, template, req, j
         photoPosition: "center center",
         photos:        photoUrls.slice(1, 4),
         allPhotos:     photoUrls,
+        allPhotosMeta: photosMeta,
         videos,
         options:       [],
       }],
@@ -712,6 +727,7 @@ async function generateActFullPage(selectedName, token, baseId, template, req, j
       supplier:    supplier?.name || null,
       mainPhoto,
       photos:      photoUrls,
+      photosMeta,
       videos,
     };
   }
@@ -758,9 +774,10 @@ async function generateActivityFullPage(selectedName, token, baseId, template, r
 
   const mediaRecords = await getMediaRecords(rec.mediaIds, token, baseId);
   const buildAssets = recs => {
-    const photos = [], vids = [];
+    const photos = [], vids = [], photosMeta = [];
     for (const m of recs) {
       photos.push(...m.fileUrls.filter(u => !/\.(mp4|webm|ogg)(\?|$)/i.test(u)));
+      photosMeta.push(...(m.fileMeta || []).filter(x => !/\.(mp4|webm|ogg)(\?|$)/i.test(x.url)));
       const videoRawUrl = m.driveLink
         || m.fileUrls.find(u => /\.(mp4|webm|ogg)(\?|$)/i.test(u)) || null;
       if (videoRawUrl) {
@@ -773,14 +790,14 @@ async function generateActivityFullPage(selectedName, token, baseId, template, r
         });
       }
     }
-    return { photos, vids };
+    return { photos, vids, photosMeta };
   };
 
   // Media linked to only THIS activity are specific; shared/generic assets are fallback only
   const specific = mediaRecords.filter(m => m.activityCount <= 1);
-  let { photos: photoUrls, vids: videos } = buildAssets(specific);
+  let { photos: photoUrls, vids: videos, photosMeta } = buildAssets(specific);
   if (!photoUrls.length && !videos.length) {
-    ({ photos: photoUrls, vids: videos } = buildAssets(mediaRecords));
+    ({ photos: photoUrls, vids: videos, photosMeta } = buildAssets(mediaRecords));
   }
   videos = videos.slice(0, 6);
   await enrichYouTubeTitles(videos);
@@ -812,6 +829,7 @@ async function generateActivityFullPage(selectedName, token, baseId, template, r
         photoPosition: "center center",
         photos:        photoUrls.slice(1, 4),
         allPhotos:     photoUrls,
+        allPhotosMeta: photosMeta,
         videos,
         options: [],
       }],
