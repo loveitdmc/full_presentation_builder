@@ -483,6 +483,93 @@ body.edit-mode #slide-rail{ width:176px; }
 body.edit-mode #scroll{ margin-left:176px;width:calc(100% - 176px);transition:margin-left .25s ease,width .25s ease; }
 body.edit-mode .logo-bar{ left:calc(2.8rem + 176px);transition:left .25s ease; }
 body.edit-mode #edit-controls{ left:calc(2.4rem + 176px);transition:left .25s ease; }
+
+/* ── Confronto Opzioni (2-3 card affiancate, una consigliata) ────────────────── */
+.slide-optcompare{ background:var(--notte); }
+.optcompare-content{ align-items:flex-start; }
+.optcompare-sub{
+  font-family:var(--sans);font-size:.8rem;font-weight:300;font-style:italic;
+  color:rgba(245,240,232,.5);margin-top:.6rem;max-width:640px;
+}
+.optcompare-cards{
+  display:flex;gap:1.2rem;margin-top:1.8rem;width:100%;
+}
+.opt-card{
+  position:relative;flex:1;min-width:0;
+  background:rgba(255,255,255,.03);
+  border:1.5px solid rgba(201,169,110,.15);border-radius:4px;
+  overflow:hidden;transition:border-color .2s;
+}
+.opt-card[data-recommended="1"]{ border-color:var(--gold); }
+.opt-card-photo{ position:relative;width:100%;height:2.1in;background:#161616; }
+.opt-card-badge{
+  display:none;position:absolute;top:.6rem;left:.6rem;z-index:6;
+  font-family:var(--sans);font-size:.55rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--nero);background:var(--gold);padding:.3rem .6rem;border-radius:2px;
+}
+.opt-card[data-recommended="1"] .opt-card-badge{ display:block; }
+.opt-card-body{ padding:1.1rem 1.2rem 1.3rem; }
+.opt-card-body .eyebrow{ font-size:.62rem;margin-bottom:.5rem; }
+.opt-card-body .headline{ font-size:1.35rem;line-height:1.2;margin-bottom:.4rem; }
+.opt-card-direction{
+  font-family:var(--sans);font-size:.72rem;font-weight:600;letter-spacing:.06em;
+  color:var(--gold);margin-bottom:.55rem;
+}
+.opt-card-body .body-text{ font-size:.8rem;line-height:1.55;color:rgba(245,240,232,.75); }
+.rec-optcard-btn,.del-optcard-btn{
+  display:none;position:absolute;top:.5rem;z-index:60;
+  width:1.7rem;height:1.7rem;border-radius:50%;border:1px solid rgba(255,255,255,.2);
+  background:rgba(10,10,10,.75);cursor:pointer;font-size:.85rem;line-height:1;
+  transition:all .18s;backdrop-filter:blur(6px);
+}
+.rec-optcard-btn{ right:2.6rem;color:rgba(201,169,110,.7); }
+.rec-optcard-btn:hover{ border-color:var(--gold);color:var(--gold); }
+.opt-card[data-recommended="1"] .rec-optcard-btn{ color:var(--gold);border-color:var(--gold); }
+.del-optcard-btn{ right:.6rem;color:rgba(220,80,80,.7); }
+.del-optcard-btn:hover{ border-color:#e55;color:#e55; }
+body.edit-mode .rec-optcard-btn,
+body.edit-mode .del-optcard-btn{ display:flex;align-items:center;justify-content:center;pointer-events:auto; }
+.add-optcard-btn{
+  display:none;align-self:flex-start;margin-top:1.3rem;
+  font-family:var(--sans);font-size:.62rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(201,169,110,.75);background:transparent;border:1px solid rgba(201,169,110,.3);
+  padding:.5rem 1.1rem;cursor:pointer;border-radius:2px;transition:all .2s;
+}
+.add-optcard-btn:hover{ border-color:var(--gold);color:var(--gold);background:rgba(201,169,110,.08); }
+body.edit-mode .add-optcard-btn{ display:inline-block;pointer-events:auto; }
+
+/* ── Flusso / Concept (lista di beat a due colonne + nota alternative) ───────── */
+.slide-flow{ background:var(--nero); }
+.flow-content{ align-items:flex-start; }
+.flow-items{
+  display:grid;grid-template-columns:1fr 1fr;gap:.9rem 2.4rem;
+  width:100%;margin-top:1.6rem;
+}
+.flow-item{ position:relative;display:flex;align-items:flex-start;gap:.65rem;padding-right:1.6rem; }
+.flow-dot{
+  flex-shrink:0;width:8px;height:8px;border-radius:50%;background:var(--gold);
+  margin-top:.5rem;
+}
+.flow-item-text{ font-size:.85rem;line-height:1.6; }
+.del-flowitem-btn{
+  display:none;position:absolute;top:0;right:0;
+  width:1.4rem;height:1.4rem;border-radius:50%;border:1px solid rgba(220,80,80,.35);
+  background:rgba(10,10,10,.7);color:rgba(220,80,80,.75);cursor:pointer;font-size:.8rem;line-height:1;
+}
+.del-flowitem-btn:hover{ border-color:#e55;color:#e55; }
+body.edit-mode .del-flowitem-btn{ display:flex;align-items:center;justify-content:center;pointer-events:auto; }
+.add-flowitem-btn{
+  display:none;align-self:flex-start;margin-top:1.4rem;
+  font-family:var(--sans);font-size:.62rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(201,169,110,.75);background:transparent;border:1px solid rgba(201,169,110,.3);
+  padding:.5rem 1.1rem;cursor:pointer;border-radius:2px;transition:all .2s;
+}
+.add-flowitem-btn:hover{ border-color:var(--gold);color:var(--gold);background:rgba(201,169,110,.08); }
+body.edit-mode .add-flowitem-btn{ display:inline-block;pointer-events:auto; }
+.flow-footnote.body-text{
+  margin-top:1.5rem;font-size:.72rem;font-style:italic;line-height:1.6;
+  color:rgba(245,240,232,.45);max-width:720px;
+}
 </style>
 </head>
 
@@ -1006,7 +1093,7 @@ try{ LoveitEditor=(function(){
   let photoMode=false, textMode=false, editMode=false;
   const zones=[], addBtns=[], deleteBtns=[];
   let currentTarget=null;
-  const TEXT_SEL='.headline,.display,.body-text,.tagline,.eyebrow,.gallery-title-small,.gallery-label,.meta-pill,.room-cap-label,.room-cap-value,.day-num-col,.day-label-col';
+  const TEXT_SEL='.headline,.display,.body-text,.tagline,.eyebrow,.gallery-title-small,.gallery-label,.meta-pill,.room-cap-label,.room-cap-value,.day-num-col,.day-label-col,.optcompare-sub,.opt-card-direction';
 
   // ── Protezione modifiche non salvate (autosave + avviso prima di uscire) ───
   // localStorage è condiviso con la pagina che genera l'anteprima (stesso
@@ -1014,11 +1101,18 @@ try{ LoveitEditor=(function(){
   // sia nell'app principale (index.html) prima di chiudere l'anteprima.
   const AUTOSAVE_KEY='loveit_autosave_v1';
   let _dirty=false, _autosaveTimer=null;
+  function _isTrackedNode(n){
+    if(n.nodeType!==1) return false;
+    if(n.tagName==='SECTION'||n.tagName==='TR') return true;
+    return !!(n.classList && (n.classList.contains('opt-card')||n.classList.contains('flow-item')));
+  }
   function _isRealEdit(mutations){
     for(const m of mutations){
       if(m.type==='childList'){
-        for(const n of m.addedNodes) if(n.nodeType===1&&(n.tagName==='SECTION'||n.tagName==='TR')||n.nodeType===3) return true;
-        for(const n of m.removedNodes) if(n.nodeType===1&&(n.tagName==='SECTION'||n.tagName==='TR')||n.nodeType===3) return true;
+        for(const n of m.addedNodes) if(_isTrackedNode(n)||n.nodeType===3) return true;
+        for(const n of m.removedNodes) if(_isTrackedNode(n)||n.nodeType===3) return true;
+      } else if(m.type==='attributes'&&m.attributeName==='data-recommended'){
+        return true;
       } else if(m.type==='attributes'&&m.attributeName==='style'){
         const c=m.target.classList;
         if(c&&(c.contains('split-photo')||c.contains('gallery-cell')||c.contains('bg'))) return true;
@@ -1250,7 +1344,7 @@ try{ LoveitEditor=(function(){
       _rebuildRail();
       new MutationObserver(muts=>{
         if(_isRealEdit(muts)){ _markDirty();_scheduleHistoryCommit();_scheduleRailRebuild(); }
-      }).observe(scrollEl,{childList:true,subtree:true,attributes:true,attributeFilter:['style'],characterData:true});
+      }).observe(scrollEl,{childList:true,subtree:true,attributes:true,attributeFilter:['style','data-recommended'],characterData:true});
     };
     if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',go); else go();
   })();
@@ -1438,6 +1532,56 @@ try{ LoveitEditor=(function(){
       const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
     }
   }
+  // ── Confronto Opzioni (slide-optcompare): card +/×/consigliata ──────────────
+  function _optCardHtml(idx){
+    return `<div class="opt-card">
+      <div class="opt-card-photo gallery-cell"></div>
+      <div class="opt-card-badge">Consigliata</div>
+      <button type="button" class="rec-optcard-btn" title="Segna come consigliata">★</button>
+      <button type="button" class="del-optcard-btn" title="Rimuovi opzione">×</button>
+      <div class="opt-card-body">
+        <div class="eyebrow">Option ${idx}</div>
+        <div class="headline">Nome venue</div>
+        <div class="opt-card-direction">Direzione creativa</div>
+        <div class="body-text">Perché questa opzione, pro e contro…</div>
+      </div>
+    </div>`;
+  }
+  function _updateOptCompareAddBtn(cardsWrap){
+    const addBtn=cardsWrap?.parentElement?.querySelector('.add-optcard-btn');
+    if(addBtn) addBtn.style.display = cardsWrap.querySelectorAll('.opt-card').length>=3 ? 'none' : '';
+  }
+  function _addOptCard(addBtn){
+    const cardsWrap=addBtn.previousElementSibling;
+    if(!cardsWrap || !cardsWrap.classList.contains('optcompare-cards')) return;
+    const cards=cardsWrap.querySelectorAll('.opt-card');
+    if(cards.length>=3) return;
+    const div=document.createElement('div');
+    div.innerHTML=_optCardHtml(cards.length+1);
+    const card=div.firstElementChild;
+    cardsWrap.appendChild(card);
+    if(photoMode){
+      const cell=card.querySelector('.opt-card-photo');
+      cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z);
+    }
+    if(textMode) card.querySelectorAll(TEXT_SEL).forEach(el=>{ el.contentEditable='true';el.spellcheck=false; });
+    _updateOptCompareAddBtn(cardsWrap);
+  }
+
+  // ── Flusso/Concept (slide-flow): punti +/× ──────────────────────────────────
+  function _flowItemHtml(text){
+    return `<div class="flow-item"><span class="flow-dot"></span><div class="body-text flow-item-text">${text}</div><button type="button" class="del-flowitem-btn" title="Rimuovi punto">×</button></div>`;
+  }
+  function _addFlowItem(addBtn){
+    const wrap=addBtn.previousElementSibling;
+    if(!wrap || !wrap.classList.contains('flow-items')) return;
+    const div=document.createElement('div');
+    div.innerHTML=_flowItemHtml('Nuovo momento…');
+    const item=div.firstElementChild;
+    wrap.appendChild(item);
+    if(textMode) item.querySelectorAll('.body-text').forEach(el=>{ el.contentEditable='true';el.spellcheck=false; });
+  }
+
   document.addEventListener('click', e=>{
     if(!editMode) return;
     const delBtn=e.target.closest('.del-day-row-btn');
@@ -1448,8 +1592,44 @@ try{ LoveitEditor=(function(){
       if(tr && tbody && tbody.querySelectorAll('tr').length>1) tr.remove();
       return;
     }
-    const addBtn=e.target.closest('.add-day-row-btn');
-    if(addBtn){ e.preventDefault();e.stopPropagation();_addDayRow(addBtn); }
+    const addDayBtn=e.target.closest('.add-day-row-btn');
+    if(addDayBtn){ e.preventDefault();e.stopPropagation();_addDayRow(addDayBtn); return; }
+
+    const recBtn=e.target.closest('.rec-optcard-btn');
+    if(recBtn){
+      e.preventDefault();e.stopPropagation();
+      const card=recBtn.closest('.opt-card');
+      const wrap=card?.closest('.optcompare-cards');
+      wrap?.querySelectorAll('.opt-card').forEach(c=>c.removeAttribute('data-recommended'));
+      card?.setAttribute('data-recommended','1');
+      return;
+    }
+    const delOptBtn=e.target.closest('.del-optcard-btn');
+    if(delOptBtn){
+      e.preventDefault();e.stopPropagation();
+      const card=delOptBtn.closest('.opt-card');
+      const wrap=card?.closest('.optcompare-cards');
+      if(wrap && wrap.querySelectorAll('.opt-card').length>1){
+        const wasRec=card.hasAttribute('data-recommended');
+        card.remove();
+        if(wasRec){ const first=wrap.querySelector('.opt-card'); if(first) first.setAttribute('data-recommended','1'); }
+        _updateOptCompareAddBtn(wrap);
+      }
+      return;
+    }
+    const addOptBtn=e.target.closest('.add-optcard-btn');
+    if(addOptBtn){ e.preventDefault();e.stopPropagation();_addOptCard(addOptBtn); return; }
+
+    const delFlowBtn=e.target.closest('.del-flowitem-btn');
+    if(delFlowBtn){
+      e.preventDefault();e.stopPropagation();
+      const item=delFlowBtn.closest('.flow-item');
+      const wrap=item?.closest('.flow-items');
+      if(wrap && wrap.querySelectorAll('.flow-item').length>1) item.remove();
+      return;
+    }
+    const addFlowBtn=e.target.closest('.add-flowitem-btn');
+    if(addFlowBtn){ e.preventDefault();e.stopPropagation();_addFlowItem(addFlowBtn); }
   });
 
   function _closePanel(){
@@ -1626,6 +1806,32 @@ try{ LoveitEditor=(function(){
           </svg>
           <span>Venue</span>
         </button>
+      </div>
+      <div class="asp-group-title">Confronto</div>
+      <div class="asp-options">
+        <button class="asp-opt" data-layout="optcompare">
+          <svg viewBox="0 0 62 40" fill="none">
+            <rect x="1" y="1" width="28" height="38" rx="2" fill="rgba(201,169,110,.18)" stroke="rgba(201,169,110,.7)" stroke-width="1.5"/>
+            <rect x="33" y="1" width="28" height="38" rx="2" fill="rgba(201,169,110,.07)" stroke="rgba(201,169,110,.4)" stroke-width="1.5"/>
+            <rect x="5" y="5" width="20" height="11" fill="rgba(201,169,110,.35)"/>
+            <rect x="37" y="5" width="20" height="11" fill="rgba(201,169,110,.2)"/>
+            <line x1="5" y1="20" x2="21" y2="20" stroke="rgba(201,169,110,.5)" stroke-width="1"/>
+            <line x1="37" y1="20" x2="53" y2="20" stroke="rgba(201,169,110,.3)" stroke-width="1"/>
+          </svg>
+          <span>Opzioni</span>
+        </button>
+        <button class="asp-opt" data-layout="flow">
+          <svg viewBox="0 0 62 40" fill="none">
+            <rect x="1" y="1" width="60" height="38" rx="2" fill="rgba(201,169,110,.07)" stroke="rgba(201,169,110,.35)" stroke-width="1.5"/>
+            <circle cx="12" cy="12" r="2.4" fill="rgba(201,169,110,.7)"/>
+            <line x1="19" y1="12" x2="40" y2="12" stroke="rgba(201,169,110,.4)" stroke-width="1.3"/>
+            <circle cx="12" cy="22" r="2.4" fill="rgba(201,169,110,.7)"/>
+            <line x1="19" y1="22" x2="36" y2="22" stroke="rgba(201,169,110,.4)" stroke-width="1.3"/>
+            <circle cx="12" cy="32" r="2.4" fill="rgba(201,169,110,.7)"/>
+            <line x1="19" y1="32" x2="44" y2="32" stroke="rgba(201,169,110,.4)" stroke-width="1.3"/>
+          </svg>
+          <span>Flusso</span>
+        </button>
       </div>`;
     document.body.appendChild(panel);
     panel.querySelector('#asp-close').addEventListener('click',_closePanel);
@@ -1642,6 +1848,8 @@ try{ LoveitEditor=(function(){
         else if(layout&&layout.indexOf('sup-')===0){ _showSupplierPicker(panel,afterSec,layout.slice(4)); }
         else if(layout==='spaces'){ _showSpacesPicker(panel,afterSec,_supName); }
         else if(layout==='split-left'||layout==='split-right'){ _closePanel();_insertSplitSlide(afterSec,layout); }
+        else if(layout==='optcompare'){ _closePanel();_insertOptCompareSlide(afterSec); }
+        else if(layout==='flow'){ _closePanel();_insertFlowSlide(afterSec); }
         else { _closePanel();_insertGallerySlide(afterSec,layout); }
       });
     });
@@ -2372,6 +2580,53 @@ try{ LoveitEditor=(function(){
         cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z);
       });
     }
+    if(textMode){ sec.querySelectorAll(TEXT_SEL).forEach(el=>{ el.contentEditable='true';el.spellcheck=false; }); }
+    setTimeout(()=>sec.scrollIntoView({behavior:'smooth'}),150);
+  }
+
+  function _insertOptCompareSlide(afterSec){
+    const dIdx=afterSec.dataset.day, aIdx=afterSec.dataset.act;
+    const sec=document.createElement('section');
+    sec.className='slide-optcompare';sec.setAttribute('data-added','1');
+    if(dIdx!==undefined){ sec.dataset.day=dIdx; sec.dataset.act=aIdx; }
+    sec.innerHTML=`
+      <div class="content-dark optcompare-content">
+        <div class="eyebrow">Confronto opzioni</div>
+        <h2 class="headline">Titolo della giornata / direzione creativa</h2>
+        <p class="optcompare-sub">Tutte le opzioni considerate — il dettaglio di ciascuna segue in questa sezione</p>
+        <div class="optcompare-cards">${_optCardHtml(1)}${_optCardHtml(2)}</div>
+        <button type="button" class="add-optcard-btn">+ Aggiungi opzione</button>
+      </div>`;
+    afterSec.insertAdjacentElement('afterend',sec);
+    if(window._loveitIO) window._loveitIO.observe(sec);
+    _insertDot(sec);_addInsertBtn(sec);if(editMode) _addDeleteBtn(sec);
+    if(photoMode){
+      sec.querySelectorAll('.opt-card-photo').forEach(cell=>{
+        cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z);
+      });
+    }
+    if(textMode){ sec.querySelectorAll(TEXT_SEL).forEach(el=>{ el.contentEditable='true';el.spellcheck=false; }); }
+    sec.querySelector('.opt-card')?.setAttribute('data-recommended','1');
+    setTimeout(()=>sec.scrollIntoView({behavior:'smooth'}),150);
+  }
+
+  function _insertFlowSlide(afterSec){
+    const dIdx=afterSec.dataset.day, aIdx=afterSec.dataset.act;
+    const sec=document.createElement('section');
+    sec.className='slide-flow';sec.setAttribute('data-added','1');
+    if(dIdx!==undefined){ sec.dataset.day=dIdx; sec.dataset.act=aIdx; }
+    sec.innerHTML=`
+      <div class="content-dark flow-content">
+        <div class="eyebrow">Flusso della serata</div>
+        <h2 class="headline">Nome venue consigliata</h2>
+        <div class="rule"></div>
+        <div class="flow-items">${['Primo momento…','Secondo momento…','Terzo momento…','Quarto momento…'].map(_flowItemHtml).join('')}</div>
+        <button type="button" class="add-flowitem-btn">+ Aggiungi punto</button>
+        <p class="flow-footnote body-text">Nota sulle alternative scartate (facoltativo)…</p>
+      </div>`;
+    afterSec.insertAdjacentElement('afterend',sec);
+    if(window._loveitIO) window._loveitIO.observe(sec);
+    _insertDot(sec);_addInsertBtn(sec);if(editMode) _addDeleteBtn(sec);
     if(textMode){ sec.querySelectorAll(TEXT_SEL).forEach(el=>{ el.contentEditable='true';el.spellcheck=false; }); }
     setTimeout(()=>sec.scrollIntoView({behavior:'smooth'}),150);
   }

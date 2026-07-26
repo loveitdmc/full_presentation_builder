@@ -8,6 +8,33 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v40 — 2026-07-23
+- **Due nuove slide ispirate allo stile grafico di un template pptx dark
+  (fornito dall'utente)**, aggiunte come layout selezionabili dal pannello
+  "+ Aggiungi slide" in `loveit_template.html`. Le foto restano sempre scelte
+  a mano nell'editor HTML (drag&drop o picker Airtable) — nessuna generazione
+  automatica, coerente col resto del sistema.
+  - **Confronto Opzioni** (`data-layout="optcompare"`): 2-3 card affiancate
+    (foto + tag + nome + direzione creativa + nota), bordo oro e badge
+    "Consigliata" sulla card scelta. Pulsante ★ per spostare la scelta su
+    un'altra card (esclusivo — se ne stacca automaticamente dalle altre),
+    "+ Aggiungi opzione" (si nasconde al limite di 3 card) e × per rimuovere
+    (minimo 1 card; se si cancella quella consigliata, la prima rimasta
+    diventa automaticamente la nuova consigliata).
+  - **Flusso/Concept** (`data-layout="flow"`): titolo + lista puntata a due
+    colonne dei "momenti" della serata/attività, con +/× per riga (minimo 1)
+    e una nota finale in corsivo per menzionare le alternative scartate.
+  - Note tecniche: estesi `TEXT_SEL` (`.optcompare-sub`, `.opt-card-direction`;
+    il resto riusa classi esistenti come `.headline`/`.eyebrow`/`.body-text`),
+    `_isRealEdit` (ora traccia anche l'aggiunta/rimozione di `.opt-card`/
+    `.flow-item`, non solo `<section>`/`<tr>`) e l'`attributeFilter` del
+    MutationObserver (aggiunto `data-recommended`) così anche il tag di
+    "consigliata" è tracciato da dirty-check/Undo-Redo. Stesso accorgimento
+    `pointer-events:auto` già imparato con la v38 per i pulsanti dentro
+    `.content-dark`. Verificato l'intero flusso (inserimento, cap a 3 card,
+    toggle consigliata, cancellazione con riassegnazione, minimi, ciclo
+    edit-mode on/off) con un test end-to-end in jsdom simulando i click reali.
+
 ## v39 — 2026-07-23
 - **Unificati i tab "Scheda Fornitore" e "Artists & Shows"** in un unico tab
   "🔍 Cerca nel Database" (`public/index.html`) con un solo campo di ricerca.
