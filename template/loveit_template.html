@@ -664,19 +664,47 @@ body.edit-mode .add-flowitem-btn{ display:inline-block;pointer-events:auto; }
     </section>`;
   }
 
+  // Risolve le foto di un'attività per il layout "2 full-page + galleria":
+  // main = foto principale, second = seconda inquadratura, gallery = il resto (max 6).
+  function _actPhotoSets(act){
+    const all = ((act.allPhotos && act.allPhotos.length)
+      ? act.allPhotos
+      : [act.photo, ...(act.photos || [])]).filter(Boolean);
+    const main   = act.photo || all[0] || '';
+    const second = all.find(p => p !== main) || '';
+    const gallery = all.filter(p => p !== main && p !== second).slice(0, 6);
+    return { main, second, gallery };
+  }
+
+  // Seconda slide full-page: solo nome + "Vista d'insieme", volutamente leggera.
+  function buildActivitySecond(act, day, num, total, dayIdx, actIdx){
+    const { second } = _actPhotoSets(act);
+    const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
+    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
+    return `
+    <section${dataAttrs}>
+      <div class="bg" style="${bgStyle(second)}"></div>
+      <div class="ov-dark"></div>
+      <div class="content">
+        <div class="eyebrow">${act.title}</div>
+        <h2 class="headline">Vista d'insieme</h2>
+      </div>
+      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
+    </section>`;
+  }
+
   function buildGallery(act, day, num, total, dayIdx, actIdx){
-    const photos = (act.photos || []).filter(Boolean);
+    const photos = _actPhotoSets(act).gallery;
     if(!photos.length) return '';
-    // Always use 3-photo grid-3 layout (large left + 2 stacked right)
-    const slots = [photos[0]||'', photos[1]||'', photos[2]||''];
-    const cells = slots.map(url =>
-      `<div class="gallery-cell"${url ? ` style="background-image:url('${url}')"` : ''}></div>`
+    const layout = {1:'grid-1',2:'grid-2',3:'grid-3',4:'grid-4'}[photos.length] || 'grid-6';
+    const cells = photos.map((url, i) =>
+      `<div class="gallery-cell" style="background-image:url('${url}')"><div class="gallery-cell-caption">Foto ${i+1}</div></div>`
     ).join('');
     const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
     const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
     return `
     <section class="slide-gallery"${dataAttrs}>
-      <div class="gallery-grid grid-3">${cells}</div>
+      <div class="gallery-grid ${layout}">${cells}</div>
       <div class="gallery-header">
         <span class="gallery-label">Day ${day.number}</span>
         <span class="gallery-title-small">${act.title}</span>
@@ -765,8 +793,11 @@ body.edit-mode .add-flowitem-btn{ display:inline-block;pointer-events:auto; }
     day.activities.forEach((act, actIdx) => {
       if(act.showSlide !== false){
         slideBuilders.push((num, total) => buildActivity(act, day, num, total, dayIdx, actIdx));
-        const galleryPhotos = (act.photos || []).filter(Boolean);
-        if(galleryPhotos.length > 0){
+        const sets = _actPhotoSets(act);
+        if(sets.second){
+          slideBuilders.push((num, total) => buildActivitySecond(act, day, num, total, dayIdx, actIdx));
+        }
+        if(sets.gallery.length > 0){
           slideBuilders.push((num, total) => buildGallery(act, day, num, total, dayIdx, actIdx));
         }
         if(act.floorplans?.length){

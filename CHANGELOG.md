@@ -8,6 +8,24 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v42 — 2026-07-26
+- **Fix: il nuovo layout "2 slide full-page + galleria con didascalie" ora si
+  applica anche alle presentazioni GENERATE (da PDF/testo/Airtable)**, non solo
+  all'inserimento manuale dal database. La v41 aveva riscritto solo
+  `_insertArtistSlides` (flusso manuale); le presentazioni generate passano
+  invece da `buildActivity`/`buildGallery`, rimaste al vecchio layout
+  (1 slide + galleria 3 foto senza didascalie) — scoperto dal file esportato
+  caricato dall'utente. Ora, per ogni attività:
+  - nuova `_actPhotoSets(act)`: risolve foto principale, seconda foto e foto
+    galleria da `act.allPhotos` (fallback `[photo, ...photos]`);
+  - nuova `buildActivitySecond()`: seconda slide full-page (solo nome +
+    "Vista d'insieme") quando esiste una seconda foto distinta;
+  - `buildGallery()` riscritta: foto rimanenti (fino a 6) con didascalie
+    "Foto N" e layout `grid-1`…`grid-4`/`grid-6` in base al numero, invece
+    delle 3 foto fisse senza didascalie.
+  Verificato in jsdom con un TRIP mock (attività a 8 foto → 3 slide corrette;
+  attività a 1 foto → solo la slide principale, nessuna slide vuota).
+
 ## v41 — 2026-07-26
 - **Inserimento fornitore/artista/attività ora produce 2 slide full-page +
   1 slide galleria "come allegato"**, al posto della vecchia 1 slide
