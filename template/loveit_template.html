@@ -501,7 +501,12 @@ body.edit-mode #edit-controls{ left:calc(2.4rem + 176px);transition:left .25s ea
   overflow:hidden;transition:border-color .2s;
 }
 .opt-card[data-recommended="1"]{ border-color:var(--gold); }
-.opt-card-photo{ position:relative;width:100%;height:2.1in;background:#161616; }
+.opt-card-photo{
+  position:relative;width:100%;height:2.1in;
+  background-color:#161616;
+  /* contain (non cover): la foto si adatta allo spazio senza essere tagliata */
+  background-size:contain;background-repeat:no-repeat;background-position:center;
+}
 .opt-card-badge{
   display:none;position:absolute;top:.6rem;left:.6rem;z-index:6;
   font-family:var(--sans);font-size:.55rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
@@ -1656,6 +1661,27 @@ try{ LoveitEditor=(function(){
     };
     render('venues');
   }
+  // Se la foto è stata applicata a una card del Confronto Opzioni, compila
+  // automaticamente "Nome venue" e "Perché questa opzione" con i dati del
+  // fornitore scelto — solo se i campi hanno ancora il testo placeholder.
+  function _fillOptCardFromDb(target,data,name){
+    const card=target.closest('.opt-card');
+    if(!card) return;
+    const hl=card.querySelector('.opt-card-body .headline');
+    const hlTxt=(hl?.textContent||'').trim();
+    if(hl&&(!hlTxt||hlTxt==='Nome venue')) hl.textContent=data.act||name;
+    const bt=card.querySelector('.opt-card-body .body-text');
+    const btTxt=(bt?.textContent||'').trim();
+    if(bt&&(!btTxt||btTxt.startsWith('Perché questa opzione'))){
+      let d=(data.description||'').replace(/\s+/g,' ').trim();
+      if(d.length>220){
+        const cut=d.slice(0,220), dot=cut.lastIndexOf('. ');
+        d=dot>60?cut.slice(0,dot+1):cut.trimEnd()+'…';
+      }
+      if(d) bt.textContent=d;
+    }
+  }
+
   function _dbPhotos(target,panel,name,kind){
     const apiBase=window.LOVEIT_API_BASE||'';
     const body=panel.querySelector('.pp-db-body');
@@ -1676,7 +1702,9 @@ try{ LoveitEditor=(function(){
           <div class="pp-grid">${photos.map((u,i)=>`<div class="pp-thumb" data-idx="${i}" style="background-image:url('${u}')"></div>`).join('')}</div>`;
         body.querySelector('.pp-db-back').addEventListener('click',()=>_dbBrowse(target));
         body.querySelectorAll('.pp-thumb').forEach((t,i)=>t.addEventListener('click',()=>{
-          applyUrl(photos[i],target);panel.remove();_photoPicker=null;
+          applyUrl(photos[i],target);
+          _fillOptCardFromDb(target,data,name);
+          panel.remove();_photoPicker=null;
         }));
       })
       .catch(e=>{ body.innerHTML=`<p class="asp-artist-err">Errore: ${e.message}</p>`; });

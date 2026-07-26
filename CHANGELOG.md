@@ -8,6 +8,19 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v44 — 2026-07-26
+- **Confronto Opzioni: foto adattate allo spazio.** `.opt-card-photo` ora usa
+  `background-size:contain` (con sfondo scuro) invece di `cover`: la foto è
+  sempre interamente visibile nel riquadro, senza tagli.
+- **Auto-compilazione card dal database.** Scegliendo un fornitore dal
+  "Scegli dal database" su una card del Confronto Opzioni, oltre alla foto
+  vengono compilati automaticamente "Nome venue" (nome del fornitore) e
+  "Perché questa opzione" (descrizione Airtable accorciata a ~220 caratteri,
+  troncata a fine frase). I campi già modificati a mano NON vengono
+  sovrascritti (si riempiono solo se contengono ancora il testo placeholder).
+  Verificato in jsdom (flusso completo picker → foto+testi; nome custom
+  preservato).
+
 ## v43 — 2026-07-26
 - **Galleria in stile "Villa Miani"** (screenshot fornito dall'utente): la slide
   galleria è ora una griglia a card con margini su sfondo scuro, header in alto
