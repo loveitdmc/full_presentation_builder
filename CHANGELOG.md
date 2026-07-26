@@ -8,6 +8,34 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v41 — 2026-07-26
+- **Inserimento fornitore/artista/attività ora produce 2 slide full-page +
+  1 slide galleria "come allegato"**, al posto della vecchia 1 slide
+  divisa foto/testo + 1 galleria da 3 foto senza didascalie
+  (`_insertArtistSlides` in `loveit_template.html`). La prima slide porta
+  titolo, meta e descrizione sopra la foto principale; la seconda è una
+  seconda inquadratura più "leggera" (solo nome, per dare respiro visivo)
+  sopra una foto diversa. Tutte le foto restanti (fino a 6) finiscono nella
+  slide galleria, ciascuna con didascalia "Foto N" (`.gallery-cell-caption`,
+  gradiente scuro in basso) — ispirata allo screenshot Villa Miani mostrato
+  dall'utente. La galleria usa il layout a griglia più adatto al numero di
+  foto rimaste (`grid-1`…`grid-4`, o `grid-6` per 5-6 foto: 3 colonne × 2
+  righe invece delle vecchie 3 foto fisse).
+- **Slide "Confronto Opzioni": ora si possono inserire foto nei riquadri.**
+  Ogni card (`.opt-card-photo`) mostra un placeholder sempre visibile
+  ("Scegli una foto", stesso stile a bordo tratteggiato già usato per le
+  slide foto/testo) cliccabile per aprire il picker Airtable o trascinabile
+  per il drag&drop, tramite la nuova `_wireOptCardPhoto()` — collegata sia
+  alle 2 card iniziali che a ogni nuova card aggiunta con "+ Aggiungi
+  opzione". Verificato in jsdom: placeholder presente e wired su card
+  iniziali e su card aggiunte dinamicamente.
+- Verificato l'intero flusso con test jsdom end-to-end (fetch mockata a 8
+  foto → 2 sezioni full-page corrette + galleria `grid-6` con 6 didascalie;
+  opt-card con placeholder su card originali e aggiunte).
+- Foto full-page troppo "croppate": proposta discussa con l'utente (vedi
+  chat) — possibile prossimo passo un controllo di riposizionamento del
+  punto focale della foto in edit mode, non ancora implementato.
+
 ## v40 — 2026-07-23
 - **Due nuove slide ispirate allo stile grafico di un template pptx dark
   (fornito dall'utente)**, aggiunte come layout selezionabili dal pannello

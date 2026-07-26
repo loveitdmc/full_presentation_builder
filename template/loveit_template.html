@@ -861,6 +861,17 @@ body.edit-mode #undo-btn,body.edit-mode #redo-btn{ display:inline-block; }
 .grid-1{ grid-template-columns:1fr;grid-template-rows:1fr; }
 .grid-3-rev{ grid-template-columns:2fr 3fr;grid-template-rows:1fr 1fr; }
 .grid-3-rev .gallery-cell:last-child{ grid-row:1 / 3; }
+.grid-6{ grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr; }
+
+/* ── Didascalie per foto nella galleria "come allegato" (fornitori) ──────────── */
+.gallery-cell{ position:relative; }
+.gallery-cell-caption{
+  position:absolute;left:0;right:0;bottom:0;z-index:4;
+  padding:.6rem .8rem .5rem;
+  background:linear-gradient(to top,rgba(0,0,0,.78) 0%,rgba(0,0,0,0) 100%);
+  font-family:var(--sans);font-size:.72rem;font-weight:500;color:var(--warm-white);
+  pointer-events:none;
+}
 
 /* ── Map slide ────────────────────────────────────────────────────────────── */
 .slide-map{ position:relative; }
@@ -1093,7 +1104,7 @@ try{ LoveitEditor=(function(){
   let photoMode=false, textMode=false, editMode=false;
   const zones=[], addBtns=[], deleteBtns=[];
   let currentTarget=null;
-  const TEXT_SEL='.headline,.display,.body-text,.tagline,.eyebrow,.gallery-title-small,.gallery-label,.meta-pill,.room-cap-label,.room-cap-value,.day-num-col,.day-label-col,.optcompare-sub,.opt-card-direction';
+  const TEXT_SEL='.headline,.display,.body-text,.tagline,.eyebrow,.gallery-title-small,.gallery-label,.meta-pill,.room-cap-label,.room-cap-value,.day-num-col,.day-label-col,.optcompare-sub,.opt-card-direction,.gallery-cell-caption';
 
   // ── Protezione modifiche non salvate (autosave + avviso prima di uscire) ───
   // localStorage è condiviso con la pagina che genera l'anteprima (stesso
@@ -1533,9 +1544,10 @@ try{ LoveitEditor=(function(){
     }
   }
   // ── Confronto Opzioni (slide-optcompare): card +/×/consigliata ──────────────
+  const _PH_ICON=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="opacity:.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>`;
   function _optCardHtml(idx){
     return `<div class="opt-card">
-      <div class="opt-card-photo gallery-cell"></div>
+      <div class="opt-card-photo gallery-cell"><div class="split-photo-placeholder">${_PH_ICON}<span>Scegli una foto</span></div></div>
       <div class="opt-card-badge">Consigliata</div>
       <button type="button" class="rec-optcard-btn" title="Segna come consigliata">★</button>
       <button type="button" class="del-optcard-btn" title="Rimuovi opzione">×</button>
@@ -1546,6 +1558,22 @@ try{ LoveitEditor=(function(){
         <div class="body-text">Perché questa opzione, pro e contro…</div>
       </div>
     </div>`;
+  }
+  // Aggancia click-per-scegliere + drag&drop sul placeholder di una .opt-card-photo,
+  // esattamente come per .split-photo/.room-photo altrove nel file.
+  function _wireOptCardPhoto(card, contextSec){
+    const cell=card.querySelector('.opt-card-photo');
+    const ph=card.querySelector('.split-photo-placeholder');
+    if(!cell||!ph) return;
+    ph.addEventListener('click',()=>{
+      const dIdx=contextSec?.dataset.day, aIdx=contextSec?.dataset.act;
+      let avail=(dIdx!==undefined&&aIdx!==undefined) ? (TRIP.days[+dIdx]?.activities[+aIdx]?.allPhotos||[]) : [];
+      if(!avail.length&&contextSec?.dataset.allPhotos){ try{ avail=JSON.parse(contextSec.dataset.allPhotos)||[]; }catch{} }
+      _showPhotoPicker(cell,avail);
+    });
+    ph.addEventListener('dragover',e=>{ e.preventDefault();ph.classList.add('drag-over'); });
+    ph.addEventListener('dragleave',()=>ph.classList.remove('drag-over'));
+    ph.addEventListener('drop',e=>{ e.preventDefault();ph.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/')) applyFile(f,cell); });
   }
   function _updateOptCompareAddBtn(cardsWrap){
     const addBtn=cardsWrap?.parentElement?.querySelector('.add-optcard-btn');
@@ -1560,6 +1588,7 @@ try{ LoveitEditor=(function(){
     div.innerHTML=_optCardHtml(cards.length+1);
     const card=div.firstElementChild;
     cardsWrap.appendChild(card);
+    _wireOptCardPhoto(card, cardsWrap.closest('section'));
     if(photoMode){
       const cell=card.querySelector('.opt-card-photo');
       cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z);
@@ -2035,28 +2064,46 @@ try{ LoveitEditor=(function(){
       const data=await resp.json();
       if(data.error){ alert('Errore: '+data.error); return; }
 
-      // 1. Split slide: main photo + testo
-      const mainPhoto=data.mainPhoto||(data.photos&&data.photos[0])||'';
+      // 1+2. Due slide full-page (foto a tutta pagina, non più affiancata al testo):
+      // la prima porta titolo+descrizione, la seconda è una seconda inquadratura con
+      // solo il richiamo al nome (di proposito più "leggera", per dare respiro visivo).
+      const allPhotos=(data.photos||[]).filter(Boolean);
+      const mainPhoto=data.mainPhoto||allPhotos[0]||'';
+      const secondPhoto=allPhotos.find(p=>p!==mainPhoto)||mainPhoto;
+      const allPhotosJson=allPhotos.length?JSON.stringify(allPhotos):'';
+
       const sec1=document.createElement('section');
-      sec1.className='slide-split slide-split-photo-left';sec1.setAttribute('data-added','1');
-      if((data.photos||[]).length) sec1.dataset.allPhotos=JSON.stringify(data.photos);
+      sec1.setAttribute('data-added','1');
+      if(allPhotosJson) sec1.dataset.allPhotos=allPhotosJson;
       if(mode==='supplier') sec1.dataset.supplier=data.act||actName;
-      sec1.innerHTML=`<div class="split-photo" style="background-image:url('${mainPhoto}')"></div><div class="split-content">${data.meta?`<div class="eyebrow" style="margin-bottom:.6rem">${data.meta}</div>`:''}<h2 class="headline">${data.act||actName}</h2><p class="body-text">${data.description||''}</p>${data.supplier?`<p class="body-text" style="margin-top:.75rem;opacity:.55;font-size:.85em">${data.supplier}</p>`:''}</div>`;
+      sec1.innerHTML=`<div class="bg" style="background-image:url('${mainPhoto}')"></div><div class="ov-dark"></div><div class="content">${data.meta?`<div class="eyebrow" style="margin-bottom:.6rem">${data.meta}</div>`:''}<h2 class="headline">${data.act||actName}</h2><p class="body-text">${data.description||''}</p>${data.supplier?`<p class="body-text" style="margin-top:.75rem;opacity:.55;font-size:.85em">${data.supplier}</p>`:''}</div>`;
       lastSec.insertAdjacentElement('afterend',sec1);
       if(window._loveitIO) window._loveitIO.observe(sec1);
       _insertDot(sec1);_addInsertBtn(sec1);if(editMode) _addDeleteBtn(sec1);
-      if(photoMode){ const cell=sec1.querySelector('.split-photo');if(cell){cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z);} }
+      if(photoMode){ const bg=sec1.querySelector('.bg');if(bg){const z=makeZone(bg);bg.parentElement.appendChild(z);zones.push(z);} }
       if(textMode) sec1.querySelectorAll(TEXT_SEL).forEach(el=>{el.contentEditable='true';el.spellcheck=false;});
       lastSec=sec1;
 
-      // 2. Gallery slide se ci sono più foto
-      const extraPhotos=(data.photos||[]).slice(1,4);
-      if(extraPhotos.length>0){
+      const sec1b=document.createElement('section');
+      sec1b.setAttribute('data-added','1');
+      if(allPhotosJson) sec1b.dataset.allPhotos=allPhotosJson;
+      if(mode==='supplier') sec1b.dataset.supplier=data.act||actName;
+      sec1b.innerHTML=`<div class="bg" style="background-image:url('${secondPhoto}')"></div><div class="ov-dark"></div><div class="content"><div class="eyebrow">${data.act||actName}</div><h2 class="headline">Vista d'insieme</h2></div>`;
+      lastSec.insertAdjacentElement('afterend',sec1b);
+      if(window._loveitIO) window._loveitIO.observe(sec1b);
+      _insertDot(sec1b);_addInsertBtn(sec1b);if(editMode) _addDeleteBtn(sec1b);
+      if(photoMode){ const bg=sec1b.querySelector('.bg');if(bg){const z=makeZone(bg);bg.parentElement.appendChild(z);zones.push(z);} }
+      if(textMode) sec1b.querySelectorAll(TEXT_SEL).forEach(el=>{el.contentEditable='true';el.spellcheck=false;});
+      lastSec=sec1b;
+
+      // 3. Galleria "come allegato": tutte le altre foto (max 6) con didascalia per foto
+      const galleryPhotos=allPhotos.filter(p=>p!==mainPhoto&&p!==secondPhoto).slice(0,6);
+      if(galleryPhotos.length>0){
         const sec2=document.createElement('section');
         sec2.className='slide-gallery';sec2.setAttribute('data-added','1');
-        if((data.photos||[]).length) sec2.dataset.allPhotos=JSON.stringify(data.photos);
-        const layout=extraPhotos.length===1?'grid-1':'grid-3';
-        const cells=extraPhotos.map(url=>`<div class="gallery-cell" style="background-image:url('${url}')"></div>`).join('');
+        if(allPhotosJson) sec2.dataset.allPhotos=allPhotosJson;
+        const layout={1:'grid-1',2:'grid-2',3:'grid-3',4:'grid-4'}[galleryPhotos.length]||'grid-6';
+        const cells=galleryPhotos.map((url,i)=>`<div class="gallery-cell" style="background-image:url('${url}')"><div class="gallery-cell-caption">Foto ${i+1}</div></div>`).join('');
         sec2.innerHTML=`<div class="gallery-grid ${layout}">${cells}</div><div class="gallery-header"><span class="gallery-label">Gallery</span><span class="gallery-title-small">${data.act||actName}</span></div>`;
         lastSec.insertAdjacentElement('afterend',sec2);
         if(window._loveitIO) window._loveitIO.observe(sec2);
@@ -2600,6 +2647,7 @@ try{ LoveitEditor=(function(){
     afterSec.insertAdjacentElement('afterend',sec);
     if(window._loveitIO) window._loveitIO.observe(sec);
     _insertDot(sec);_addInsertBtn(sec);if(editMode) _addDeleteBtn(sec);
+    sec.querySelectorAll('.opt-card').forEach(card=>_wireOptCardPhoto(card,sec));
     if(photoMode){
       sec.querySelectorAll('.opt-card-photo').forEach(cell=>{
         cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z);
