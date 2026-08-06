@@ -8,6 +8,29 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v52 — 2026-08-06
+- **Fix didascalie che "saltavano in alto" in edit mode** (screenshot utente):
+  la regola generica `body.edit-mode [contenteditable]{position:relative}` le
+  toglieva dal posizionamento assoluto. Ora `position:absolute!important;
+  bottom:0` sulla caption in edit mode — resta in basso ed è editabile.
+- **Export PowerPoint: nuovo pulsante "↓ PPT"** accanto a PDF. Genera un vero
+  .pptx (16:9) client-side con pptxgenjs (CDN, caricato al primo uso),
+  mappando le slide HTML: cover/full-page/closing (foto full-bleed + overlay
+  testo), tabelle (overview, hotel, venue — righe reali), spread split
+  (foto metà + testo), gallerie (griglia foto con didascalie su barra scura),
+  Confronto Opzioni (card con bordo, badge Consigliata, foto contain),
+  Card Prezzi, Timeline, Flusso. Palette dark o crema/oro secondo il deck.
+  Slide interattive (video, mappe, PDF, planimetrie) escluse dall'export.
+- **Proxy immagini in `/api/acts-list?img=<url>`** (endpoint esistente, regola
+  "no nuovi file in api/"): le foto Airtable/Unsplash non mandano CORS e il
+  browser non potrebbe incorporarle nel .pptx; il proxy le rigira con CORS
+  aperto (whitelist host: airtableusercontent, unsplash, googleusercontent,
+  ytimg; solo https; cache 1h). L'export prova prima il fetch diretto, poi il
+  proxy; le foto caricate a mano (data:) passano dirette.
+- Verifica jsdom con stub PptxGenJS: 7 sezioni → 7 slide, testi
+  cover/tabella/spread corretti, 3 righe tabella, nome file dal TRIP,
+  pulsante ripristinato dopo l'export.
+
 ## v51 — 2026-08-06
 - **Didascalie galleria editabili e cancellabili in edit mode.**
   - Le didascalie erano già in `TEXT_SEL` ma NON cliccabili: l'edit-zone della

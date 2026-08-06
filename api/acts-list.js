@@ -71,6 +71,26 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
+  // ── Image proxy per l'export PPTX (?img=<url>) ──────────────────────────────
+  // Le foto Airtable/Unsplash non mandano header CORS: il browser non può
+  // leggerle per incorporarle nel .pptx. Questo proxy le rigira con CORS aperto.
+  if (req.query?.img) {
+    let target;
+    try { target = new URL(String(req.query.img)); } catch { return res.status(400).json({ error: "Bad img url" }); }
+    const okHost = /(^|\.)airtableusercontent\.com$|(^|\.)unsplash\.com$|(^|\.)googleusercontent\.com$|(^|\.)ytimg\.com$/.test(target.hostname);
+    if (target.protocol !== "https:" || !okHost) return res.status(400).json({ error: "Host not allowed" });
+    try {
+      const r = await fetch(target.href, { signal: AbortSignal.timeout(15000) });
+      if (!r.ok) return res.status(502).json({ error: `Upstream ${r.status}` });
+      const buf = Buffer.from(await r.arrayBuffer());
+      res.setHeader("Content-Type", r.headers.get("content-type") || "image/jpeg");
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      return res.status(200).send(buf);
+    } catch (e) {
+      return res.status(502).json({ error: `Proxy error: ${e.message}` });
+    }
+  }
+
   const token  = process.env.AIRTABLE_TOKEN;
   const baseId = process.env.AIRTABLE_BASE_ID;
   if (!token || !baseId) return res.status(500).json({ error: "Missing Airtable config" });

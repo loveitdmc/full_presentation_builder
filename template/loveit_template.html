@@ -577,7 +577,9 @@ body.edit-mode .del-flowitem-btn{ display:flex;align-items:center;justify-conten
 body.edit-mode .add-flowitem-btn{ display:inline-block;pointer-events:auto; }
 
 /* ── Didascalie galleria: editabili + cancellabili in edit mode (v51) ──────── */
-body.edit-mode .gallery-cell-caption{ pointer-events:auto;z-index:55;cursor:text; }
+/* NB: position:absolute!important — la regola generica body.edit-mode
+   [contenteditable] mette position:relative e farebbe saltare la barra in alto */
+body.edit-mode .gallery-cell-caption{ pointer-events:auto;z-index:55;cursor:text;position:absolute!important;top:auto;bottom:0; }
 .del-caption-btn{
   display:none;position:absolute;right:.45rem;bottom:.5rem;z-index:56;
   width:1.35rem;height:1.35rem;border-radius:50%;
@@ -1434,10 +1436,11 @@ body.edit-mode .del-day-row-btn{
   <button id="edit-btn" onclick="LoveitEditor.toggleEdit()">&#9998; Edit</button>
   <button id="save-btn" onclick="LoveitEditor.save()">&#8595; Save HTML</button>
   <button id="pdf-btn"  onclick="window.print()">&#8681; PDF</button>
+  <button id="pptx-btn" onclick="LoveitEditor.exportPptx()" title="Scarica come PowerPoint">&#8681; PPT</button>
 </div>
 
 <script>
-let LoveitEditor={toggleEdit:()=>{},togglePhotos:()=>{},toggleText:()=>{},save:()=>{},pdf:()=>window.print(),undo:()=>{},redo:()=>{}};
+let LoveitEditor={toggleEdit:()=>{},togglePhotos:()=>{},toggleText:()=>{},save:()=>{},pdf:()=>window.print(),undo:()=>{},redo:()=>{},exportPptx:()=>{}};
 try{ LoveitEditor=(function(){
   let photoMode=false, textMode=false, editMode=false;
   const zones=[], addBtns=[], deleteBtns=[];
@@ -3533,7 +3536,190 @@ try{ LoveitEditor=(function(){
 
   function pdf(){ window.print(); }
 
-  return{toggleEdit,togglePhotos,toggleText,save,pdf,undo,redo};
+  // ── Export PPTX (v52): mappa le slide HTML in un vero PowerPoint ────────────
+  // pptxgenjs caricato da CDN al primo uso; immagini via proxy CORS del backend.
+  function _pptxLoadLib(){
+    return new Promise((resolve,reject)=>{
+      if(window.PptxGenJS) return resolve(window.PptxGenJS);
+      const sc=document.createElement('script');
+      sc.src='https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
+      sc.onload=()=>window.PptxGenJS?resolve(window.PptxGenJS):reject(new Error('pptxgenjs non caricato'));
+      sc.onerror=()=>reject(new Error('CDN pptxgenjs non raggiungibile'));
+      document.head.appendChild(sc);
+    });
+  }
+  const _pptxImgCache={};
+  async function _pptxImg(url){
+    if(!url) return null;
+    if(url.startsWith('data:')) return url;
+    if(_pptxImgCache[url]!==undefined) return _pptxImgCache[url];
+    const toB64=async resp=>{
+      const blob=await resp.blob();
+      return await new Promise(res=>{ const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=()=>res(null);fr.readAsDataURL(blob); });
+    };
+    let out=null;
+    try{ const r=await fetch(url,{mode:'cors'}); if(r.ok) out=await toB64(r); }catch{}
+    if(!out){
+      const apiBase=window.LOVEIT_API_BASE||'';
+      if(apiBase){
+        try{ const r=await fetch(apiBase+'/api/acts-list?img='+encodeURIComponent(url)); if(r.ok) out=await toB64(r); }catch{}
+      }
+    }
+    _pptxImgCache[url]=out;
+    return out;
+  }
+  function _bgUrl(el){
+    const m=(el?.style.backgroundImage||'').match(/url\(["']?(.*?)["']?\)/);
+    return m?m[1]:'';
+  }
+  const _txt=el=>(el?.textContent||'').replace(/\s+/g,' ').trim();
+  async function exportPptx(){
+    const btn=document.getElementById('pptx-btn');
+    const oldLabel=btn?btn.textContent:'';
+    if(btn){ btn.disabled=true;btn.textContent='… PPT'; }
+    try{
+      const Pptx=await _pptxLoadLib();
+      const cream=document.body.classList.contains('deck-venues')||document.body.classList.contains('deck-hotel');
+      const C=cream
+        ?{ bg:'F7F4EF', ink:'2B323A', sub:'5A6068', gold:'A8854F', photoInk:'FFFFFF' }
+        :{ bg:'0A0A0A', ink:'F5F0E8', sub:'B0A895', gold:'C9A96E', photoInk:'F5F0E8' };
+      const pptx=new Pptx();
+      pptx.defineLayout({name:'W',width:13.33,height:7.5});
+      pptx.layout='W';
+      const W=13.33,H=7.5;
+      const secs=[...document.querySelectorAll('#scroll section')];
+      for(const sec of secs){
+        const cls=sec.classList;
+        // slide interattive senza equivalente statico: salta
+        if(cls.contains('slide-videos')||cls.contains('slide-map')||cls.contains('slide-pdf')||cls.contains('slide-floorplans')||cls.contains('slide-video')) continue;
+        const sl=pptx.addSlide();
+        sl.background={color:C.bg};
+        const bg=_bgUrl(sec.querySelector('.bg'));
+        const eyebrow=_txt(sec.querySelector('.eyebrow,.gallery-label'));
+        const headline=_txt(sec.querySelector('.headline,.display,.gallery-title-small'));
+        const bodyTxt=_txt(sec.querySelector('.body-text,.tagline,.optcompare-sub'));
+
+        if(cls.contains('slide-gallery')){
+          // Galleria: griglia di foto con didascalie
+          const cells=[...sec.querySelectorAll('.gallery-cell')].filter(c=>!c.classList.contains('opt-card-photo'));
+          const isCards=cls.contains('gallery-cards');
+          let top=0.55;
+          if(isCards||headline||eyebrow){
+            if(eyebrow) sl.addText(eyebrow.toUpperCase(),{x:0.6,y:0.32,w:W-1.2,h:0.32,fontSize:11,color:C.gold,charSpacing:3,fontFace:'Montserrat'});
+            if(headline) sl.addText(headline,{x:0.6,y:0.62,w:W-1.2,h:0.6,fontSize:24,color:C.ink,fontFace:'Georgia'});
+            top=1.5;
+          }
+          const n=cells.length,cols=n===1?1:(n===2||n===4?2:3),rows=Math.ceil(n/cols);
+          const gap=0.18,gw=(W-1.2-gap*(cols-1))/cols,gh=(H-top-0.5-gap*(rows-1))/rows;
+          for(let i=0;i<n;i++){
+            const cell=cells[i];
+            const img=await _pptxImg(_bgUrl(cell));
+            const x=0.6+(i%cols)*(gw+gap),y=top+Math.floor(i/cols)*(gh+gap);
+            if(img) sl.addImage({data:img,x,y,w:gw,h:gh,sizing:{type:'cover',w:gw,h:gh}});
+            const cap=_txt(cell.querySelector('.gallery-cell-caption'));
+            if(cap) sl.addText(cap,{x,y:y+gh-0.34,w:gw,h:0.34,fontSize:9,color:'FFFFFF',fill:{color:'0A0A0A',transparency:35},fontFace:'Montserrat',valign:'middle'});
+          }
+        } else if(cls.contains('slide-datatable')||cls.contains('slide-overview')){
+          if(eyebrow) sl.addText(eyebrow.toUpperCase(),{x:0.6,y:0.45,w:W-1.2,h:0.32,fontSize:11,color:C.gold,charSpacing:3,fontFace:'Montserrat'});
+          if(headline) sl.addText(headline,{x:0.6,y:0.8,w:W-1.2,h:0.65,fontSize:26,color:C.ink,fontFace:'Georgia'});
+          const table=sec.querySelector('table');
+          if(table){
+            const rows=[];
+            const ths=[...table.querySelectorAll('thead th')].map(_txt).filter(t=>t);
+            if(ths.length) rows.push(ths.map(t=>({text:t,options:{bold:true,color:C.gold,fontSize:10}})));
+            [...table.querySelectorAll('tbody tr')].forEach(tr=>{
+              const tds=[...tr.querySelectorAll('td')].map(td=>_txt(td)).filter((t,i,arr)=>!(i===arr.length-1&&(t===''||t==='×')));
+              if(tds.some(t=>t)) rows.push(tds.map(t=>({text:t,options:{color:C.ink,fontSize:11}})));
+            });
+            if(rows.length) sl.addTable(rows,{x:0.6,y:1.7,w:W-1.2,fontFace:'Montserrat',border:{type:'solid',color:cream?'C9C2B4':'3A342A',pt:0.5},autoPage:false,rowH:0.42});
+          }
+        } else if(cls.contains('slide-split')){
+          const photo=await _pptxImg(_bgUrl(sec.querySelector('.split-photo')));
+          const left=!cls.contains('slide-split-photo-right');
+          if(photo) sl.addImage({data:photo,x:left?0:W/2,y:0,w:W/2,h:H,sizing:{type:'cover',w:W/2,h:H}});
+          const tx=left?W/2+0.55:0.55,tw=W/2-1.1;
+          let y=1.1;
+          if(eyebrow){ sl.addText(eyebrow.toUpperCase(),{x:tx,y,w:tw,h:0.34,fontSize:11,color:C.gold,charSpacing:3,fontFace:'Montserrat'}); y+=0.5; }
+          if(headline){ sl.addText(headline,{x:tx,y,w:tw,h:1.0,fontSize:26,color:C.ink,fontFace:'Georgia'}); y+=1.15; }
+          if(bodyTxt) sl.addText(bodyTxt.slice(0,700),{x:tx,y,w:tw,h:H-y-0.8,fontSize:12,color:C.sub,fontFace:'Montserrat',lineSpacingMultiple:1.35,valign:'top'});
+        } else if(cls.contains('slide-optcompare')){
+          if(eyebrow) sl.addText(eyebrow.toUpperCase(),{x:0.6,y:0.4,w:W-1.2,h:0.32,fontSize:11,color:C.gold,charSpacing:3,fontFace:'Montserrat'});
+          if(headline) sl.addText(headline,{x:0.6,y:0.75,w:W-1.2,h:0.6,fontSize:24,color:C.ink,fontFace:'Georgia'});
+          const cards=[...sec.querySelectorAll('.opt-card')];
+          const cw=(W-1.2-0.3*(cards.length-1))/Math.max(cards.length,1);
+          for(let i=0;i<cards.length;i++){
+            const card=cards[i],x=0.6+i*(cw+0.3);
+            const rec=card.hasAttribute('data-recommended');
+            sl.addShape('rect',{x,y:1.6,w:cw,h:H-2.2,line:{color:rec?C.gold:(cream?'C9C2B4':'3A342A'),width:rec?2:1},fill:{color:C.bg}});
+            const img=await _pptxImg(_bgUrl(card.querySelector('.opt-card-photo')));
+            if(img) sl.addImage({data:img,x:x+0.12,y:1.72,w:cw-0.24,h:1.9,sizing:{type:'contain',w:cw-0.24,h:1.9}});
+            let yy=3.75;
+            if(rec){ sl.addText('CONSIGLIATA',{x:x+0.12,y:1.66,w:1.5,h:0.3,fontSize:8,bold:true,color:'FFFFFF',fill:{color:'FF5149'},align:'center',valign:'middle',fontFace:'Montserrat'}); }
+            const lbl=_txt(card.querySelector('.opt-card-body .eyebrow'));
+            if(lbl){ sl.addText(lbl.toUpperCase(),{x:x+0.15,y:yy,w:cw-0.3,h:0.28,fontSize:9,color:C.gold,charSpacing:2,fontFace:'Montserrat'}); yy+=0.32; }
+            const nm=_txt(card.querySelector('.opt-card-body .headline'));
+            if(nm){ sl.addText(nm,{x:x+0.15,y:yy,w:cw-0.3,h:0.42,fontSize:15,color:C.ink,fontFace:'Georgia'}); yy+=0.48; }
+            const dir=_txt(card.querySelector('.opt-card-direction'));
+            if(dir){ sl.addText(dir,{x:x+0.15,y:yy,w:cw-0.3,h:0.3,fontSize:10,color:C.gold,fontFace:'Montserrat'}); yy+=0.36; }
+            const why=_txt(card.querySelector('.opt-card-body .body-text'));
+            if(why) sl.addText(why.slice(0,350),{x:x+0.15,y:yy,w:cw-0.3,h:H-2.2-(yy-1.6)-0.15,fontSize:10,color:C.sub,fontFace:'Montserrat',lineSpacingMultiple:1.3,valign:'top'});
+          }
+        } else if(cls.contains('slide-flow')||cls.contains('slide-timeline')||cls.contains('slide-pricecards')){
+          if(eyebrow) sl.addText(eyebrow.toUpperCase(),{x:0.6,y:0.45,w:W-1.2,h:0.32,fontSize:11,color:C.gold,charSpacing:3,fontFace:'Montserrat'});
+          if(headline) sl.addText(headline,{x:0.6,y:0.8,w:W-1.2,h:0.65,fontSize:26,color:C.ink,fontFace:'Georgia'});
+          if(cls.contains('slide-pricecards')){
+            const cards=[...sec.querySelectorAll('.price-card')];
+            const cw=(W-1.2-0.3*(cards.length-1))/Math.max(cards.length,1);
+            cards.forEach((card,i)=>{
+              const x=0.6+i*(cw+0.3),rec=card.hasAttribute('data-recommended');
+              sl.addShape('rect',{x,y:1.8,w:cw,h:4.6,line:{color:rec?C.gold:(cream?'C9C2B4':'3A342A'),width:rec?2:1},fill:{color:C.bg}});
+              sl.addText(_txt(card.querySelector('.pc-label')).toUpperCase(),{x:x+0.15,y:2.05,w:cw-0.3,h:0.3,fontSize:9,color:C.gold,charSpacing:2,fontFace:'Montserrat'});
+              sl.addText(_txt(card.querySelector('.pc-price')),{x:x+0.15,y:2.4,w:cw-0.3,h:0.7,fontSize:26,color:C.gold,fontFace:'Georgia'});
+              sl.addText(_txt(card.querySelector('.pc-unit')).toUpperCase(),{x:x+0.15,y:3.1,w:cw-0.3,h:0.3,fontSize:8,color:C.sub,charSpacing:1,fontFace:'Montserrat'});
+              sl.addText(_txt(card.querySelector('.pc-note')).slice(0,300),{x:x+0.15,y:3.5,w:cw-0.3,h:2.7,fontSize:10,color:C.sub,fontFace:'Montserrat',lineSpacingMultiple:1.3,valign:'top'});
+              if(rec) sl.addText('CONSIGLIATA',{x:x+cw/2-0.75,y:1.62,w:1.5,h:0.3,fontSize:8,bold:true,color:'FFFFFF',fill:{color:'FF5149'},align:'center',valign:'middle',fontFace:'Montserrat'});
+            });
+          } else if(cls.contains('slide-timeline')){
+            [...sec.querySelectorAll('.tl-item')].forEach((it,i)=>{
+              const y=1.8+i*0.95;
+              sl.addShape('ellipse',{x:0.6,y,w:0.5,h:0.5,line:{color:C.gold,width:1},fill:{color:C.bg}});
+              sl.addText(String(i+1),{x:0.6,y,w:0.5,h:0.5,fontSize:12,color:C.gold,align:'center',valign:'middle',fontFace:'Montserrat'});
+              sl.addText(_txt(it.querySelector('.tl-title')),{x:1.3,y,w:W-2,h:0.4,fontSize:14,color:C.ink,fontFace:'Georgia'});
+              sl.addText(_txt(it.querySelector('.tl-text')).slice(0,200),{x:1.3,y:y+0.38,w:W-2,h:0.5,fontSize:10,color:C.sub,fontFace:'Montserrat'});
+            });
+          } else {
+            [...sec.querySelectorAll('.flow-item')].forEach((it,i)=>{
+              sl.addText('•  '+_txt(it.querySelector('.flow-item-text')||it),{x:0.8,y:1.8+i*0.5,w:W-1.6,h:0.45,fontSize:13,color:C.ink,fontFace:'Montserrat'});
+            });
+            const fn=_txt(sec.querySelector('.flow-footnote'));
+            if(fn) sl.addText(fn,{x:0.8,y:H-1,w:W-1.6,h:0.5,fontSize:10,italic:true,color:C.sub,fontFace:'Georgia'});
+          }
+        } else {
+          // Cover / full-page / closing: foto full-bleed + overlay testo
+          if(bg){
+            const img=await _pptxImg(bg);
+            if(img){
+              sl.addImage({data:img,x:0,y:0,w:W,h:H,sizing:{type:'cover',w:W,h:H}});
+              sl.addShape('rect',{x:0,y:H*0.5,w:W,h:H*0.5,fill:{color:'000000',transparency:45},line:{type:'none'}});
+            }
+          }
+          const ink=bg?C.photoInk:C.ink;
+          let y=bg?H-3.1:1.4;
+          if(eyebrow){ sl.addText(eyebrow.toUpperCase(),{x:0.7,y,w:W-1.4,h:0.34,fontSize:11,color:C.gold,charSpacing:3,fontFace:'Montserrat'}); y+=0.48; }
+          if(headline){ sl.addText(headline,{x:0.7,y,w:W-1.4,h:1.1,fontSize:32,color:ink,fontFace:'Georgia'}); y+=1.2; }
+          if(bodyTxt) sl.addText(bodyTxt.slice(0,450),{x:0.7,y,w:W-1.4,h:H-y-0.4,fontSize:12,color:bg?'E8E2D5':C.sub,fontFace:'Montserrat',lineSpacingMultiple:1.35,valign:'top'});
+        }
+      }
+      const fname=((TRIP.title||'presentazione')+'_'+(TRIP.destination||'loveit')).replace(/[^a-zA-Z0-9_\-]/g,'_').slice(0,60);
+      await pptx.writeFile({fileName:fname+'.pptx'});
+    }catch(e){
+      alert('Errore export PPT: '+e.message);
+    }finally{
+      if(btn){ btn.disabled=false;btn.textContent=oldLabel; }
+    }
+  }
+
+  return{toggleEdit,togglePhotos,toggleText,save,pdf,undo,redo,exportPptx};
 })(); } catch(e){ console.error('LoveitEditor init error:',e); document.getElementById('pdf-btn').title='Error: '+e.message; }
 </script>
 
