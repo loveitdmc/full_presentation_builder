@@ -252,20 +252,21 @@ export async function aiCaptionPhotos(metas, venueName, apiKey) {
       text: `Sei il copywriter di una DMC di lusso. Per ognuna delle ${targets.length} foto di "${venueName}" scrivi una didascalia brevissima in italiano (2-5 parole, descrittiva e concreta: es. "Cortile interno illuminato", "Camera doppia classic", "Terrazza panoramica"). Rispondi SOLO con un array JSON di ${targets.length} stringhe, nello stesso ordine delle foto.`,
     }];
     for (const t of targets) content.push({ type: "image", source: { type: "url", url: t.m.url } });
-    const resp = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 600, messages: [{ role: "user", content }] }),
-      signal: AbortSignal.timeout(25000),
+    // fetch delegata a globalThis: identica in produzione, mockabile nei test
+    const client = new Anthropic({ apiKey, timeout: 25000, fetch: (...a) => globalThis.fetch(...a) });
+    const resp = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 600,
+      messages: [{ role: "user", content }],
     });
-    if (!resp.ok) return metas;
-    const data = await resp.json();
-    const text = data.content?.[0]?.text || "";
+    const text = (resp.content?.[0]?.text || "").trim();
     const arr = JSON.parse(text.match(/\[[\s\S]*\]/)?.[0] || "[]");
     targets.forEach((t, k) => {
       if (typeof arr[k] === "string" && arr[k].trim()) metas[t.i] = { ...metas[t.i], name: arr[k].trim() };
     });
-  } catch { /* le didascalie restano quelle originali */ }
+  } catch (e) {
+    console.warn("aiCaptionPhotos failed:", e.message);
+  }
   return metas;
 }
 

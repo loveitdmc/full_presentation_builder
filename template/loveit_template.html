@@ -780,7 +780,7 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
   window._registerPhotoNames = function(meta){
     (meta || []).forEach(m => { if(m && m.url && m.name) window._PHOTO_NAMES[m.url] = m.name; });
   };
-  window._cleanPhotoName = function(raw){
+  window._cleanPhotoName = function(raw, venue){
     if(!raw) return '';
     let s = String(raw)
       .replace(/\.[a-z0-9]{2,5}$/i, '')        // estensione
@@ -788,11 +788,20 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
       .replace(/\s+/g, ' ')
       .trim();
     // Nomi "tecnici" (IMG_1234, DSC0001…) non sono didascalie utili
-    if(!s || /^(img|image|dsc|dscf|foto|photo|pic|screenshot|whatsapp)?[\s\d.]*$/i.test(s)) return '';
+    if(!s || /^(img|image|dsc|dscf|foto|photo|pic|screenshot|whatsapp)?[\s\d.()]*$/i.test(s)) return '';
+    // "nome venue (10)" non è una didascalia: se tolte le parole del venue
+    // restano solo numeri/parentesi, il nome non descrive nulla
+    if(venue){
+      let rest = s.toLowerCase();
+      String(venue).toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).forEach(w=>{
+        if(w) rest = rest.split(w).join(' ');
+      });
+      if(!rest.replace(/[\s\d.()\-–]+/g, '')) return '';
+    }
     return s.charAt(0).toUpperCase() + s.slice(1);
   };
-  window._photoCaption = function(url, idx){
-    const n = window._cleanPhotoName(window._PHOTO_NAMES[url]);
+  window._photoCaption = function(url, idx, venue){
+    const n = window._cleanPhotoName(window._PHOTO_NAMES[url], venue);
     return n || `Foto ${idx + 1}`;
   };
   // Registra i nomi foto forniti dal backend nel TRIP
@@ -832,7 +841,7 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
     if(!photos.length) return '';
     const cols = photos.length===1 ? 1 : (photos.length===2||photos.length===4 ? 2 : 3);
     const cells = photos.map((url, i) =>
-      `<div class="gallery-cell" style="background-image:url('${url}')"><div class="gallery-cell-caption">${window._photoCaption(url,i)}</div></div>`
+      `<div class="gallery-cell" style="background-image:url('${url}')"><div class="gallery-cell-caption">${window._photoCaption(url,i,act.supplierName||act.title)}</div></div>`
     ).join('');
     const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
     const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
@@ -1714,7 +1723,8 @@ try{ LoveitEditor=(function(){
     // Didascalia automatica: se la cella ha una caption e la foto ha un nome noto
     const cap=target.querySelector('.gallery-cell-caption');
     if(cap&&window._cleanPhotoName){
-      const n=window._cleanPhotoName(window._PHOTO_NAMES?.[url]);
+      const venue=target.closest('section')?.dataset.supplier||'';
+      const n=window._cleanPhotoName(window._PHOTO_NAMES?.[url], venue);
       if(n) cap.textContent=n;
     }
     if(target.animate) target.animate([{opacity:.4},{opacity:1}],{duration:280});
@@ -2759,7 +2769,7 @@ try{ LoveitEditor=(function(){
         sec2.className='slide-gallery gallery-cards';sec2.setAttribute('data-added','1');
         if(allPhotosJson) sec2.dataset.allPhotos=allPhotosJson;
         const cols=galleryPhotos.length===1?1:(galleryPhotos.length===2||galleryPhotos.length===4?2:3);
-        const cap=(url,i)=>window._photoCaption?window._photoCaption(url,i):`Foto ${i+1}`;
+        const cap=(url,i)=>window._photoCaption?window._photoCaption(url,i,data.act||actName):`Foto ${i+1}`;
         const cells=galleryPhotos.map((url,i)=>`<div class="gallery-cell" style="background-image:url('${url}')"><div class="gallery-cell-caption">${cap(url,i)}</div></div>`).join('');
         sec2.innerHTML=`<div class="gc-header"><div class="eyebrow">${data.act||actName}</div><h2 class="headline">Gallery</h2></div><div class="gallery-grid gc-cols-${cols}">${cells}</div>`;
         lastSec.insertAdjacentElement('afterend',sec2);

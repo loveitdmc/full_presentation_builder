@@ -8,6 +8,20 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v50 — 2026-08-06
+- **Fix didascalie AI (v49 non funzionava in produzione).** La chiamata vision
+  usava una fetch manuale con header `anthropic-version: 2023-06-01`, che non
+  supporta le immagini via URL → l'API rifiutava e il catch silenzioso
+  lasciava i filename. Riscritta `aiCaptionPhotos` con l'SDK `@anthropic-ai/sdk`
+  (stesso metodo di `generateWithAI`, che già funziona) + `console.warn`
+  sull'errore invece del silenzio. Verificato con SDK reale e fetch mockata:
+  3 foto tecniche → didascalie AI nelle posizioni giuste, nome descrittivo
+  intatto.
+- **Rete di sicurezza lato template:** `_cleanPhotoName`/`_photoCaption` ora
+  riconoscono anche "nome venue (N)" come nome tecnico (usando il fornitore
+  della slide come contesto): se il backend non produce la didascalia AI, la
+  galleria mostra "Foto N" invece del filename. Verificato in jsdom.
+
 ## v49 — 2026-08-06
 - **Didascalie AI descrittive nelle gallerie.** Quando il nome di una foto è
   "tecnico" — filename tipo "Palazzo Caracciolo (10)", IMG_1234, vuoto, o il
