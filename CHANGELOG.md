@@ -8,6 +8,24 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v51 — 2026-08-06
+- **Didascalie galleria editabili e cancellabili in edit mode.**
+  - Le didascalie erano già in `TEXT_SEL` ma NON cliccabili: l'edit-zone della
+    cella (z-index 50) le copriva. Fix CSS: in edit mode la caption sale a
+    z-index 55 con `pointer-events:auto` → click sulla didascalia = modifichi
+    il testo, click sul resto della foto = picker foto.
+  - Nuovo pulsante **×** su ogni didascalia (la rimuove) e pulsante
+    **"× Didascalie"** in alto a destra sulle slide galleria (le rimuove
+    tutte). Aggiunti dinamicamente all'ingresso in edit mode — funzionano
+    anche su presentazioni salvate — e rimossi da snapshot Undo, salvataggio
+    HTML, stampa PDF e all'uscita dall'edit mode. Rimozione tracciata da
+    Undo (`.gallery-cell-caption` nei nodi tracciati).
+  - Verifica jsdom: editabilità, del singola, clear slide, cleanup
+    uscita/rientro edit mode.
+- Nota: le didascalie AI (v49/v50) restano attive lato backend; se in
+  produzione non compaiono, il log Vercel ora mostra `aiCaptionPhotos
+  failed: …` con il motivo.
+
 ## v50 — 2026-08-06
 - **Fix didascalie AI (v49 non funzionava in produzione).** La chiamata vision
   usava una fetch manuale con header `anthropic-version: 2023-06-01`, che non

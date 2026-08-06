@@ -576,6 +576,25 @@ body.edit-mode .del-flowitem-btn{ display:flex;align-items:center;justify-conten
 .add-flowitem-btn:hover{ border-color:var(--gold);color:var(--gold);background:rgba(201,169,110,.08); }
 body.edit-mode .add-flowitem-btn{ display:inline-block;pointer-events:auto; }
 
+/* ── Didascalie galleria: editabili + cancellabili in edit mode (v51) ──────── */
+body.edit-mode .gallery-cell-caption{ pointer-events:auto;z-index:55;cursor:text; }
+.del-caption-btn{
+  display:none;position:absolute;right:.45rem;bottom:.5rem;z-index:56;
+  width:1.35rem;height:1.35rem;border-radius:50%;
+  background:rgba(10,10,10,.82);border:1px solid rgba(220,80,80,.35);
+  color:rgba(220,80,80,.8);cursor:pointer;font-size:.7rem;line-height:1;padding:0;
+}
+.del-caption-btn:hover{ border-color:#e55;color:#e55; }
+body.edit-mode .del-caption-btn{ display:flex;align-items:center;justify-content:center; }
+.gc-clearcaps-btn{
+  position:absolute;top:1.2rem;right:1.5rem;z-index:60;
+  font-family:var(--sans);font-size:.56rem;font-weight:500;letter-spacing:.15em;text-transform:uppercase;
+  color:rgba(220,80,80,.75);background:rgba(10,10,10,.88);
+  border:1px solid rgba(220,80,80,.28);padding:.38rem 1.2rem;cursor:pointer;border-radius:2px;
+  backdrop-filter:blur(8px);transition:all .2s;white-space:nowrap;
+}
+.gc-clearcaps-btn:hover{ border-color:rgba(220,80,80,.75);color:#e55;background:rgba(220,60,60,.14); }
+
 /* ══ Deck theme crema/oro (v46 — template Venue Options / Hotel Proposal) ═══
    Le slide con foto full-bleed restano scure (testo bianco su overlay);
    le slide "di carta" (tabelle, spread, gallerie, closing testo) diventano
@@ -1404,7 +1423,7 @@ body.edit-mode .del-day-row-btn{
   #scroll{ overflow:visible!important;height:auto!important;display:block!important; }
   section{ width:16in!important;height:9in!important;page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid;overflow:hidden!important;display:flex!important; }
   .bg,.gallery-cell,.gallery-grid,.slide-overview,.slide-closing{ -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important; }
-  #dots,.logo-bar,#edit-controls,.edit-zone,.add-slide-btn,#add-slide-panel,.focal-btn,.focal-overlay{ display:none!important; }
+  #dots,.logo-bar,#edit-controls,.edit-zone,.add-slide-btn,#add-slide-panel,.focal-btn,.focal-overlay,.del-caption-btn,.gc-clearcaps-btn{ display:none!important; }
   [contenteditable]{ border-bottom:none!important;background:transparent!important; }
 }
 </style>
@@ -1434,7 +1453,7 @@ try{ LoveitEditor=(function(){
   function _isTrackedNode(n){
     if(n.nodeType!==1) return false;
     if(n.tagName==='SECTION'||n.tagName==='TR') return true;
-    return !!(n.classList && (n.classList.contains('opt-card')||n.classList.contains('flow-item')||n.classList.contains('price-card')||n.classList.contains('tl-item')||n.classList.contains('menu-item')));
+    return !!(n.classList && (n.classList.contains('opt-card')||n.classList.contains('flow-item')||n.classList.contains('price-card')||n.classList.contains('tl-item')||n.classList.contains('menu-item')||n.classList.contains('gallery-cell-caption')));
   }
   function _isRealEdit(mutations){
     for(const m of mutations){
@@ -1481,7 +1500,7 @@ try{ LoveitEditor=(function(){
   function _snapshotScroll(){
     const scroll=document.getElementById('scroll');
     const clone=scroll.cloneNode(true);
-    clone.querySelectorAll('.edit-zone,.add-slide-btn,.delete-slide-btn,.focal-btn,.focal-overlay').forEach(el=>el.remove());
+    clone.querySelectorAll('.edit-zone,.add-slide-btn,.delete-slide-btn,.focal-btn,.focal-overlay,.del-caption-btn,.gc-clearcaps-btn').forEach(el=>el.remove());
     clone.querySelectorAll('[contenteditable]').forEach(el=>el.removeAttribute('contenteditable'));
     clone.querySelectorAll('.gallery-cell,.split-photo').forEach(c=>{
       if(c.style.position==='relative') c.style.position='';
@@ -1818,6 +1837,23 @@ try{ LoveitEditor=(function(){
     zones.push(btn); // così viene rimosso automaticamente uscendo dall'edit mode
   }
 
+  // ── Didascalie galleria: pulsanti × (singola) e "Rimuovi didascalie" (slide) ──
+  function _addCapDelBtn(cap){
+    const cell=cap.parentElement;
+    if(!cell||cell.querySelector('.del-caption-btn')) return;
+    const b=document.createElement('button');
+    b.type='button';b.className='del-caption-btn';b.title='Rimuovi didascalia';b.textContent='×';
+    cell.appendChild(b);
+    zones.push(b); // rimosso automaticamente all'uscita dall'edit mode
+  }
+  function _addClearCapsBtn(sec){
+    if(sec.querySelector('.gc-clearcaps-btn')) return;
+    const b=document.createElement('button');
+    b.type='button';b.className='gc-clearcaps-btn';b.title='Rimuovi tutte le didascalie della slide';b.textContent='× Didascalie';
+    sec.appendChild(b);
+    zones.push(b);
+  }
+
   // ── "Scegli dal database": naviga fornitori/artisti/attività e applica una foto ──
   const _DB_KINDS=[['venues','\u{1F3DB}️','Venue'],['restaurants','\u{1F37D}️','Ristoranti'],['hotels','\u{1F3E8}','Hotel'],['artists','\u{1F3A4}','Artisti'],['activities','\u{1F3AF}','Attività']];
   function _dbBrowse(target){
@@ -1924,6 +1960,9 @@ try{ LoveitEditor=(function(){
       photoMode=true;
       document.querySelectorAll('.bg').forEach(bg=>{ const z=makeZone(bg);bg.parentElement.appendChild(z);zones.push(z);_addFocalBtn(bg); });
       document.querySelectorAll('.gallery-cell,.split-photo').forEach(cell=>{ if(getComputedStyle(cell).position==='static') cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z); });
+      // Didascalie: pulsanti di cancellazione (singola e per slide)
+      document.querySelectorAll('.gallery-cell-caption').forEach(cap=>_addCapDelBtn(cap));
+      document.querySelectorAll('.slide-gallery').forEach(sec=>{ if(sec.querySelector('.gallery-cell-caption')) _addClearCapsBtn(sec); });
       // Activate text editing
       textMode=true;
       document.querySelectorAll(TEXT_SEL).forEach(el=>{ el.contentEditable='true';el.spellcheck=false; });
@@ -2143,7 +2182,23 @@ try{ LoveitEditor=(function(){
     if(addOptBtn){ e.preventDefault();e.stopPropagation();_addOptCard(addOptBtn); return; }
 
     // Tabelle dati (hotel/venue)
-    const delDtBtn=e.target.closest('.del-dtrow-btn');
+    const delCapBtn=e.target.closest('.del-caption-btn');
+    if(delCapBtn){
+      e.preventDefault();e.stopPropagation();
+      const cell=delCapBtn.parentElement;
+      cell?.querySelector('.gallery-cell-caption')?.remove();
+      delCapBtn.remove();
+      return;
+    }
+    const clearCapsBtn=e.target.closest('.gc-clearcaps-btn');
+    if(clearCapsBtn){
+      e.preventDefault();e.stopPropagation();
+      const sec=clearCapsBtn.closest('section');
+      sec?.querySelectorAll('.gallery-cell-caption,.del-caption-btn').forEach(el=>el.remove());
+      clearCapsBtn.remove();
+      return;
+    }
+        const delDtBtn=e.target.closest('.del-dtrow-btn');
     if(delDtBtn){
       e.preventDefault();e.stopPropagation();
       const tr=delDtBtn.closest('tr'), tbody=tr?.closest('tbody');
@@ -2778,6 +2833,7 @@ try{ LoveitEditor=(function(){
         if(photoMode) sec2.querySelectorAll('.gallery-cell').forEach(cell=>{cell.style.position='relative';const z=makeZone(cell);cell.appendChild(z);zones.push(z);});
         if(textMode) sec2.querySelectorAll(TEXT_SEL).forEach(el=>{el.contentEditable='true';el.spellcheck=false;});
         _addInsertBtn(sec2);if(editMode) _addDeleteBtn(sec2);
+        if(editMode){ sec2.querySelectorAll('.gallery-cell-caption').forEach(cap=>_addCapDelBtn(cap));_addClearCapsBtn(sec2); }
         lastSec=sec2;
       }
 
@@ -3460,7 +3516,7 @@ try{ LoveitEditor=(function(){
   function save(){
     const raw='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
     const doc=new DOMParser().parseFromString(raw,'text/html');
-    doc.querySelectorAll('.edit-zone,.add-slide-btn,.delete-slide-btn,.focal-btn,.focal-overlay,#add-slide-panel,#photo-picker-panel').forEach(el=>el.remove());
+    doc.querySelectorAll('.edit-zone,.add-slide-btn,.delete-slide-btn,.focal-btn,.focal-overlay,.del-caption-btn,.gc-clearcaps-btn,#add-slide-panel,#photo-picker-panel').forEach(el=>el.remove());
     doc.querySelectorAll('.gallery-cell').forEach(c=>{ c.style.position='';if(!c.getAttribute('style')?.trim()) c.removeAttribute('style'); });
     doc.querySelectorAll('[contenteditable]').forEach(el=>el.removeAttribute('contenteditable'));
     doc.body.classList.remove('photo-mode','text-mode','edit-mode');
