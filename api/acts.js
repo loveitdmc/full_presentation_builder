@@ -112,14 +112,24 @@ async function findActCandidates(actName, token, baseId) {
 
   if (!words.length) return [];
 
-  const orClauses = words.map(w => `SEARCH("${w}", LOWER({Artist or Show Name}))>0`).join(",");
-  const formula   = encodeURIComponent(`OR(${orClauses})`);
+  const clauses = words.map(w => `SEARCH("${w}", LOWER({Artist or Show Name}))>0`);
+  // Prima AND (tutte le parole): evita che parole comuni saturino il limite record.
+  // Se non trova nulla, fallback a OR con limite alto + ranking per parole matchate.
+  const andFormula = encodeURIComponent(words.length>1 ? `AND(${clauses.join(",")})` : clauses[0]);
+  const orFormula  = encodeURIComponent(`OR(${clauses.join(",")})`);
   const nameField = encodeURIComponent("Artist or Show Name");
   const tagsField = encodeURIComponent("Artist & Show Tags");
-  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_ACTS}?filterByFormula=${formula}&maxRecords=8&fields[]=${nameField}&fields[]=${tagsField}`;
+  const mkUrl = (formula,max) => `https://api.airtable.com/v0/${baseId}/${TABLE_ACTS}?filterByFormula=${formula}&maxRecords=${max}&fields[]=${nameField}&fields[]=${tagsField}`;
 
   try {
-    const data = await airtableFetch(url, token);
+    let data = await airtableFetch(mkUrl(andFormula,10), token);
+    if (!(data.records || []).length && words.length>1) {
+      data = await airtableFetch(mkUrl(orFormula,50), token);
+      const score = n => words.filter(w => n.toLowerCase().includes(w)).length;
+      data.records = (data.records || [])
+        .sort((a,b) => score(b.fields["Artist or Show Name"]||"") - score(a.fields["Artist or Show Name"]||""))
+        .slice(0,8);
+    }
     return (data.records || []).map(r => {
       const f    = r.fields;
       const name = f["Artist or Show Name"] || "";
@@ -147,12 +157,20 @@ async function findSupplierCandidates(name, token, baseId) {
     .map(w => w.replace(/"/g, '\\"'));
   if (!words.length) return [];
 
-  const orClauses = words.map(w => `SEARCH("${w}", LOWER({Name}))>0`).join(",");
-  const formula   = encodeURIComponent(`OR(${orClauses})`);
-  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_SUPPLIERS}?filterByFormula=${formula}&maxRecords=8&fields[]=Name&fields[]=City`;
+  const clauses = words.map(w => `SEARCH("${w}", LOWER({Name}))>0`);
+  const andFormula = encodeURIComponent(words.length>1 ? `AND(${clauses.join(",")})` : clauses[0]);
+  const orFormula  = encodeURIComponent(`OR(${clauses.join(",")})`);
+  const mkUrl = (formula,max) => `https://api.airtable.com/v0/${baseId}/${TABLE_SUPPLIERS}?filterByFormula=${formula}&maxRecords=${max}&fields[]=Name&fields[]=City`;
 
   try {
-    const data = await airtableFetch(url, token);
+    let data = await airtableFetch(mkUrl(andFormula,10), token);
+    if (!(data.records || []).length && words.length>1) {
+      data = await airtableFetch(mkUrl(orFormula,50), token);
+      const score = n => words.filter(w => n.toLowerCase().includes(w)).length;
+      data.records = (data.records || [])
+        .sort((a,b) => score(b.fields.Name||"") - score(a.fields.Name||""))
+        .slice(0,8);
+    }
     return (data.records || []).map(r => ({ name: r.fields.Name || "", city: r.fields.City || "" })).filter(c => c.name);
   } catch {
     return [];
@@ -172,14 +190,22 @@ async function findActivityCandidates(name, token, baseId) {
     .map(w => w.replace(/"/g, '\\"'));
   if (!words.length) return [];
 
-  const orClauses = words.map(w => `SEARCH("${w}", LOWER({Activity or Service Name}))>0`).join(",");
-  const formula   = encodeURIComponent(`OR(${orClauses})`);
+  const clauses = words.map(w => `SEARCH("${w}", LOWER({Activity or Service Name}))>0`);
+  const andFormula = encodeURIComponent(words.length>1 ? `AND(${clauses.join(",")})` : clauses[0]);
+  const orFormula  = encodeURIComponent(`OR(${clauses.join(",")})`);
   const nameField = encodeURIComponent("Activity or Service Name");
   const typeField = encodeURIComponent("Activity Type");
-  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_ACTIVITIES}?filterByFormula=${formula}&maxRecords=8&fields[]=${nameField}&fields[]=${typeField}`;
+  const mkUrl = (formula,max) => `https://api.airtable.com/v0/${baseId}/${TABLE_ACTIVITIES}?filterByFormula=${formula}&maxRecords=${max}&fields[]=${nameField}&fields[]=${typeField}`;
 
   try {
-    const data = await airtableFetch(url, token);
+    let data = await airtableFetch(mkUrl(andFormula,10), token);
+    if (!(data.records || []).length && words.length>1) {
+      data = await airtableFetch(mkUrl(orFormula,50), token);
+      const score = n => words.filter(w => n.toLowerCase().includes(w)).length;
+      data.records = (data.records || [])
+        .sort((a,b) => score(b.fields["Activity or Service Name"]||"") - score(a.fields["Activity or Service Name"]||""))
+        .slice(0,8);
+    }
     return (data.records || []).map(r => {
       const f = r.fields;
       const name = f["Activity or Service Name"] || "";

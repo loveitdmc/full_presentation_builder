@@ -8,6 +8,27 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v48 — 2026-08-06
+- **Fix vero per "grand hotel oriente senza foto": era la RICERCA, non le
+  foto.** Verificato via Airtable MCP: il record "Grand Hotel Oriente Napoli"
+  ha 22 foto nel campo `Photos` e il codice le legge correttamente (riprodotto
+  in locale con i dati reali del record). Il problema: le ricerche keyword
+  usavano `OR(SEARCH(parola…))` con `maxRecords=8` — con parole comuni come
+  "hotel" e "grand" i primi 8 record IN ORDINE DI TABELLA saturavano il
+  limite e il record giusto (riga ~56) restava fuori → si finiva sul fallback
+  AI, che genera la scheda senza foto Airtable.
+- Fix in tutte le ricerche keyword: prima una query **AND** (tutte le parole
+  devono comparire nel nome — "grand hotel oriente" matcha solo il GHO), e
+  solo se vuota fallback all'OR con `maxRecords=50` + ranking per numero di
+  parole matchate (slice 8). Toccate: `acts.js` (findActCandidates,
+  findSupplierCandidates, findActivityCandidates), `supplier.js`
+  (findSupplierForSpaces, findSuppliers), `generate-text.js` (findSuppliers,
+  findByNameField).
+- Test con simulazione realistica (60 fornitori, decine contenenti
+  "hotel"/"grand", GHO in posizione 56): la ricerca "grand hotel oriente" ora
+  genera direttamente la scheda giusta con le foto reali. Non-regressione su
+  picker JSON e fallback Media (v47) verificata.
+
 ## v47 — 2026-08-06
 - **Fix: fornitori senza foto (es. "Grand Hotel Oriente").** Le foto dei
   fornitori venivano lette SOLO dal campo `Photos` (allegati diretti); molti

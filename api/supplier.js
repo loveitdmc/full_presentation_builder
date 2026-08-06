@@ -32,12 +32,18 @@ function spaceMatchScore(queryName, airtableName) {
 async function findSupplierForSpaces(name, token, baseId) {
   const kw = spaceKeywords(name);
   if (!kw.length) return null;
-  const orClauses = kw.map(w => `SEARCH("${w}", LOWER({Name}))>0`).join(",");
-  const formula   = encodeURIComponent(`OR(${orClauses})`);
-  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_SUPPLIERS_ID}?filterByFormula=${formula}&fields[]=fldf1guJqLASjc0sP&fields[]=fldSovyZuFZCp9N6Q&maxRecords=8&returnFieldsByFieldId=true`;
-  const resp = await fetch(url, { headers:{ Authorization:`Bearer ${token}` }, signal:AbortSignal.timeout(7000) });
-  if (!resp.ok) return null;
-  const data = await resp.json();
+  const clauses = kw.map(w => `SEARCH("${w}", LOWER({Name}))>0`);
+  // AND prima (tutte le parole), poi fallback OR con limite alto:
+  // con parole comuni ("hotel", "grand") l'OR satura maxRecords in ordine di
+  // tabella e il record giusto può restare fuori.
+  const mkUrl = (formula,max) => `https://api.airtable.com/v0/${baseId}/${TABLE_SUPPLIERS_ID}?filterByFormula=${encodeURIComponent(formula)}&fields[]=fldf1guJqLASjc0sP&fields[]=fldSovyZuFZCp9N6Q&maxRecords=${max}&returnFieldsByFieldId=true`;
+  const _fetch = async u => { const r = await fetch(u, { headers:{ Authorization:`Bearer ${token}` }, signal:AbortSignal.timeout(7000) }); return r.ok ? r.json() : null; };
+  let data = await _fetch(mkUrl(kw.length>1 ? `AND(${clauses.join(",")})` : clauses[0], 10));
+  if (!data) return null;
+  if (!(data.records || []).length && kw.length>1) {
+    data = await _fetch(mkUrl(`OR(${clauses.join(",")})`, 50));
+    if (!data) return null;
+  }
   const records = data.records || [];
   if (!records.length) return null;
   const inputLower = name.toLowerCase();
@@ -176,19 +182,22 @@ async function findSuppliers(supplierName) {
 
   if (!words.length) return [];
 
-  const orClauses = words.map(w => `SEARCH("${w}", LOWER({Name}))>0`).join(",");
-  const formula   = encodeURIComponent(`OR(${orClauses})`);
+  const clauses = words.map(w => `SEARCH("${w}", LOWER({Name}))>0`);
   const fields    = ["Name","City","Description","Photos","Type","Media"]
     .map(f => `fields[]=${encodeURIComponent(f)}`).join("&");
-  const url = `https://api.airtable.com/v0/${baseId}/${tableId}?filterByFormula=${formula}&maxRecords=8&${fields}`;
+  const mkUrl = (formula,max) => `https://api.airtable.com/v0/${baseId}/${tableId}?filterByFormula=${encodeURIComponent(formula)}&maxRecords=${max}&${fields}`;
 
   try {
-    const resp = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(6000),
-    });
-    if (!resp.ok) return [];
-    const data = await resp.json();
+    const _fetch = async u => { const r = await fetch(u, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(6000) }); return r.ok ? r.json() : { records: [] }; };
+    // AND prima (tutte le parole), fallback OR + ranking per parole matchate
+    let data = await _fetch(mkUrl(words.length>1 ? `AND(${clauses.join(",")})` : clauses[0], 10));
+    if (!(data.records || []).length && words.length>1) {
+      data = await _fetch(mkUrl(`OR(${clauses.join(",")})`, 50));
+      const score = n => words.filter(w => n.toLowerCase().includes(w)).length;
+      data.records = (data.records || [])
+        .sort((a,b) => score(b.fields.Name||"") - score(a.fields.Name||""))
+        .slice(0,8);
+    }
     return (data.records || []).map(r => {
       const f = r.fields;
       const allPhotoUrls = (f.Photos || []).map(p => p.url);
