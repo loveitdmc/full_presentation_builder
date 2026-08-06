@@ -213,6 +213,37 @@ async function findSuppliers(supplierName) {
 // Airtable auto-generates a thumbnail for images AND PDFs.
 const FLOORPLAN_ASSET_TYPES = new Set(["Floor Plan", "Floorplan"]);
 
+// Foto galleria dai record Media collegati (fallback quando il campo Photos
+// del fornitore è vuoto — tipico degli hotel). Esclude planimetrie, video e pdf.
+async function fetchSupplierMediaPhotos(mediaIds) {
+  const token  = process.env.AIRTABLE_TOKEN;
+  const baseId = process.env.AIRTABLE_BASE_ID;
+  if (!mediaIds?.length || !token || !baseId) return [];
+  const idClauses = mediaIds.slice(0, 40).map(id => `RECORD_ID()="${id}"`).join(",");
+  const formula = encodeURIComponent(`OR(${idClauses})`);
+  const url = `https://api.airtable.com/v0/${baseId}/tblpKKKum1aFwPjgY?filterByFormula=${formula}&maxRecords=50`;
+  try {
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(7000) });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    const metas = [];
+    for (const r of (data.records || [])) {
+      const f = r.fields;
+      const atRaw = f["Asset Type"];
+      const assetType = typeof atRaw === "object" ? (atRaw?.name || "") : (atRaw || "");
+      if (FLOORPLAN_ASSET_TYPES.has(assetType)) continue;
+      const atts = (f.File || []).filter(a => a.url && !/\.(mp4|webm|ogg|pdf)(\?|$)/i.test(a.url));
+      const recName = f["Asset Name"] || f.Description || null;
+      for (const a of atts) {
+        metas.push({ url: a.url, name: (atts.length === 1 && recName) ? recName : (a.filename || recName || "") });
+      }
+    }
+    return metas;
+  } catch {
+    return [];
+  }
+}
+
 async function getFloorPlans(mediaIds, token, baseId) {
   if (!mediaIds || !mediaIds.length) return [];
   const idClauses = mediaIds.map(id => `RECORD_ID()="${id}"`).join(",");
@@ -484,6 +515,16 @@ export async function generateSupplierFullPage(supplierNameRaw, apiKey, template
         status:     "fuzzy",
         candidates: matches.map(m => ({ name: m.name, city: m.city })),
       };
+    }
+  }
+
+  // Fallback foto dai record Media collegati (campo Photos vuoto)
+  if (selected && !(selected.photos || []).length && selected.mediaIds?.length) {
+    const metas = await fetchSupplierMediaPhotos(selected.mediaIds);
+    if (metas.length) {
+      selected.photos = metas.map(m => m.url).slice(0, 4);
+      selected.allPhotos = metas.map(m => m.url);
+      selected.allPhotosMeta = metas;
     }
   }
 

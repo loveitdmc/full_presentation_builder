@@ -8,6 +8,21 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v47 — 2026-08-06
+- **Fix: fornitori senza foto (es. "Grand Hotel Oriente").** Le foto dei
+  fornitori venivano lette SOLO dal campo `Photos` (allegati diretti); molti
+  record — tipicamente gli hotel — hanno invece le foto come record collegati
+  nella tabella **Media**, che veniva usata solo per le planimetrie. Aggiunto
+  il fallback in TUTTI i percorsi: se `Photos` è vuoto, le foto si prendono
+  dai Media collegati (escludendo planimetrie, video e pdf), con i nomi
+  (Asset Name/Description/filename) per le didascalie automatiche.
+  - `acts.js` (ricerca database + picker foto), `supplier.js` (scheda
+    fornitore full-page), `generate.js` (enrichment da PDF),
+    `generate-text.js` (enrichment da testo).
+  - Verificato con test end-to-end a fetch mockata: supplier con Photos vuoto
+    e 3 Media (foto, planimetria, foto+video) → 2 foto in galleria con nomi
+    corretti, planimetria solo tra i floorplans, video escluso.
+
 ## v46 — 2026-08-06
 - **Scelta del template a inizio presentazione.** Nella home (tab preventivo,
   sia PDF che testo) c'è ora il selettore "Template della presentazione" con 3

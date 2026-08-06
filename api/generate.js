@@ -97,8 +97,15 @@ async function searchAirtable(supplierName) {
     if (!data.records?.length) return null;
 
     const fields = data.records[0].fields;
-    const photoUrls = (fields.Photos || []).map((f) => f.url);
-    const photosMeta = (fields.Photos || []).filter((f) => f.url).map((f) => ({ url: f.url, name: f.filename || "" }));
+    let photoUrls = (fields.Photos || []).map((f) => f.url);
+    let photosMeta = (fields.Photos || []).filter((f) => f.url).map((f) => ({ url: f.url, name: f.filename || "" }));
+
+    // Fallback: molti fornitori (es. hotel) hanno le foto come record Media
+    // collegati invece che allegati diretti nel campo Photos
+    if (!photoUrls.length && (fields.Media || []).length) {
+      const metas = await fetchMediaPhotos(fields.Media);
+      if (metas.length) { photoUrls = metas.map((m) => m.url); photosMeta = metas; }
+    }
 
     return {
       description: fields.Description || null,
@@ -124,7 +131,7 @@ async function fetchMediaPhotos(mediaIds) {
   if (!mediaIds?.length || !token || !baseId) return [];
   const idClauses = mediaIds.slice(0, 30).map((id) => `RECORD_ID()="${id}"`).join(",");
   const formula = encodeURIComponent(`OR(${idClauses})`);
-  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_MEDIA_ID}?filterByFormula=${formula}&fields[]=File&fields[]=${encodeURIComponent("Asset Name")}&fields[]=Description&maxRecords=50`;
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_MEDIA_ID}?filterByFormula=${formula}&fields[]=File&fields[]=${encodeURIComponent("Asset Name")}&fields[]=${encodeURIComponent("Asset Type")}&fields[]=Description&maxRecords=50`;
   try {
     const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(6000) });
     if (!resp.ok) return [];
@@ -133,7 +140,10 @@ async function fetchMediaPhotos(mediaIds) {
     // or the attachment filename, used for automatic gallery captions.
     const metas = [];
     for (const r of (data.records || [])) {
-      const atts = (r.fields.File || []).filter((f) => f.url && !/\.(mp4|webm|ogg)(\?|$)/i.test(f.url));
+      const atRaw = r.fields["Asset Type"];
+      const assetType = typeof atRaw === "object" ? (atRaw?.name || "") : (atRaw || "");
+      if (/floor\s*plan/i.test(assetType)) continue; // planimetrie: non sono foto galleria
+      const atts = (r.fields.File || []).filter((f) => f.url && !/\.(mp4|webm|ogg|pdf)(\?|$)/i.test(f.url));
       const recName = r.fields["Asset Name"] || r.fields.Description || null;
       for (const f of atts) {
         metas.push({ url: f.url, name: (atts.length === 1 && recName) ? recName : (f.filename || recName || "") });

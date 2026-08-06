@@ -33,7 +33,7 @@ async function findSuppliers(supplierName) {
 
   const orClauses = words.map(w => `SEARCH("${w}", LOWER({Name}))>0`).join(",");
   const formula   = encodeURIComponent(`OR(${orClauses})`);
-  const fields    = ["Name","City","Description","Photos","Type"]
+  const fields    = ["Name","City","Description","Photos","Type","Media"]
     .map(f => `fields[]=${encodeURIComponent(f)}`).join("&");
   const url = `https://api.airtable.com/v0/${baseId}/${tableId}?filterByFormula=${formula}&maxRecords=5&${fields}`;
 
@@ -56,6 +56,7 @@ async function findSuppliers(supplierName) {
         allPhotos:   allPhotoUrls,
         allPhotosMeta,
         type:        f.Type        || null,
+        mediaIds:    f.Media       || [],
       };
     }).filter(r => r.name);
   } catch {
@@ -106,7 +107,7 @@ async function fetchMediaPhotos(mediaIds) {
   if (!mediaIds?.length || !token || !baseId) return [];
   const idClauses = mediaIds.slice(0, 30).map(id => `RECORD_ID()="${id}"`).join(",");
   const formula = encodeURIComponent(`OR(${idClauses})`);
-  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_MEDIA_ID}?filterByFormula=${formula}&fields[]=File&fields[]=${encodeURIComponent("Asset Name")}&fields[]=Description&maxRecords=50`;
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_MEDIA_ID}?filterByFormula=${formula}&fields[]=File&fields[]=${encodeURIComponent("Asset Name")}&fields[]=${encodeURIComponent("Asset Type")}&fields[]=Description&maxRecords=50`;
   try {
     const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(6000) });
     if (!resp.ok) return [];
@@ -114,7 +115,10 @@ async function fetchMediaPhotos(mediaIds) {
     // Returns [{url, name}] — for automatic gallery captions
     const metas = [];
     for (const r of (data.records || [])) {
-      const atts = (r.fields.File || []).filter(f => f.url && !/\.(mp4|webm|ogg)(\?|$)/i.test(f.url));
+      const atRaw = r.fields["Asset Type"];
+      const assetType = typeof atRaw === "object" ? (atRaw?.name || "") : (atRaw || "");
+      if (/floor\s*plan/i.test(assetType)) continue; // planimetrie: non sono foto galleria
+      const atts = (r.fields.File || []).filter(f => f.url && !/\.(mp4|webm|ogg|pdf)(\?|$)/i.test(f.url));
       const recName = r.fields["Asset Name"] || r.fields.Description || null;
       for (const f of atts) {
         metas.push({ url: f.url, name: (atts.length === 1 && recName) ? recName : (f.filename || recName || "") });
@@ -355,6 +359,15 @@ async function enrichWithAirtable(programme) {
         const supMatches = await findSuppliers(act.supplierName);
         const sup = pickBest(supMatches, act.supplierName, m => m.name);
         if (sup) {
+          // Fallback foto: record Media collegati se il campo Photos è vuoto
+          if (!sup.photos?.length && sup.mediaIds?.length) {
+            const metas = await fetchMediaPhotos(sup.mediaIds);
+            if (metas.length) {
+              sup.photos = metas.map(m => m.url).slice(0, 4);
+              sup.allPhotos = metas.map(m => m.url);
+              sup.allPhotosMeta = metas;
+            }
+          }
           if (sup.description) act.description = sup.description;
           if (sup.photos?.length) {
             act.photo     = sup.photos[0];

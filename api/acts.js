@@ -363,8 +363,19 @@ async function handleSupplierSlide(name, res, token, baseId) {
     return res.status(502).json({ error: `Airtable error: ${e.message}` });
   }
 
-  const photos = (f.Photos || []).map(p => p.url).filter(Boolean);
-  const photosMeta = (f.Photos || []).filter(p => p.url).map(p => ({ url: p.url, name: p.filename || "" }));
+  let photos = (f.Photos || []).map(p => p.url).filter(Boolean);
+  let photosMeta = (f.Photos || []).filter(p => p.url).map(p => ({ url: p.url, name: p.filename || "" }));
+
+  // Fallback: foto dai record Media collegati (campo Photos vuoto — es. hotel)
+  if (!photos.length && (f.Media || []).length) {
+    const mediaRecs = await getMediaRecords(f.Media, token, baseId);
+    const metas = [];
+    for (const m of mediaRecs) {
+      if (/floor\s*plan/i.test(m.assetType || "")) continue;
+      metas.push(...(m.fileMeta || []).filter(x => !/\.(mp4|webm|ogg|pdf)(\?|$)/i.test(x.url)));
+    }
+    if (metas.length) { photos = metas.map(x => x.url); photosMeta = metas; }
+  }
   const metaParts = [];
   if (f.City)     metaParts.push(f.City);
   if (f.Type)     metaParts.push(f.Type);
