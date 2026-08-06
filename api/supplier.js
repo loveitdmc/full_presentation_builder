@@ -222,6 +222,53 @@ async function findSuppliers(supplierName) {
 // Airtable auto-generates a thumbnail for images AND PDFs.
 const FLOORPLAN_ASSET_TYPES = new Set(["Floor Plan", "Floorplan"]);
 
+// ─── Didascalie AI ───────────────────────────────────────────────────────────
+// Quando il nome di una foto è "tecnico" (filename tipo "Palazzo Caracciolo (10)",
+// IMG_1234, vuoto…), chiede a Claude (vision) una didascalia breve in italiano
+// guardando la foto. I nomi già descrittivi (Asset Name curati) restano intatti.
+function _cleanRawName(raw) {
+  return String(raw || "").replace(/\.[a-z0-9]{2,5}$/i, "").replace(/[_\-]+/g, " ").replace(/\s+/g, " ").trim();
+}
+function _isTechnicalPhotoName(raw, venueName) {
+  const sLow = _cleanRawName(raw).toLowerCase();
+  if (!sLow) return true;
+  if (/^(img|image|dsc|dscf|foto|photo|pic|screenshot|whatsapp)?[\s\d.()]*$/.test(sLow)) return true;
+  // "nome venue" (± numeri/parentesi) non è una didascalia
+  const venue = (venueName || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  if (venue) {
+    let rest = sLow;
+    for (const w of venue.split(" ")) if (w) rest = rest.split(w).join(" ");
+    if (!rest.replace(/[\s\d.()\-–]+/g, "")) return true;
+  }
+  return false;
+}
+export async function aiCaptionPhotos(metas, venueName, apiKey) {
+  if (!apiKey || !metas?.length) return metas || [];
+  const targets = metas.map((m, i) => ({ m, i })).filter(x => x.m?.url && _isTechnicalPhotoName(x.m.name, venueName)).slice(0, 10);
+  if (!targets.length) return metas;
+  try {
+    const content = [{
+      type: "text",
+      text: `Sei il copywriter di una DMC di lusso. Per ognuna delle ${targets.length} foto di "${venueName}" scrivi una didascalia brevissima in italiano (2-5 parole, descrittiva e concreta: es. "Cortile interno illuminato", "Camera doppia classic", "Terrazza panoramica"). Rispondi SOLO con un array JSON di ${targets.length} stringhe, nello stesso ordine delle foto.`,
+    }];
+    for (const t of targets) content.push({ type: "image", source: { type: "url", url: t.m.url } });
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 600, messages: [{ role: "user", content }] }),
+      signal: AbortSignal.timeout(25000),
+    });
+    if (!resp.ok) return metas;
+    const data = await resp.json();
+    const text = data.content?.[0]?.text || "";
+    const arr = JSON.parse(text.match(/\[[\s\S]*\]/)?.[0] || "[]");
+    targets.forEach((t, k) => {
+      if (typeof arr[k] === "string" && arr[k].trim()) metas[t.i] = { ...metas[t.i], name: arr[k].trim() };
+    });
+  } catch { /* le didascalie restano quelle originali */ }
+  return metas;
+}
+
 // Foto galleria dai record Media collegati (fallback quando il campo Photos
 // del fornitore è vuoto — tipico degli hotel). Esclude planimetrie, video e pdf.
 async function fetchSupplierMediaPhotos(mediaIds) {
@@ -535,6 +582,11 @@ export async function generateSupplierFullPage(supplierNameRaw, apiKey, template
       selected.allPhotos = metas.map(m => m.url);
       selected.allPhotosMeta = metas;
     }
+  }
+
+  // Didascalie AI per le foto con nome tecnico
+  if (selected?.allPhotosMeta?.length) {
+    selected.allPhotosMeta = await aiCaptionPhotos(selected.allPhotosMeta, selected.name || supplierNameRaw, apiKey);
   }
 
   let profile;

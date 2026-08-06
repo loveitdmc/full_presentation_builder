@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { generateSupplierFullPage } from "./supplier.js";
+import { generateSupplierFullPage, aiCaptionPhotos } from "./supplier.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -326,6 +326,8 @@ async function handleActivity(activityName, res, token, baseId) {
   if (rec.capacity) metaParts.push(`Max ${rec.capacity} pax`);
   if (rec.duration) metaParts.push(rec.duration);
 
+  photosMeta = await aiCaptionPhotos(photosMeta, rec.name, process.env.ANTHROPIC_API_KEY);
+
   return res.status(200).json({
     act:         rec.name,
     description,
@@ -409,6 +411,9 @@ async function handleSupplierSlide(name, res, token, baseId) {
   if (f.Rooms)    metaParts.push(`${f.Rooms} rooms`);
 
   const floorplans = await getFloorPlans(f.Media || [], token, baseId);
+
+  // Didascalie AI per foto con nome tecnico (es. "Palazzo Caracciolo (10).jpg")
+  photosMeta = await aiCaptionPhotos(photosMeta, f.Name || name, process.env.ANTHROPIC_API_KEY);
 
   return res.status(200).json({
     act:         f.Name || name,
@@ -712,6 +717,7 @@ async function generateActFullPage(selectedName, token, baseId, template, req, j
 
   // 7. Build TRIP JSON
   const actName    = actRecord.name;
+  await aiCaptionPhotos(photosMeta, actName, process.env.ANTHROPIC_API_KEY);
   const description = actRecord.notes
     || supplier?.description
     || `An exclusive performance experience featuring ${actName}.`;

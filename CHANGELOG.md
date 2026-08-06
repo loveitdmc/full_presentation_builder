@@ -8,6 +8,24 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v49 — 2026-08-06
+- **Didascalie AI descrittive nelle gallerie.** Quando il nome di una foto è
+  "tecnico" — filename tipo "Palazzo Caracciolo (10)", IMG_1234, vuoto, o il
+  solo nome del fornitore ± numeri — il backend chiede a Claude Haiku
+  (vision, `claude-haiku-4-5`) una didascalia breve in italiano guardando la
+  foto ("Cortile interno illuminato", "Camera doppia superior"…). I nomi già
+  descrittivi (Asset Name curati nei Media, filename parlanti) NON vengono
+  toccati; max 10 foto per chiamata, timeout 25s, in caso di errore restano i
+  nomi originali.
+  - Nuova `aiCaptionPhotos()` esportata da `supplier.js`, agganciata in:
+    scheda fornitore (`generateSupplierFullPage`), picker/insert fornitore
+    (`handleSupplierSlide`), scheda artista (`generateActFullPage`) e
+    attività (`handleActivity`).
+  - Verificato con test mockato: solo le 3 foto tecniche su 4 vengono mandate
+    all'AI, le didascalie tornano nelle posizioni giuste, il filename
+    descrittivo resta intatto. Non-regressione su ricerca v48 e fallback
+    Media v47.
+
 ## v48 — 2026-08-06
 - **Fix vero per "grand hotel oriente senza foto": era la RICERCA, non le
   foto.** Verificato via Airtable MCP: il record "Grand Hotel Oriente Napoli"
