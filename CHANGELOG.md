@@ -8,6 +8,35 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v46 — 2026-08-06
+- **Scelta del template a inizio presentazione.** Nella home (tab preventivo,
+  sia PDF che testo) c'è ora il selettore "Template della presentazione" con 3
+  card: **Dark Journey** (attuale, default), **Venue Options** e **Hotel
+  Proposal** (crema/oro, fedeli ai pptx). La scelta viaggia come `deckTemplate`
+  nel body verso `/api/generate` e `/api/generate-text` (whitelist
+  dark/venues/hotel) e viene iniettata nel TRIP; l'app poi POPOLA i fornitori
+  seguendo la struttura del template scelto:
+  - **Venue Options** (da 05): cover → tabella "Venues — At a Glance"
+    auto-popolata (una riga per fornitore, badge stato TBC cliccabile per
+    ciclare Confirmed/TBC/New) → per ogni venue: spread foto+info → hero
+    full-page → galleria con didascalie.
+  - **Hotel Proposal** (da 04): cover → tabella tariffe auto-popolata (hotel,
+    categoria, camera, "da € — / notte" editabile) → per ogni hotel: spread
+    scheda → galleria (che include anche la seconda foto, niente hero).
+  - Le righe tabella riusano le classi v45 (`.data-table`, `.dt-cell`, badge):
+    editabili, aggiungibili e rimovibili in edit mode.
+- **Tema crema/oro** (`body.deck-venues`/`.deck-hotel`): le slide "di carta"
+  (tabelle, spread, gallerie a card) passano a fondo #F7F4EF con testo #2B323A
+  e oro scurito #a8854f per gli eyebrow, come nei template originali; le slide
+  con foto full-bleed restano scure con testo bianco (come nei pptx). Il tema
+  è una classe sul body, persiste nel salvataggio; le presentazioni salvate
+  senza `deckTemplate` restano dark.
+- Slide video/planimetrie invariate in tutti i deck. Verifica jsdom su
+  entrambi i deck: classe body, sequenza sezioni, righe tabella auto-popolate,
+  badge, spread con foto, hero solo per venues, didascalie galleria.
+- L'inserimento manuale dal database e i layout del pannello "+ Aggiungi
+  slide" restano disponibili in tutti i template.
+
 ## v45 — 2026-08-06
 - **5 nuovi layout slide adattati dai template pptx LoveIT** (zip caricato
   dall'utente: corporate, elegant editorial, hotel proposal, venue options),

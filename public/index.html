@@ -91,6 +91,17 @@ main{max-width:680px;margin:0 auto;padding:0 1.5rem 6rem}
 #btn-new:hover{color:var(--warm-white)}
 
 /* ── Input mode toggle (PDF / testo) ── */
+.tpl-select{margin:1.4rem 0 1.5rem}
+.tpl-select-label{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--stone);margin-bottom:.7rem}
+.tpl-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem}
+.tpl-card{background:var(--card);border:1px solid #2a2a2a;border-radius:4px;padding:.85rem .8rem .75rem;cursor:pointer;text-align:left;transition:border-color .2s,background .2s;display:flex;flex-direction:column;gap:.35rem}
+.tpl-card:hover{border-color:rgba(201,169,110,.55)}
+.tpl-card.active{border-color:var(--gold);background:#1a1610}
+.tpl-swatch{display:block;width:100%;height:8px;border-radius:2px}
+.tpl-swatch-dark{background:linear-gradient(90deg,#0a0a0a 60%,#c9a96e 60%)}
+.tpl-swatch-cream{background:linear-gradient(90deg,#F7F4EF 60%,#C9A96A 60%);border:1px solid #333}
+.tpl-name{font-size:.74rem;font-weight:600;color:#eee;letter-spacing:.04em}
+.tpl-desc{font-size:.6rem;line-height:1.5;color:var(--stone)}
 .mode-toggle{display:flex;gap:0;margin-bottom:1.4rem}
 .mode-btn{flex:1;padding:.7rem .8rem;background:var(--card);border:1px solid #2a2a2a;color:var(--stone);font-family:var(--sans);font-size:.65rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;transition:all .2s}
 .mode-btn:first-child{border-radius:3px 0 0 3px}
@@ -185,6 +196,28 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
       <p class="program-hint">I fornitori presenti nel database verranno arricchiti con descrizioni e foto reali. Gli altri verranno descritti dall'AI.</p>
     </div>
 
+    <!-- Template selector (v46) -->
+    <div class="tpl-select">
+      <p class="tpl-select-label">Template della presentazione</p>
+      <div class="tpl-cards">
+        <button type="button" class="tpl-card active" data-tpl="dark">
+          <span class="tpl-swatch tpl-swatch-dark"></span>
+          <span class="tpl-name">Dark Journey</span>
+          <span class="tpl-desc">Tema scuro attuale — programma giorno per giorno</span>
+        </button>
+        <button type="button" class="tpl-card" data-tpl="venues">
+          <span class="tpl-swatch tpl-swatch-cream"></span>
+          <span class="tpl-name">Venue Options</span>
+          <span class="tpl-desc">Crema/oro — tabella stati + scheda, hero e galleria per venue</span>
+        </button>
+        <button type="button" class="tpl-card" data-tpl="hotel">
+          <span class="tpl-swatch tpl-swatch-cream"></span>
+          <span class="tpl-name">Hotel Proposal</span>
+          <span class="tpl-desc">Crema/oro — tabella tariffe + scheda e galleria per hotel</span>
+        </button>
+      </div>
+    </div>
+
     <button class="btn-generate" id="btn-generate-pdf" disabled>Genera Presentazione</button>
   </div>
 
@@ -247,6 +280,14 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
 <script>
 let selectedFile = null, generatedHtml = null, generatedFilename = null, activeTab = 'preventivo';
 let programMode = 'pdf'; // 'pdf' | 'text'
+let deckTemplate = 'dark'; // 'dark' | 'venues' | 'hotel'
+document.querySelectorAll('.tpl-card').forEach(card=>{
+  card.addEventListener('click',()=>{
+    document.querySelectorAll('.tpl-card').forEach(c=>c.classList.remove('active'));
+    card.classList.add('active');
+    deckTemplate=card.dataset.tpl;
+  });
+});
 
 const dropZone       = document.getElementById('drop-zone');
 const fileInput      = document.getElementById('file-input');
@@ -360,7 +401,7 @@ async function generateFromPdf() {
   try {
     const resp = await fetch('/api/generate', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ pdf: pdfBase64, filename: selectedFile.name })
+      body: JSON.stringify({ pdf: pdfBase64, filename: selectedFile.name, deckTemplate })
     });
     clearTimeout(t); setStep(4);
     if (!resp.ok) { const e = await resp.json().catch(() => ({error:`HTTP ${resp.status}`})); throw new Error(e.error); }
@@ -388,7 +429,7 @@ async function generateFromText() {
   try {
     const resp = await fetch('/api/generate-text', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ programText: text })
+      body: JSON.stringify({ programText: text, deckTemplate })
     });
     clearTimeout(t1); clearTimeout(t2); setStep(4);
     if (!resp.ok) { const e = await resp.json().catch(() => ({error:`HTTP ${resp.status}`})); throw new Error(e.error); }

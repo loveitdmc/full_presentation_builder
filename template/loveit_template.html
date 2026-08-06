@@ -24,6 +24,10 @@ const TRIP = {
   projectRef:  "202607002",
   quoteRef:    "202607002-Q",
 
+  /* ── Template deck ────────────────────────────────────── */
+  // "dark" (journey attuale) | "venues" (crema, tabella stati) | "hotel" (crema, tariffe)
+  deckTemplate: "dark",
+
   /* ── Trip basics ─────────────────────────────────────────── */
   title:       "Incentive Trip",
   destination: "Rome",
@@ -572,6 +576,31 @@ body.edit-mode .del-flowitem-btn{ display:flex;align-items:center;justify-conten
 .add-flowitem-btn:hover{ border-color:var(--gold);color:var(--gold);background:rgba(201,169,110,.08); }
 body.edit-mode .add-flowitem-btn{ display:inline-block;pointer-events:auto; }
 
+/* ══ Deck theme crema/oro (v46 — template Venue Options / Hotel Proposal) ═══
+   Le slide con foto full-bleed restano scure (testo bianco su overlay);
+   le slide "di carta" (tabelle, spread, gallerie, closing testo) diventano
+   crema #F7F4EF con testo scuro #2B323A, come nei pptx originali. */
+body.deck-venues,body.deck-hotel{ background:#F7F4EF; }
+body.deck-venues .slide-datatable,body.deck-hotel .slide-datatable,
+body.deck-venues .slide-gallery.gallery-cards,body.deck-hotel .slide-gallery.gallery-cards{ background:#F7F4EF; }
+body.deck-venues .slide-split .split-content,body.deck-hotel .slide-split .split-content{ background:#F7F4EF; }
+body.deck-venues .slide-datatable .headline,body.deck-hotel .slide-datatable .headline,
+body.deck-venues .gallery-cards .headline,body.deck-hotel .gallery-cards .headline,
+body.deck-venues .split-content .headline,body.deck-hotel .split-content .headline{ color:#2B323A; }
+body.deck-venues .split-content .body-text,body.deck-hotel .split-content .body-text{ color:rgba(43,50,58,.72); }
+body.deck-venues .slide-datatable .eyebrow,body.deck-hotel .slide-datatable .eyebrow,
+body.deck-venues .gallery-cards .eyebrow,body.deck-hotel .gallery-cards .eyebrow,
+body.deck-venues .split-content .eyebrow,body.deck-hotel .split-content .eyebrow{ color:#a8854f; }
+body.deck-venues .data-table th,body.deck-hotel .data-table th{ color:#a8854f;border-bottom-color:rgba(43,50,58,.3); }
+body.deck-venues .data-table td,body.deck-hotel .data-table td{ color:rgba(43,50,58,.82);border-bottom-color:rgba(43,50,58,.12); }
+body.deck-venues .data-table td.dt-cell:first-child,body.deck-hotel .data-table td.dt-cell:first-child{ color:#2B323A; }
+body.deck-venues .slide-datatable .rule,body.deck-hotel .slide-datatable .rule{ background:#C9A96A; }
+body.deck-venues .slide-datatable .counter,body.deck-hotel .slide-datatable .counter,
+body.deck-venues .gallery-cards .counter,body.deck-hotel .gallery-cards .counter,
+body.deck-venues .slide-split .counter,body.deck-hotel .slide-split .counter{ color:rgba(43,50,58,.45); }
+body.deck-venues .slide-datatable #dots,body.deck-hotel .slide-datatable #dots{}
+/* pulsanti editor sulle slide crema: restano leggibili (fondo scuro proprio) */
+
 /* ══ Layout dai template pptx LoveIT (v45) ══════════════════════════════════ */
 /* ── Tabelle dati (Hotel At-a-Glance / Venue per stato) ───────────────────── */
 .slide-datatable{ background:var(--notte); }
@@ -798,8 +827,8 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
     </section>`;
   }
 
-  function buildGallery(act, day, num, total, dayIdx, actIdx){
-    const photos = _actPhotoSets(act).gallery;
+  function buildGallery(act, day, num, total, dayIdx, actIdx, photosOverride){
+    const photos = photosOverride || _actPhotoSets(act).gallery;
     if(!photos.length) return '';
     const cols = photos.length===1 ? 1 : (photos.length===2||photos.length===4 ? 2 : 3);
     const cells = photos.map((url, i) =>
@@ -814,6 +843,75 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
         <h2 class="headline">${act.title}</h2>
       </div>
       <div class="gallery-grid gc-cols-${cols}">${cells}</div>
+      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
+    </section>`;
+  }
+
+  // ── v46: builder per i deck "venues" / "hotel" (crema/oro) ─────────────────
+  function _actName(act){ return act.supplierName || act.title; }
+  function buildVenueStatusTable(trip, num, total){
+    const rows=[];
+    trip.days.forEach(d=>d.activities.forEach(a=>{
+      if(a.showSlide===false) return;
+      rows.push(`<tr><td class="dt-cell">${_actName(a)}</td><td class="dt-cell">${trip.destination||''}</td><td class="dt-cell">—</td><td class="dt-cell">Day ${d.number}${a.type?` · ${a.type}`:''}</td><td class="dt-status-cell"><span class="status-badge" data-status="tbc">TBC</span></td><td class="dt-del"><button type="button" class="del-dtrow-btn" title="Rimuovi riga">×</button></td></tr>`);
+    }));
+    return `
+    <section class="slide-datatable">
+      <div class="content-dark datatable-content">
+        <div class="eyebrow">Venues — At a Glance</div>
+        <h2 class="headline">Le location proposte</h2>
+        <div class="rule"></div>
+        <table class="data-table"><thead><tr><th>Venue</th><th>Zona</th><th>Capacità</th><th>Note</th><th>Status</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>
+        <button type="button" class="add-dtrow-btn" data-kind="venue">+ Aggiungi riga</button>
+      </div>
+      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
+    </section>`;
+  }
+  function buildRateTable(trip, num, total){
+    const rows=[];
+    trip.days.forEach(d=>d.activities.forEach(a=>{
+      if(a.showSlide===false) return;
+      rows.push(`<tr><td class="dt-cell">${_actName(a)}</td><td class="dt-cell">${a.type||'—'}</td><td class="dt-cell">Camera doppia</td><td class="dt-cell">da € — / notte</td><td class="dt-cell">Day ${d.number}</td><td class="dt-del"><button type="button" class="del-dtrow-btn" title="Rimuovi riga">×</button></td></tr>`);
+    }));
+    return `
+    <section class="slide-datatable">
+      <div class="content-dark datatable-content">
+        <div class="eyebrow">Hotels — At a Glance</div>
+        <h2 class="headline">Confronto hotel</h2>
+        <div class="rule"></div>
+        <table class="data-table"><thead><tr><th>Hotel</th><th>Categoria</th><th>Camera</th><th>Tariffa</th><th>Note</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>
+        <button type="button" class="add-dtrow-btn" data-kind="hotel">+ Aggiungi riga</button>
+      </div>
+      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
+    </section>`;
+  }
+  // Spread foto-sinistra / info-destra (usato da entrambi i deck crema)
+  function buildDeckSpread(act, day, num, total, dayIdx, actIdx){
+    const { main } = _actPhotoSets(act);
+    const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
+    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
+    return `
+    <section class="slide-split slide-split-photo-left"${dataAttrs}>
+      <div class="split-photo"${main?` style="background-image:url('${main}')"`:''}></div>
+      <div class="split-content">
+        <div class="eyebrow">Day ${day.number}${day.date?` · ${day.date}`:''}</div>
+        <h2 class="headline">${act.title}</h2>
+        <p class="body-text">${act.description||''}</p>
+        ${optionBadges(act.options)}
+      </div>
+      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
+    </section>`;
+  }
+  // Hero full-page (deck venues): seconda inquadratura con solo il nome
+  function buildDeckHero(act, day, num, total, dayIdx, actIdx){
+    const { second } = _actPhotoSets(act);
+    const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
+    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
+    return `
+    <section${dataAttrs}>
+      <div class="bg" style="${bgStyle(second)}"></div>
+      <div class="ov-dark"></div>
+      <div class="content"><div class="eyebrow">${_actName(act)}</div><h2 class="headline">${act.title}</h2></div>
       <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
     </section>`;
   }
@@ -889,21 +987,37 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
   }
 
   // ── Collect all slides ────────────────────────────────────────────────────
+  const DECK = ['venues','hotel'].includes(TRIP.deckTemplate) ? TRIP.deckTemplate : 'dark';
+  document.body.classList.add('deck-'+DECK);
   const slideBuilders = [];
 
   slideBuilders.push((num, total) => buildCover(TRIP, num, total));
-  slideBuilders.push((num, total) => buildOverview(TRIP, num, total));
+  if(DECK==='venues')     slideBuilders.push((num, total) => buildVenueStatusTable(TRIP, num, total));
+  else if(DECK==='hotel') slideBuilders.push((num, total) => buildRateTable(TRIP, num, total));
+  else                    slideBuilders.push((num, total) => buildOverview(TRIP, num, total));
 
   TRIP.days.forEach((day, dayIdx) => {
     day.activities.forEach((act, actIdx) => {
       if(act.showSlide !== false){
-        slideBuilders.push((num, total) => buildActivity(act, day, num, total, dayIdx, actIdx));
         const sets = _actPhotoSets(act);
-        if(sets.second){
-          slideBuilders.push((num, total) => buildActivitySecond(act, day, num, total, dayIdx, actIdx));
-        }
-        if(sets.gallery.length > 0){
-          slideBuilders.push((num, total) => buildGallery(act, day, num, total, dayIdx, actIdx));
+        if(DECK==='venues'){
+          // Template 05: spread info → hero full-page → galleria
+          slideBuilders.push((num, total) => buildDeckSpread(act, day, num, total, dayIdx, actIdx));
+          if(sets.second) slideBuilders.push((num, total) => buildDeckHero(act, day, num, total, dayIdx, actIdx));
+          if(sets.gallery.length > 0) slideBuilders.push((num, total) => buildGallery(act, day, num, total, dayIdx, actIdx));
+        } else if(DECK==='hotel'){
+          // Template 04: spread scheda hotel → galleria (include la seconda foto)
+          slideBuilders.push((num, total) => buildDeckSpread(act, day, num, total, dayIdx, actIdx));
+          const hotelGallery=[sets.second, ...sets.gallery].filter(Boolean).slice(0,6);
+          if(hotelGallery.length > 0) slideBuilders.push((num, total) => buildGallery(act, day, num, total, dayIdx, actIdx, hotelGallery));
+        } else {
+          slideBuilders.push((num, total) => buildActivity(act, day, num, total, dayIdx, actIdx));
+          if(sets.second){
+            slideBuilders.push((num, total) => buildActivitySecond(act, day, num, total, dayIdx, actIdx));
+          }
+          if(sets.gallery.length > 0){
+            slideBuilders.push((num, total) => buildGallery(act, day, num, total, dayIdx, actIdx));
+          }
         }
         if(act.floorplans?.length){
           slideBuilders.push((num, total) => buildFloorplansGrid(act, day, num, total, dayIdx, actIdx));
