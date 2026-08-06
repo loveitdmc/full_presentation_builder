@@ -8,6 +8,32 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v45 — 2026-08-06
+- **5 nuovi layout slide adattati dai template pptx LoveIT** (zip caricato
+  dall'utente: corporate, elegant editorial, hotel proposal, venue options),
+  nuovo gruppo "Template LoveIT" nel pannello "+ Aggiungi slide". Tutti in
+  tema scuro/oro coerente con l'editor, con coral #FF5149 come accento badge:
+  - **Tabella Hotel** (da 04): "Hotels — At a Glance" con colonne
+    Hotel/Categoria/Camera/Tariffa/Note; righe editabili, + Aggiungi riga e ×
+    per riga (minimo 1).
+  - **Tabella Venue** (da 05): colonne Venue/Zona/Capacità/Note/Status con
+    badge colorato Confirmed (verde) / TBC (oro) / New (coral) — in edit mode
+    un click sul badge cicla lo stato (tracciato da Undo via `data-status`).
+  - **Card Prezzi** (da 01 "Investment"): 3 card "da € — / a persona + IVA"
+    con badge Consigliata (stessa meccanica ★ esclusiva delle opt-card),
+    aggiungi fino a 4, rimuovi con riassegnazione della consigliata.
+  - **Timeline** (da 01 "Route"): step numerati in cerchi oro con titolo e
+    testo; +/× con rinumerazione automatica.
+  - **Menu** (da 02): spread foto-sinistra (placeholder + picker foto come le
+    slide split) / menu-destra con portata, piatti +/- e riga prezzo.
+  - Note tecniche: estesi `TEXT_SEL` (`.dt-cell`, `.pc-*`, `.tl-title/.tl-text`,
+    `.menu-*`), `_isTrackedNode` (`.price-card`, `.tl-item`, `.menu-item`) e
+    l'`attributeFilter` (`data-status`) per Undo/dirty-check. Verifica jsdom
+    completa: pannello, add/del righe-card-step, ciclo badge, riassegnazione
+    consigliata, rinumerazione timeline, picker foto del menu.
+- Prossimo passo concordato: **export PPTX reale** ("Scarica PPTX") usando i
+  generatori pptxgenjs dei template come motore — non ancora implementato.
+
 ## v44 — 2026-07-26
 - **Confronto Opzioni: foto adattate allo spazio.** `.opt-card-photo` ora usa
   `background-size:contain` (con sfondo scuro) invece di `cover`: la foto è
