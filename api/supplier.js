@@ -183,7 +183,7 @@ async function findSuppliers(supplierName) {
   if (!words.length) return [];
 
   const clauses = words.map(w => `SEARCH("${w}", LOWER({Name}))>0`);
-  const fields    = ["Name","City","Description","Photos","Type","Media"]
+  const fields    = ["Name","City","Description","Photos","Type","Media","Address","Capacity","Rooms","Features","Prices"]
     .map(f => `fields[]=${encodeURIComponent(f)}`).join("&");
   const mkUrl = (formula,max) => `https://api.airtable.com/v0/${baseId}/${tableId}?filterByFormula=${encodeURIComponent(formula)}&maxRecords=${max}&${fields}`;
 
@@ -211,6 +211,11 @@ async function findSuppliers(supplierName) {
         allPhotosMeta,
         type:        f.Type        || null,
         mediaIds:    f.Media       || [],
+        address:     f.Address     || null,
+        capacity:    f.Capacity    || null,
+        rooms:       f.Rooms       || null,
+        features:    Array.isArray(f.Features) ? f.Features.map(x => (typeof x === "object" ? x?.name : x)).filter(Boolean) : [],
+        priceIds:    f.Prices      || [],
       };
     }).filter(r => r.name);
   } catch {
@@ -221,6 +226,38 @@ async function findSuppliers(supplierName) {
 // Floor plans are Media records with Asset Type "Floor Plan" / "Floorplan".
 // Airtable auto-generates a thumbnail for images AND PDFs.
 const FLOORPLAN_ASSET_TYPES = new Set(["Floor Plan", "Floorplan"]);
+
+// ─── Voci di costo (template "Quotazione Venue") ─────────────────────────────
+// Restituisce SOLO i nomi delle voci (Price Line) dei prezzi collegati al
+// fornitore: gli importi in Airtable sono costi netti agenzia e non vanno mai
+// mostrati al cliente senza ricarico — si compilano a mano nell'editor.
+const TABLE_PRICES_ID = "tbljeSwiqGWdJHvoQ";
+async function fetchPriceLines(priceIds) {
+  const token  = process.env.AIRTABLE_TOKEN;
+  const baseId = process.env.AIRTABLE_BASE_ID;
+  if (!priceIds?.length || !token || !baseId) return [];
+  const idClauses = priceIds.slice(0, 30).map(id => `RECORD_ID()="${id}"`).join(",");
+  const formula = encodeURIComponent(`OR(${idClauses})`);
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_PRICES_ID}?filterByFormula=${formula}&fields[]=${encodeURIComponent("Price Line")}&fields[]=${encodeURIComponent("VAT Rate")}&maxRecords=30`;
+  try {
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(7000) });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    const seen = new Set();
+    const out = [];
+    for (const r of (data.records || [])) {
+      const label = r.fields["Price Line"];
+      if (!label || seen.has(label)) continue;
+      seen.add(label);
+      const vatRaw = r.fields["VAT Rate"];
+      const vat = typeof vatRaw === "object" ? (vatRaw?.name || "") : (vatRaw || "");
+      out.push({ label, vat: /^\d+%?$/.test(String(vat)) || /%/.test(String(vat)) ? String(vat) : "" });
+    }
+    return out.slice(0, 12);
+  } catch {
+    return [];
+  }
+}
 
 // ─── Didascalie AI ───────────────────────────────────────────────────────────
 // Quando il nome di una foto è "tecnico" (filename tipo "Palazzo Caracciolo (10)",
@@ -585,6 +622,11 @@ export async function generateSupplierFullPage(supplierNameRaw, apiKey, template
     }
   }
 
+  // Voci di costo dal venue (solo etichette + aliquota IVA, importi vuoti)
+  if (selected?.priceIds?.length) {
+    selected.costRows = await fetchPriceLines(selected.priceIds);
+  }
+
   // Didascalie AI per le foto con nome tecnico
   if (selected?.allPhotosMeta?.length) {
     selected.allPhotosMeta = await aiCaptionPhotos(selected.allPhotosMeta, selected.name || supplierNameRaw, apiKey);
@@ -604,6 +646,12 @@ export async function generateSupplierFullPage(supplierNameRaw, apiKey, template
       photos:        selected.photos?.slice(1, 4) || [],
       allPhotos:     selected.allPhotos || [],
       allPhotosMeta: selected.allPhotosMeta || [],
+      address:       selected.address  || null,
+      capacity:      selected.capacity || null,
+      rooms:         selected.rooms    || null,
+      features:      selected.features || [],
+      priceIds:      selected.priceIds || [],
+      costRows:      selected.costRows || [],
       cityPhoto:     `${cityName.toLowerCase()} italy aerial landmark`,
       fromAirtable:  true,
     };
@@ -670,6 +718,11 @@ export async function generateSupplierFullPage(supplierNameRaw, apiKey, template
         photos:       profile.photos,
         allPhotos:    profile.allPhotos || [],
         allPhotosMeta: profile.allPhotosMeta || [],
+        address:      profile.address  || null,
+        capacity:     profile.capacity || null,
+        rooms:        profile.rooms    || null,
+        features:     profile.features || [],
+        costRows:     profile.costRows || [],
         floorplans,
         options:      [],
         _airtable:    profile.fromAirtable,

@@ -597,6 +597,69 @@ body.edit-mode .del-caption-btn{ display:flex;align-items:center;justify-content
 }
 .gc-clearcaps-btn:hover{ border-color:rgba(220,80,80,.75);color:#e55;background:rgba(220,60,60,.14); }
 
+/* ══ Deck "Quotazione Venue" (v53) — fedele al template pptx 06 ═════════════
+   Palette: CREAM #F7F4EF, DARK #2B323A, TEAL #346E74, CORAL #FF5149,
+   GOLD #C9A96A, GRAY #7A8288. Serif corsivo per i titoli, sans per eyebrow. */
+body.deck-quotation{ background:#F7F4EF; }
+body.deck-quotation section{ background:#F7F4EF; }
+.q-eyebrow{ font-family:var(--sans);font-size:.72rem;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:#FF5149; }
+.q-title{ font-family:var(--serif);font-style:italic;font-size:2.1rem;color:#2B323A;line-height:1.15; }
+.q-rule{ width:64px;height:2px;background:#C9A96A;margin:.9rem 0 1.1rem; }
+.q-body{ font-family:'Calibri',var(--sans);font-size:.95rem;line-height:1.6;color:#2B323A; }
+.q-note{ font-family:'Calibri',var(--sans);font-size:.72rem;font-style:italic;color:#7A8288;line-height:1.5; }
+
+/* Cover: foto full-bleed + velo scuro + blocco centrato */
+.slide-qcover{ align-items:center!important;justify-content:center; }
+.slide-qcover .q-ov{ position:absolute;inset:0;background:rgba(27,30,36,.62);z-index:1; }
+.qcover-inner{ position:relative;z-index:3;text-align:center;padding:0 8vw;width:100%; }
+.qcover-logo{ font-family:var(--sans);font-size:.8rem;letter-spacing:.3em;text-transform:uppercase;color:#F7F4EF;opacity:.9;margin-bottom:2.2rem; }
+.qcover-eyebrow{ font-family:var(--sans);font-size:.8rem;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:#C9A96A;margin-bottom:.9rem; }
+.qcover-title{ font-family:var(--serif);font-style:italic;font-size:3.4rem;color:#fff;line-height:1.1;margin-bottom:.8rem; }
+.qcover-sub{ font-family:var(--sans);font-size:1rem;color:#E9E4D8;letter-spacing:.02em; }
+.qcover-foot{ position:absolute;bottom:1.6rem;left:0;right:0;text-align:center;z-index:3;font-family:var(--sans);font-size:.66rem;color:#C9C4B8;letter-spacing:.08em; }
+
+/* The Venue: foto sinistra ~49% + facts a destra */
+.slide-qvenue{ align-items:stretch!important; }
+.qvenue-photo{ flex:0 0 49%;background-size:cover;background-position:center;background-color:#2B323A;position:relative; }
+.qvenue-info{ flex:1;display:flex;flex-direction:column;justify-content:center;padding:3.4rem 3.2rem;background:#F7F4EF;overflow:hidden; }
+.qfacts{ margin-top:.6rem; }
+.qfact{ margin-bottom:1rem; }
+.qfact-label{ font-family:var(--sans);font-size:.6rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#346E74;margin-bottom:.18rem; }
+.qfact-value{ font-family:'Calibri',var(--sans);font-size:.86rem;color:#2B323A;line-height:1.45; }
+
+/* Floor plan: cornice bianca + immagine contain */
+.slide-qplan{ flex-direction:column;align-items:stretch!important;padding:2.6rem 3rem 2rem; }
+.qplan-frame{ flex:1;min-height:0;background:#fff;border:1px solid #E5DFD0;margin:1.1rem 0 .7rem;position:relative; }
+.qplan-img{ position:absolute;inset:.6rem;background-size:contain;background-repeat:no-repeat;background-position:center; }
+
+/* Gallery: 2×2 */
+.slide-qgallery{ flex-direction:column;align-items:stretch!important;padding:2.6rem 3rem 2.4rem; }
+.qgal-grid{ flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:.55rem;margin-top:1.1rem; }
+.qgal-grid .gallery-cell{ background-size:cover;background-position:center;background-color:#E5DFD0; }
+
+/* Cost breakdown */
+.slide-qcost{ flex-direction:column;align-items:stretch!important;padding:2.6rem 3rem 2rem; }
+.qcost-table{ width:100%;border-collapse:collapse;margin-top:1.1rem;font-family:'Calibri',var(--sans); }
+.qcost-table th{ background:#346E74;color:#fff;font-family:var(--sans);font-size:.66rem;font-weight:600;text-align:left;padding:.5rem .7rem; }
+.qcost-table th.num,.qcost-table td.num{ text-align:right; }
+.qcost-table th.mid,.qcost-table td.mid{ text-align:center; }
+.qcost-table td{ font-size:.8rem;color:#2B323A;padding:.42rem .7rem;border-bottom:1px solid #E5DFD0;background:#fff; }
+.qcost-table tr:nth-child(even) td{ background:#F7F4EF; }
+.qcost-table td.q-total-cell{ font-weight:700; }
+.qcost-table td.qc-del{ width:1.6rem;background:transparent!important;border:none; }
+.qcost-total{ display:flex;align-items:baseline;justify-content:space-between;border-top:1px solid #2B323A;margin-top:1.1rem;padding-top:.8rem; }
+.qcost-total-label{ font-family:var(--sans);font-size:.88rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#2B323A; }
+.qcost-total-value{ font-family:var(--serif);font-style:italic;font-weight:600;font-size:1.9rem;color:#346E74; }
+.qcost-pp{ font-family:'Calibri',var(--sans);font-size:.76rem;font-style:italic;color:#7A8288;margin-top:.45rem; }
+.qcost-foot{ font-family:'Calibri',var(--sans);font-size:.68rem;font-style:italic;color:#7A8288;margin-top:.7rem;line-height:1.5; }
+body.edit-mode .add-qcostrow-btn{ display:inline-block;pointer-events:auto; }
+.add-qcostrow-btn{ display:none;margin-top:.8rem;align-self:flex-start;background:transparent;border:1px dashed rgba(52,110,116,.5);color:#346E74;font-family:var(--sans);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;padding:.42rem 1rem;cursor:pointer;border-radius:2px; }
+.add-qcostrow-btn:hover{ border-color:#346E74;background:rgba(52,110,116,.07); }
+body.edit-mode .qcost-table .del-dtrow-btn{ color:rgba(220,80,80,.6); }
+/* Counter scuro sulle slide crema */
+body.deck-quotation .counter{ color:rgba(43,50,58,.45); }
+body.deck-quotation .slide-qcover .counter{ color:rgba(255,255,255,.5); }
+
 /* ══ Deck theme crema/oro (v46 — template Venue Options / Hotel Proposal) ═══
    Le slide con foto full-bleed restano scure (testo bianco su overlay);
    le slide "di carta" (tabelle, spread, gallerie, closing testo) diventano
@@ -946,6 +1009,121 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
     </section>`;
   }
 
+  // ── v53: deck "Quotazione Venue" — 5 slide fedeli al template pptx 06 ──────
+  function _qFacts(act, trip){
+    const f=[];
+    if(act.address||trip.destination) f.push(['Location', act.address || trip.destination || '—']);
+    const cap=act.capacity ? `Seated dinner for ${act.capacity} guests`
+             : (trip.pax ? `Event for ${trip.pax} guests` : '—');
+    f.push(['Capacity', cap]);
+    const spaces=(act.features&&act.features.length) ? act.features.join(', ')
+                : (act.rooms ? `${act.rooms} rooms` : '—');
+    f.push(['Spaces', spaces]);
+    f.push(['Included', act.included || 'Da confermare con il fornitore']);
+    return f;
+  }
+  function _qCounter(num,total){
+    return `<span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>`;
+  }
+  function buildQCover(trip, act, num, total){
+    const { main } = _actPhotoSets(act);
+    const sub=[trip.title, trip.pax?`${trip.pax} Guests`:'', trip.destination].filter(Boolean).join(' · ');
+    return `
+    <section class="slide-qcover">
+      <div class="bg" style="${bgStyle(main || trip.cityPhoto)}"></div>
+      <div class="q-ov"></div>
+      <div class="qcover-inner">
+        <div class="qcover-logo">Love IT DMC</div>
+        <div class="qcover-eyebrow">Event Proposal</div>
+        <h1 class="qcover-title">${act.supplierName || act.title}</h1>
+        <p class="qcover-sub">${sub}</p>
+      </div>
+      <div class="qcover-foot">Love IT DMC · Your Italian DMC</div>
+      ${_qCounter(num,total)}
+    </section>`;
+  }
+  function buildQVenue(trip, act, num, total, dayIdx, actIdx){
+    const { second, main } = _actPhotoSets(act);
+    const photo=second||main;
+    const supAttr = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
+    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
+    const facts=_qFacts(act, trip).map(([l,v])=>
+      `<div class="qfact"><div class="qfact-label">${l}</div><div class="qfact-value">${v}</div></div>`).join('');
+    return `
+    <section class="slide-qvenue"${dataAttrs}>
+      <div class="qvenue-photo split-photo" style="${photo?`background-image:url('${photo}')`:''}"></div>
+      <div class="qvenue-info">
+        <div class="q-eyebrow">The Venue</div>
+        <h2 class="q-title">${act.supplierName || act.title}</h2>
+        <div class="q-rule"></div>
+        <p class="q-body">${act.description || ''}</p>
+        <div class="qfacts">${facts}</div>
+      </div>
+      ${_qCounter(num,total)}
+    </section>`;
+  }
+  function buildQPlan(trip, act, num, total){
+    const fp=(act.floorplans||[])[0];
+    const img=fp?.thumb || fp?.fileUrl || '';
+    return `
+    <section class="slide-qplan">
+      <div class="q-eyebrow">Floor Plan</div>
+      <h2 class="q-title">${fp?.name || 'Planimetria'} · ${act.supplierName || act.title}</h2>
+      <div class="qplan-frame"><div class="qplan-img split-photo" style="${img?`background-image:url('${img}')`:''}"></div></div>
+      <p class="q-note">${fp?.description || 'Rilievo tecnico — di riferimento; layout finale da confermare con il fornitore.'}</p>
+      ${_qCounter(num,total)}
+    </section>`;
+  }
+  function buildQGallery(trip, act, num, total, dayIdx, actIdx){
+    const sets=_actPhotoSets(act);
+    const photos=[...sets.gallery, sets.second, sets.main].filter(Boolean).slice(0,4);
+    const supAttr = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
+    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
+    const cells=[0,1,2,3].map(i=>{
+      const u=photos[i]||'';
+      return `<div class="gallery-cell"${u?` style="background-image:url('${u}')"`:''}></div>`;
+    }).join('');
+    return `
+    <section class="slide-qgallery"${dataAttrs}>
+      <div class="q-eyebrow">Gallery</div>
+      <h2 class="q-title">${act.supplierName || act.title}</h2>
+      <div class="qgal-grid">${cells}</div>
+      ${_qCounter(num,total)}
+    </section>`;
+  }
+  function _qCostRowHtml(label, vat){
+    return `<tr>
+      <td class="qcost-cell">${label||'Voce di costo'}</td>
+      <td class="qcost-cell num">€ —</td>
+      <td class="qcost-cell mid">${vat||'—'}</td>
+      <td class="qcost-cell num q-total-cell">€ —</td>
+      <td class="qc-del"><button type="button" class="del-dtrow-btn" title="Rimuovi riga">×</button></td>
+    </tr>`;
+  }
+  function buildQCost(trip, act, num, total){
+    const rows=(act.costRows&&act.costRows.length)
+      ? act.costRows.map(r=>_qCostRowHtml(r.label, r.vat)).join('')
+      : [1,2,3].map(()=>_qCostRowHtml('','')).join('');
+    const sub=[trip.title, trip.pax?`${trip.pax} Guests`:''].filter(Boolean).join(' · ');
+    return `
+    <section class="slide-qcost">
+      <div class="q-eyebrow">Cost Breakdown</div>
+      <h2 class="q-title">${sub || act.supplierName || act.title}</h2>
+      <table class="qcost-table">
+        <thead><tr><th>Item</th><th class="num">Net</th><th class="mid">VAT</th><th class="num">Total</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <button type="button" class="add-qcostrow-btn">+ Aggiungi voce</button>
+      <div class="qcost-total">
+        <span class="qcost-total-label">Total (VAT included)</span>
+        <span class="qcost-total-value">€ —</span>
+      </div>
+      <p class="qcost-pp">≈ € — a persona, IVA inclusa</p>
+      <p class="qcost-foot">Stima basata sui dati disponibili. I costi finali sono soggetti a conferma scritta del fornitore una volta definite le date dell'evento.</p>
+      ${_qCounter(num,total)}
+    </section>`;
+  }
+
   function buildVideosGrid(act, day, num, total, dayIdx, actIdx){
     const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
     const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
@@ -1017,10 +1195,24 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
   }
 
   // ── Collect all slides ────────────────────────────────────────────────────
-  const DECK = ['venues','hotel'].includes(TRIP.deckTemplate) ? TRIP.deckTemplate : 'dark';
+  const DECK = ['venues','hotel','quotation'].includes(TRIP.deckTemplate) ? TRIP.deckTemplate : 'dark';
   document.body.classList.add('deck-'+DECK);
   const slideBuilders = [];
 
+  // Deck "Quotazione Venue": 5 slide su UN solo venue (il primo del programma)
+  if(DECK==='quotation'){
+    let qDay=null,qAct=null,qDayIdx,qActIdx;
+    TRIP.days.forEach((d,di)=>d.activities.forEach((a,ai)=>{
+      if(!qAct && a.showSlide!==false){ qDay=d;qAct=a;qDayIdx=di;qActIdx=ai; }
+    }));
+    if(qAct){
+      slideBuilders.push((n,t)=>buildQCover(TRIP,qAct,n,t));
+      slideBuilders.push((n,t)=>buildQVenue(TRIP,qAct,n,t,qDayIdx,qActIdx));
+      if((qAct.floorplans||[]).length) slideBuilders.push((n,t)=>buildQPlan(TRIP,qAct,n,t));
+      slideBuilders.push((n,t)=>buildQGallery(TRIP,qAct,n,t,qDayIdx,qActIdx));
+      slideBuilders.push((n,t)=>buildQCost(TRIP,qAct,n,t));
+    }
+  } else {
   slideBuilders.push((num, total) => buildCover(TRIP, num, total));
   if(DECK==='venues')     slideBuilders.push((num, total) => buildVenueStatusTable(TRIP, num, total));
   else if(DECK==='hotel') slideBuilders.push((num, total) => buildRateTable(TRIP, num, total));
@@ -1060,6 +1252,7 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
   });
 
   slideBuilders.push((num, total) => buildClosing(TRIP, num, total));
+  } // fine deck non-quotation
 
   // ── Render ────────────────────────────────────────────────────────────────
   const TOTAL  = slideBuilders.length;
@@ -1445,7 +1638,7 @@ try{ LoveitEditor=(function(){
   let photoMode=false, textMode=false, editMode=false;
   const zones=[], addBtns=[], deleteBtns=[];
   let currentTarget=null;
-  const TEXT_SEL='.headline,.display,.body-text,.tagline,.eyebrow,.gallery-title-small,.gallery-label,.meta-pill,.room-cap-label,.room-cap-value,.day-num-col,.day-label-col,.optcompare-sub,.opt-card-direction,.gallery-cell-caption,.dt-cell,.pc-label,.pc-price,.pc-unit,.pc-note,.tl-title,.tl-text,.menu-course,.menu-item-name,.menu-item-desc,.menu-price';
+  const TEXT_SEL='.headline,.display,.body-text,.tagline,.eyebrow,.gallery-title-small,.gallery-label,.meta-pill,.room-cap-label,.room-cap-value,.day-num-col,.day-label-col,.optcompare-sub,.opt-card-direction,.gallery-cell-caption,.dt-cell,.pc-label,.pc-price,.pc-unit,.pc-note,.tl-title,.tl-text,.menu-course,.menu-item-name,.menu-item-desc,.menu-price,.q-eyebrow,.q-title,.q-body,.q-note,.qcover-eyebrow,.qcover-title,.qcover-sub,.qfact-label,.qfact-value,.qcost-cell,.qcost-total-label,.qcost-total-value,.qcost-pp,.qcost-foot';
 
   // ── Protezione modifiche non salvate (autosave + avviso prima di uscire) ───
   // localStorage è condiviso con la pagina che genera l'anteprima (stesso
@@ -2206,6 +2399,20 @@ try{ LoveitEditor=(function(){
       e.preventDefault();e.stopPropagation();
       const tr=delDtBtn.closest('tr'), tbody=tr?.closest('tbody');
       if(tr && tbody && tbody.querySelectorAll('tr').length>1) tr.remove();
+      return;
+    }
+    const addQCostBtn=e.target.closest('.add-qcostrow-btn');
+    if(addQCostBtn){
+      e.preventDefault();e.stopPropagation();
+      const tbody=addQCostBtn.previousElementSibling?.querySelector('tbody');
+      if(tbody){
+        // riga vuota (stessa struttura del builder, che vive nell'altro script)
+        const wrap=document.createElement('tbody');
+        wrap.innerHTML=`<tr><td class="qcost-cell">Voce di costo</td><td class="qcost-cell num">€ —</td><td class="qcost-cell mid">—</td><td class="qcost-cell num q-total-cell">€ —</td><td class="qc-del"><button type="button" class="del-dtrow-btn" title="Rimuovi riga">×</button></td></tr>`;
+        const tr=wrap.firstElementChild;
+        tbody.appendChild(tr);
+        if(textMode) tr.querySelectorAll('.qcost-cell').forEach(el=>{ el.contentEditable='true';el.spellcheck=false; });
+      }
       return;
     }
     const addDtBtn=e.target.closest('.add-dtrow-btn');
@@ -3619,6 +3826,74 @@ try{ LoveitEditor=(function(){
             const cap=_txt(cell.querySelector('.gallery-cell-caption'));
             if(cap) sl.addText(cap,{x,y:y+gh-0.34,w:gw,h:0.34,fontSize:9,color:'FFFFFF',fill:{color:'0A0A0A',transparency:35},fontFace:'Montserrat',valign:'middle'});
           }
+        } else if(cls.contains('slide-qvenue')){
+          const photo=await _pptxImg(_bgUrl(sec.querySelector('.qvenue-photo')));
+          if(photo) sl.addImage({data:photo,x:0,y:0,w:6.5,h:H,sizing:{type:'cover',w:6.5,h:H}});
+          const rx=7.0,rw=5.7;
+          sl.addText(_txt(sec.querySelector('.q-eyebrow')).toUpperCase(),{x:rx,y:0.7,w:rw,h:0.4,fontSize:12,bold:true,color:'FF5149',charSpacing:3,fontFace:'Montserrat'});
+          sl.addText(_txt(sec.querySelector('.q-title')),{x:rx,y:1.1,w:rw,h:0.85,fontSize:27,italic:true,color:'2B323A',fontFace:'Georgia'});
+          sl.addShape('line',{x:rx,y:2.0,w:1.0,h:0,line:{color:'C9A96A',width:1.5}});
+          sl.addText(_txt(sec.querySelector('.q-body')).slice(0,400),{x:rx,y:2.25,w:rw,h:1.1,fontSize:12.5,color:'2B323A',fontFace:'Calibri',lineSpacingMultiple:1.3,valign:'top'});
+          let fy=3.5;
+          sec.querySelectorAll('.qfact').forEach(f=>{
+            sl.addText(_txt(f.querySelector('.qfact-label')).toUpperCase(),{x:rx,y:fy,w:rw,h:0.3,fontSize:9.5,bold:true,color:'346E74',charSpacing:1,fontFace:'Montserrat'});
+            sl.addText(_txt(f.querySelector('.qfact-value')),{x:rx,y:fy+0.28,w:rw,h:0.4,fontSize:11.5,color:'2B323A',fontFace:'Calibri'});
+            fy+=0.72;
+          });
+        } else if(cls.contains('slide-qplan')){
+          sl.addText(_txt(sec.querySelector('.q-eyebrow')).toUpperCase(),{x:0.6,y:0.4,w:12,h:0.35,fontSize:12,bold:true,color:'FF5149',charSpacing:3,fontFace:'Montserrat'});
+          sl.addText(_txt(sec.querySelector('.q-title')),{x:0.6,y:0.72,w:12,h:0.55,fontSize:22,italic:true,color:'2B323A',fontFace:'Georgia'});
+          sl.addShape('rect',{x:0.6,y:1.45,w:12.13,h:5.35,fill:{color:'FFFFFF'},line:{color:'E5DFD0',width:1}});
+          const plan=await _pptxImg(_bgUrl(sec.querySelector('.qplan-img')));
+          if(plan) sl.addImage({data:plan,x:0.75,y:1.6,w:11.83,h:5.05,sizing:{type:'contain',w:11.83,h:5.05}});
+          sl.addText(_txt(sec.querySelector('.q-note')),{x:0.6,y:6.9,w:12.13,h:0.35,fontSize:9,italic:true,color:'7A8288',fontFace:'Calibri'});
+        } else if(cls.contains('slide-qgallery')){
+          sl.addText(_txt(sec.querySelector('.q-eyebrow')).toUpperCase(),{x:0.6,y:0.4,w:12,h:0.35,fontSize:12,bold:true,color:'FF5149',charSpacing:3,fontFace:'Montserrat'});
+          sl.addText(_txt(sec.querySelector('.q-title')),{x:0.6,y:0.72,w:12,h:0.55,fontSize:22,italic:true,color:'2B323A',fontFace:'Georgia'});
+          const cells=[...sec.querySelectorAll('.gallery-cell')];
+          const gap=0.2,cw=(W-1.2-gap)/2,ch=2.75;
+          for(let i=0;i<Math.min(cells.length,4);i++){
+            const img=await _pptxImg(_bgUrl(cells[i]));
+            if(img) sl.addImage({data:img,x:0.6+(i%2)*(cw+gap),y:1.55+Math.floor(i/2)*(ch+gap),w:cw,h:ch,sizing:{type:'cover',w:cw,h:ch}});
+          }
+        } else if(cls.contains('slide-qcost')){
+          sl.addText(_txt(sec.querySelector('.q-eyebrow')).toUpperCase(),{x:0.6,y:0.4,w:12,h:0.35,fontSize:12,bold:true,color:'FF5149',charSpacing:3,fontFace:'Montserrat'});
+          sl.addText(_txt(sec.querySelector('.q-title')),{x:0.6,y:0.72,w:12,h:0.55,fontSize:22,italic:true,color:'2B323A',fontFace:'Georgia'});
+          const rows=[[
+            {text:'Item',options:{bold:true,color:'FFFFFF',fill:{color:'346E74'},fontFace:'Montserrat',fontSize:10.5,align:'left'}},
+            {text:'Net',options:{bold:true,color:'FFFFFF',fill:{color:'346E74'},fontFace:'Montserrat',fontSize:10.5,align:'right'}},
+            {text:'VAT',options:{bold:true,color:'FFFFFF',fill:{color:'346E74'},fontFace:'Montserrat',fontSize:10.5,align:'center'}},
+            {text:'Total',options:{bold:true,color:'FFFFFF',fill:{color:'346E74'},fontFace:'Montserrat',fontSize:10.5,align:'right'}},
+          ]];
+          [...sec.querySelectorAll('tbody tr')].forEach((tr,i)=>{
+            const c=[...tr.querySelectorAll('.qcost-cell')].map(_txt);
+            const fillC=i%2===1?'F7F4EF':'FFFFFF';
+            rows.push([
+              {text:c[0]||'',options:{color:'2B323A',fontFace:'Calibri',fontSize:10,align:'left',fill:{color:fillC}}},
+              {text:c[1]||'',options:{color:'2B323A',fontFace:'Calibri',fontSize:10,align:'right',fill:{color:fillC}}},
+              {text:c[2]||'',options:{color:'7A8288',fontFace:'Calibri',fontSize:9.5,align:'center',fill:{color:fillC}}},
+              {text:c[3]||'',options:{color:'2B323A',bold:true,fontFace:'Calibri',fontSize:10,align:'right',fill:{color:fillC}}},
+            ]);
+          });
+          const rowH=0.35;
+          sl.addTable(rows,{x:0.6,y:1.5,w:12.13,colW:[6.63,2.0,1.5,2.0],border:{type:'solid',pt:0.5,color:'E5DFD0'},autoPage:false,rowH});
+          const ty=1.5+rowH*rows.length+0.3;
+          sl.addShape('line',{x:0.6,y:ty,w:12.13,h:0,line:{color:'2B323A',width:1}});
+          sl.addText(_txt(sec.querySelector('.qcost-total-label')).toUpperCase(),{x:0.6,y:ty+0.15,w:8.0,h:0.5,fontSize:14,bold:true,color:'2B323A',fontFace:'Montserrat'});
+          sl.addText(_txt(sec.querySelector('.qcost-total-value')),{x:9.13,y:ty+0.1,w:3.6,h:0.6,align:'right',fontSize:26,italic:true,bold:true,color:'346E74',fontFace:'Georgia'});
+          sl.addText(_txt(sec.querySelector('.qcost-pp')),{x:0.6,y:ty+0.7,w:12.13,h:0.35,fontSize:10,italic:true,color:'7A8288',fontFace:'Calibri'});
+          sl.addText(_txt(sec.querySelector('.qcost-foot')),{x:0.6,y:ty+1.2,w:12.13,h:0.5,fontSize:9,italic:true,color:'7A8288',fontFace:'Calibri',lineSpacingMultiple:1.25});
+        } else if(cls.contains('slide-qcover')){
+          const img=await _pptxImg(_bgUrl(sec.querySelector('.bg')));
+          if(img){
+            sl.addImage({data:img,x:0,y:0,w:W,h:H,sizing:{type:'cover',w:W,h:H}});
+            sl.addShape('rect',{x:0,y:0,w:W,h:H,fill:{color:'1B1E24',transparency:40},line:{type:'none'}});
+          }
+          sl.addText('LOVE IT DMC',{x:0,y:1.4,w:W,h:0.5,align:'center',fontSize:14,color:'F7F4EF',charSpacing:6,fontFace:'Montserrat'});
+          sl.addText(_txt(sec.querySelector('.qcover-eyebrow')).toUpperCase(),{x:0,y:3.05,w:W,h:0.5,align:'center',fontSize:14,bold:true,color:'C9A96A',charSpacing:4,fontFace:'Montserrat'});
+          sl.addText(_txt(sec.querySelector('.qcover-title')),{x:0,y:3.5,w:W,h:1.1,align:'center',fontSize:46,italic:true,color:'FFFFFF',fontFace:'Georgia'});
+          sl.addText(_txt(sec.querySelector('.qcover-sub')),{x:0,y:4.65,w:W,h:0.5,align:'center',fontSize:15,color:'E9E4D8',fontFace:'Montserrat'});
+          sl.addText('Love IT DMC · Your Italian DMC',{x:0,y:7.02,w:W,h:0.35,align:'center',fontSize:10.5,color:'C9C4B8',fontFace:'Montserrat'});
         } else if(cls.contains('slide-datatable')||cls.contains('slide-overview')){
           if(eyebrow) sl.addText(eyebrow.toUpperCase(),{x:0.6,y:0.45,w:W-1.2,h:0.32,fontSize:11,color:C.gold,charSpacing:3,fontFace:'Montserrat'});
           if(headline) sl.addText(headline,{x:0.6,y:0.8,w:W-1.2,h:0.65,fontSize:26,color:C.ink,fontFace:'Georgia'});

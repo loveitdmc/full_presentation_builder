@@ -565,7 +565,7 @@ export default async function handler(req, res) {
   if (Buffer.isBuffer(_body)) { try { _body = JSON.parse(_body.toString("utf8")); } catch { _body = {}; } }
   else if (typeof _body === "string") { try { _body = JSON.parse(_body); } catch { _body = {}; } }
   const { rewrite, dbchat } = _body;
-  const deckTemplate = ["dark","venues","hotel"].includes(_body.deckTemplate) ? _body.deckTemplate : "dark";
+  const deckTemplate = ["dark","venues","hotel","quotation"].includes(_body.deckTemplate) ? _body.deckTemplate : "dark";
   const programText = typeof _body.programText === "string" ? _body.programText : (_body.programText == null ? undefined : String(_body.programText));
 
   const apiKey = process.env.ANTHROPIC_API_KEY;

@@ -93,7 +93,8 @@ main{max-width:680px;margin:0 auto;padding:0 1.5rem 6rem}
 /* ── Input mode toggle (PDF / testo) ── */
 .tpl-select{margin:1.4rem 0 1.5rem}
 .tpl-select-label{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--stone);margin-bottom:.7rem}
-.tpl-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem}
+.tpl-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem}
+.tpl-swatch-quote{background:linear-gradient(90deg,#F7F4EF 55%,#346E74 55%,#346E74 80%,#FF5149 80%);border:1px solid #333}
 .tpl-card{background:var(--card);border:1px solid #2a2a2a;border-radius:4px;padding:.85rem .8rem .75rem;cursor:pointer;text-align:left;transition:border-color .2s,background .2s;display:flex;flex-direction:column;gap:.35rem}
 .tpl-card:hover{border-color:rgba(201,169,110,.55)}
 .tpl-card.active{border-color:var(--gold);background:#1a1610}
@@ -214,6 +215,11 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
           <span class="tpl-swatch tpl-swatch-cream"></span>
           <span class="tpl-name">Hotel Proposal</span>
           <span class="tpl-desc">Crema/oro — tabella tariffe + scheda e galleria per hotel</span>
+        </button>
+        <button type="button" class="tpl-card" data-tpl="quotation">
+          <span class="tpl-swatch tpl-swatch-quote"></span>
+          <span class="tpl-name">Quotazione Venue</span>
+          <span class="tpl-desc">Crema/teal — 5 slide per UN venue: cover, scheda, planimetria, gallery, costi</span>
         </button>
       </div>
     </div>

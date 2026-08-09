@@ -8,6 +8,43 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v53 — 2026-08-06
+- **Nuovo template "Quotazione Venue"** (4ª card nella scelta iniziale), fedele
+  al pptx `loveit_single_venue_quotation_template.js` caricato dall'utente:
+  deck di 5 slide su UN solo venue, palette crema/teal/coral del template
+  (CREAM #F7F4EF, DARK #2B323A, TEAL #346E74, CORAL #FF5149, GOLD #C9A96A),
+  serif corsivo per i titoli.
+  1. **Cover** — foto full-bleed + velo scuro 40%, logo, "EVENT PROPOSAL"
+     oro, nome venue in corsivo, sottotitolo "Evento · N Guests · Città",
+     firma "Love IT DMC · Your Italian DMC" a piè di pagina.
+  2. **The Venue** — foto a sinistra (49%), a destra eyebrow coral, nome,
+     filetto oro, descrizione e 4 fact (Location/Capacity/Spaces/Included)
+     con label teal, popolati da Airtable: Address, Capacity, Features/Rooms.
+  3. **Floor Plan** — cornice bianca con planimetria in `contain` + didascalia
+     (slide presente solo se il venue ha planimetrie).
+  4. **Gallery** — 4 foto in griglia 2×2.
+  5. **Cost Breakdown** — tabella Item/Net/VAT/Total con intestazione teal e
+     righe alternate, riga totale con filetto, "TOTAL (VAT INCLUDED)",
+     costo/persona e footnote. Le voci sono popolate dai record Prices del
+     venue (etichetta + aliquota IVA, deduplicate), **con importi vuoti**:
+     i prezzi Airtable sono costi netti agenzia e non vanno mai mostrati al
+     cliente senza ricarico — si compilano in edit mode. Pulsante
+     "+ Aggiungi voce" e × per riga.
+  - Quando si genera da PDF/testo il deck usa il **primo fornitore** del
+    programma; da "Cerca nel Database" usa il fornitore cercato.
+  - Tutte le slide sono editabili (testi, foto, righe) e incluse
+    nell'**export PPTX** con le stesse coordinate del template originale
+    (cover 46pt corsivo, venue x=7.0/w=5.7, plan frame 12.13×5.35, gallery
+    2×2 5.9-ish, tabella colW [6.63,2.0,1.5,2.0]).
+  - Backend: `findSuppliers` ora richiede anche Address/Capacity/Rooms/
+    Features/Prices; nuova `fetchPriceLines()` (tabella Prices) che
+    restituisce solo etichette + IVA. `deckTemplate:"quotation"` accettato da
+    `/api/generate` e `/api/generate-text`.
+  - Verifica jsdom: 5 slide corrette, facts popolati, planimetria, 4 foto,
+    3 voci di costo con IVA, add/del riga, export PPTX (5 slide, tabella,
+    testi cover/venue). Non-regressione backend su ricerca v48 e fallback
+    Media v47.
+
 ## v52 — 2026-08-06
 - **Fix didascalie che "saltavano in alto" in edit mode** (screenshot utente):
   la regola generica `body.edit-mode [contenteditable]{position:relative}` le
