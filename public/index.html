@@ -453,6 +453,35 @@ async function generateFromText() {
 // confirmedKind è passato solo quando l'utente ha appena scelto un candidato dal
 // picker fuzzy: salta la ricerca e genera direttamente dalla tabella giusta.
 btnGenerateSup.addEventListener('click', () => generateSupplier());
+
+// Selezione multipla arrivata dal carrello del Vault: un solo deck con tutti i
+// fornitori, nell'ordine ricevuto. Niente picker fuzzy — i nomi vengono da
+// Airtable e combaciano gia' con i record.
+async function generateSupplierList(names, tpl){
+  setStepLabels('supplier');
+  btnGenerateSup.disabled = true;
+  hideError(); hideFuzzyConfirm(); resetResult();
+  progressEl.style.display = 'block'; setStep(1);
+  const t = setTimeout(() => setStep(2), 3000);
+  let data;
+  try {
+    const resp = await fetch('/api/acts', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ searchList: names, deckTemplate: tpl || deckTemplate })
+    });
+    clearTimeout(t);
+    if (!resp.ok) { const e = await resp.json().catch(() => ({error:`HTTP ${resp.status}`})); throw new Error(e.error); }
+    data = await resp.json();
+  } catch(e) {
+    clearTimeout(t); showError('Errore:\n' + e.message); resetProgress();
+    btnGenerateSup.disabled = !supplierInput.value.trim(); return;
+  }
+  setStep(4);
+  // Un fornitore non trovato non ferma il deck, ma va detto.
+  let badge = ' · ' + (data.count || names.length) + ' voci';
+  if ((data.missing || []).length) badge += ' · non trovati: ' + data.missing.join(', ');
+  showResult(data, 'Presentazione pronta', badge);
+}
 async function generateSupplier(confirmedName, confirmedKind) {
   const name = (typeof confirmedName === 'string' && confirmedName.trim()) || supplierInput.value.trim();
   if (!name) return;
@@ -739,7 +768,16 @@ function toBase64(file) {
 (function(){
   const params = new URLSearchParams(location.search);
   const supplier = (params.get('supplier') || '').trim();
-  if (!supplier) return;
+  // Il carrello del Vault manda piu' nomi separati da "|", nell'ordine scelto.
+  // Voci separate da "|". Un artista o un'attivita' arriva con il prefisso
+  // "act:", perche' va cercato nelle sue tabelle e non fra i fornitori.
+  const many = (params.get('suppliers') || '').split('|')
+    .map(s => s.trim()).filter(Boolean)
+    .map(s => s.slice(0,4).toLowerCase() === 'act:'
+      ? { name: s.slice(4).trim(), kind: 'act' }
+      : { name: s, kind: 'supplier' })
+    .filter(x => x.name);
+  if (!supplier && !many.length) return;
   const tpl = (params.get('tpl') || '').trim();
 
   // Scheda "Cerca nel Database"
@@ -751,6 +789,13 @@ function toBase64(file) {
   if (tpl) {
     const card = document.querySelector('.tpl-card[data-tpl="' + tpl + '"]');
     if (card) card.click();
+  }
+
+  if (many.length) {
+    const box0 = document.getElementById('supplier-input');
+    if (box0) box0.value = many.map(x => x.name).join(', ');
+    setTimeout(function(){ generateSupplierList(many, tpl); }, 150);
+    return;
   }
 
   const box = document.getElementById('supplier-input');

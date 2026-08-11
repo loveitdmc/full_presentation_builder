@@ -8,6 +8,31 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v55 — 2026-08-11
+- **Selezione multipla dal carrello del Vault.** `/api/acts` accetta
+  `searchList: [...]` e costruisce un solo deck con N voci **nell'ordine
+  ricevuto** — nessun riordino, nessun passaggio dall'AI: in una proposta la
+  sequenza e' un argomento (la location preferita per prima, l'alternativa
+  economica dopo).
+  - Nuova `generateMultiSupplierPage()` in `supplier.js`, che riusa
+    `findSuppliers` / `fetchPriceLines` / `getFloorPlans` / `resolvePhotos` /
+    `injectTrip` del percorso a fornitore singolo.
+  - Ogni voce e' una stringa (fornitore) oppure `{name, kind:"act"}` per un
+    artista o un'attivita': in quel caso il record viene cercato in
+    "Artists & Shows" e poi in "Activities" e va nel deck con il proprio nome e
+    la propria descrizione, non con quelli dell'azienda che lo rappresenta.
+  - Un nome non trovato non blocca il deck: viene saltato e restituito in
+    `missing`, che il frontend mostra nel badge del risultato.
+  - "Dark Journey" produce un giorno per voce (e' un programma); "Venue Options"
+    e "Hotel Proposal" mettono tutto in un giorno solo, perche' sono confronti
+    fra alternative e numerare i giorni non vorrebbe dire nulla.
+  - Il template "quotation" resta escluso di proposito: e' costruito su UN venue.
+- `public/index.html` accetta `?suppliers=A|B|act:C&tpl=venues` oltre al
+  `?supplier=` singolo della v54. Il prefisso `act:` instrada la ricerca sulle
+  tabelle degli artisti.
+- Verifica jsdom: URL prodotto dal carrello del Vault dato in pasto a Presenta —
+  ordine, tipi e template arrivano intatti fino al body della richiesta.
+
 ## v54 — 2026-08-11
 - **Integrazione con il Vault** (l'app Apps Script che cura i dati su Airtable).
   I due progetti restano separati e comunicano con un solo URL: il Vault fa

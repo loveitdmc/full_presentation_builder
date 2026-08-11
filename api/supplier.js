@@ -232,6 +232,58 @@ const FLOORPLAN_ASSET_TYPES = new Set(["Floor Plan", "Floorplan"]);
 // fornitore: gli importi in Airtable sono costi netti agenzia e non vanno mai
 // mostrati al cliente senza ricarico — si compilano a mano nell'editor.
 const TABLE_PRICES_ID = "tbljeSwiqGWdJHvoQ";
+const TABLE_ACTS_ID       = "tblbCAthb1HXfc13i";   // Artists & Shows
+const TABLE_ACTIVITIES_ID = "tblPIbMu1UDjOLYIK";   // Activities
+
+// Un artista o un'attivita\' scelti nel carrello sono cose prenotabili per conto
+// loro, non l'azienda che li rappresenta: nel deck vanno con il proprio nome e
+// la propria descrizione. La citta\' invece resta quella del fornitore, perche\'
+// e\' li\' che e\' registrata.
+async function findActByName(name) {
+  const token  = process.env.AIRTABLE_TOKEN;
+  const baseId = process.env.AIRTABLE_BASE_ID;
+  if (!token || !baseId || !name) return null;
+  const safe = String(name).replace(/"/g, '\\"');
+  const specs = [
+    { table: TABLE_ACTS_ID,       nameField: "Artist or Show Name",    type: "artist" },
+    { table: TABLE_ACTIVITIES_ID, nameField: "Activity or Service Name", type: "activity" },
+  ];
+  for (const spec of specs) {
+    const formula = encodeURIComponent(`LOWER({${spec.nameField}})=LOWER("${safe}")`);
+    const url = `https://api.airtable.com/v0/${baseId}/${spec.table}?filterByFormula=${formula}&maxRecords=1`;
+    try {
+      const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(7000) });
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      const rec = (data.records || [])[0];
+      if (!rec) continue;
+      const f = rec.fields || {};
+      return {
+        name:        f[spec.nameField] || name,
+        type:        spec.type,
+        description: f["Description and Operational Notes"] || "",
+        supplierIds: Array.isArray(f.Supplier) ? f.Supplier : [],
+        mediaIds:    Array.isArray(f.Media) ? f.Media : [],
+      };
+    } catch { /* passa alla tabella successiva */ }
+  }
+  return null;
+}
+
+// Citta\' del fornitore a cui l'act e\' collegato — serve solo per la destinazione
+// del deck e per la foto di chiusura.
+async function actSupplierCity(supplierId) {
+  const token  = process.env.AIRTABLE_TOKEN;
+  const baseId = process.env.AIRTABLE_BASE_ID;
+  if (!token || !baseId || !supplierId) return "";
+  try {
+    const url = `https://api.airtable.com/v0/${baseId}/${TABLE_SUPPLIERS_ID}/${supplierId}`;
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(7000) });
+    if (!resp.ok) return "";
+    const data = await resp.json();
+    return (data.fields || {}).City || "";
+  } catch { return ""; }
+}
 async function fetchPriceLines(priceIds) {
   const token  = process.env.AIRTABLE_TOKEN;
   const baseId = process.env.AIRTABLE_BASE_ID;
@@ -598,6 +650,163 @@ async function mainHandler(req, res) {
     return res.status(502).json({ error: e.message });
   }
   return res.status(200).json(result);
+}
+
+// ─── PIU\' FORNITORI IN UN SOLO DECK ─────────────────────────────────────────
+//
+// Il Vault permette di mettere piu\' fornitori in un carrello e di ordinarli
+// prima di generare. Qui quell'ordine viene rispettato alla lettera: nessuna
+// riordinatura, nessun passaggio dall'AI. I nomi arrivano da Airtable, quindi
+// per ognuno si prende la corrispondenza esatta e si va avanti — un fornitore
+// che non si trova non blocca il deck, viene solo saltato e riportato.
+//
+// Il deck "quotation" resta escluso di proposito: e\' costruito su UN venue
+// (cover, scheda, planimetria, gallery, costi di quello) e con una lista non
+// avrebbe senso.
+export async function generateMultiSupplierPage(names, apiKey, template, req, opts = {}) {
+  const deckTemplate = ["dark", "venues", "hotel"].includes(opts.deckTemplate)
+    ? opts.deckTemplate : "venues";
+  const token  = process.env.AIRTABLE_TOKEN;
+  const baseId = process.env.AIRTABLE_BASE_ID;
+
+  const activities = [];
+  const missing = [];
+  for (const raw of names) {
+    const entry  = (raw && typeof raw === "object") ? raw : { name: raw, kind: "supplier" };
+    const wanted = String(entry.name || "").trim();
+    if (!wanted) continue;
+
+    if (entry.kind === "act") {
+      const act = await findActByName(wanted);
+      if (!act) { missing.push(wanted); continue; }
+      let photos = [];
+      if (act.mediaIds.length) {
+        const metas = await fetchSupplierMediaPhotos(act.mediaIds);
+        photos = metas.map(m => m.url);
+      }
+      const city = act.supplierIds.length ? await actSupplierCity(act.supplierIds[0]) : "";
+      activities.push({
+        showSlide:     true,
+        type:          act.type,
+        title:         act.name,
+        supplierName:  act.name,
+        description:   act.description,
+        photo:         photos[0] || null,
+        photoPosition: "center center",
+        photos:        photos.slice(1, 4),
+        allPhotos:     photos,
+        allPhotosMeta: [],
+        address: null, capacity: null, rooms: null,
+        features: [], costRows: [], floorplans: [], options: [],
+        _airtable: true,
+        _city: city,
+      });
+      continue;
+    }
+
+    let matches = [];
+    try { matches = await findSuppliers(wanted); } catch { matches = []; }
+    const lower = wanted.toLowerCase();
+    const selected = matches.find(m => m.name.toLowerCase() === lower) || matches[0] || null;
+    if (!selected) { missing.push(wanted); continue; }
+
+    // Stessi fallback del percorso a fornitore singolo: foto dai record Media
+    // quando il campo Photos e\' vuoto, voci di costo, planimetrie.
+    if (!(selected.photos || []).length && selected.mediaIds?.length) {
+      const metas = await fetchSupplierMediaPhotos(selected.mediaIds);
+      if (metas.length) {
+        selected.photos = metas.map(m => m.url).slice(0, 4);
+        selected.allPhotos = metas.map(m => m.url);
+        selected.allPhotosMeta = metas;
+      }
+    }
+    if (selected.priceIds?.length) {
+      try { selected.costRows = await fetchPriceLines(selected.priceIds); } catch { selected.costRows = []; }
+    }
+    let floorplans = [];
+    if (selected.mediaIds?.length) {
+      try { floorplans = await getFloorPlans(selected.mediaIds, token, baseId); } catch { floorplans = []; }
+    }
+
+    activities.push({
+      showSlide:     true,
+      type:          selected.type || "venue",
+      title:         selected.name,
+      supplierName:  selected.name,
+      description:   selected.description || "",
+      photo:         selected.photos?.[0] || null,
+      photoPosition: "center center",
+      photos:        selected.photos?.slice(1, 4) || [],
+      allPhotos:     selected.allPhotos || [],
+      allPhotosMeta: selected.allPhotosMeta || [],
+      address:       selected.address  || null,
+      capacity:      selected.capacity || null,
+      rooms:         selected.rooms    || null,
+      features:      selected.features || [],
+      costRows:      selected.costRows || [],
+      floorplans,
+      options:       [],
+      _airtable:     true,
+      _city:         selected.city || "",
+    });
+  }
+
+  if (!activities.length) {
+    throw new Error(
+      "Nessuno dei fornitori selezionati e\' stato trovato in Airtable" +
+      (missing.length ? ": " + missing.join(", ") : "") + "."
+    );
+  }
+
+  // "Dark Journey" e\' un programma: un giorno per tappa. Gli altri due sono
+  // confronti fra alternative, dove numerare i giorni non vorrebbe dire nulla.
+  const days = deckTemplate === "dark"
+    ? activities.map((a, i) => ({ number: i + 1, date: "", label: a.title, activities: [a] }))
+    : [{ number: 1, date: "", label: "", activities }];
+
+  const city = activities.find(a => a._city)?._city || "Italy";
+  const tripObj = {
+    deckTemplate,
+    client: "", projectRef: "",
+    title:       activities.length + " proposte",
+    destination: city,
+    country:     "Italy",
+    dates: "", nights: 0, pax: 0,
+    tagline:     "",
+    cityPhoto:         `${String(city).toLowerCase()} italy aerial landmark`,
+    cityPhotoPosition: "center center",
+    days,
+    closing: {
+      photo:         `${String(city).toLowerCase()} italy aerial landmark`,
+      photoPosition: "center center",
+      headline:      "Let's make it happen.",
+      subline:       "Contact us to move forward with any of these.",
+      contact:       "marco@loveit-dmc.com",
+    },
+  };
+
+  fallbackIndex = 0;
+  const resolvedTrip = await resolvePhotos(tripObj);
+
+  let finalHtml;
+  try {
+    finalHtml = injectTrip(template, resolvedTrip);
+  } catch (e) {
+    throw new Error(`Template error: ${e.message}`);
+  }
+  const proto   = req.headers["x-forwarded-proto"] || "https";
+  const apiBase = `${proto}://${req.headers.host}`;
+  finalHtml = finalHtml.replace("</head>", `<script>window.LOVEIT_API_BASE="${apiBase}";</script>\n</head>`);
+
+  return {
+    html:         finalHtml,
+    filename:     `selezione_${activities.length}_fornitori.html`,
+    supplier:     activities.map(a => a.title).join(", "),
+    city,
+    fromAirtable: true,
+    count:        activities.length,
+    missing,
+  };
 }
 
 // ─── REUSABLE PIPELINE (also called from acts.js unified search) ─────────────
