@@ -660,11 +660,10 @@ async function mainHandler(req, res) {
 // per ognuno si prende la corrispondenza esatta e si va avanti — un fornitore
 // che non si trova non blocca il deck, viene solo saltato e riportato.
 //
-// Il deck "quotation" resta escluso di proposito: e\' costruito su UN venue
-// (cover, scheda, planimetria, gallery, costi di quello) e con una lista non
-// avrebbe senso.
+// Il deck "quotation", nato per un solo venue, con una lista ripete la sequenza
+// scheda → planimetria → gallery → costi per ognuno, sotto un'unica copertina.
 export async function generateMultiSupplierPage(names, apiKey, template, req, opts = {}) {
-  const deckTemplate = ["dark", "venues", "hotel"].includes(opts.deckTemplate)
+  const deckTemplate = ["dark", "venues", "hotel", "quotation"].includes(opts.deckTemplate)
     ? opts.deckTemplate : "venues";
   const token  = process.env.AIRTABLE_TOKEN;
   const baseId = process.env.AIRTABLE_BASE_ID;
@@ -760,6 +759,7 @@ export async function generateMultiSupplierPage(names, apiKey, template, req, op
 
   // "Dark Journey" e\' un programma: un giorno per tappa. Gli altri due sono
   // confronti fra alternative, dove numerare i giorni non vorrebbe dire nulla.
+  // "quotation" impagina per venue, non per giorno: come i confronti, un giorno solo.
   const days = deckTemplate === "dark"
     ? activities.map((a, i) => ({ number: i + 1, date: "", label: a.title, activities: [a] }))
     : [{ number: 1, date: "", label: "", activities }];

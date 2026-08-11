@@ -1033,9 +1033,11 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
   function _qCounter(num,total){
     return `<span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>`;
   }
-  function buildQCover(trip, act, num, total){
+  function buildQCover(trip, act, num, total, multi){
     const { main } = _actPhotoSets(act);
-    const sub=[trip.title, trip.pax?`${trip.pax} Guests`:'', trip.destination].filter(Boolean).join(' · ');
+    // Con piu' venue il nome del primo in copertina sarebbe fuorviante.
+    const coverTitle = multi ? (trip.title || 'Le proposte') : (act.supplierName || act.title);
+    const sub=[multi ? '' : trip.title, trip.pax?`${trip.pax} Guests`:'', trip.destination].filter(Boolean).join(' · ');
     return `
     <section class="slide-qcover">
       <div class="bg" style="${bgStyle(main || trip.cityPhoto)}"></div>
@@ -1043,7 +1045,7 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
       <div class="qcover-inner">
         <div class="qcover-logo">Love IT DMC</div>
         <div class="qcover-eyebrow">Event Proposal</div>
-        <h1 class="qcover-title">${act.supplierName || act.title}</h1>
+        <h1 class="qcover-title">${coverTitle}</h1>
         <p class="qcover-sub">${sub}</p>
       </div>
       <div class="qcover-foot">Love IT DMC · Your Italian DMC</div>
@@ -1115,11 +1117,13 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
     </tr>`;
   }
   function buildQCost(trip, act, num, total){
+    const venueName = act.supplierName || act.title || '';
     const rows=(act.costRows&&act.costRows.length)
       ? act.costRows.map(r=>_qCostRowHtml(r.label, r.vat, r.net, r.unit)).join('')
       : [1,2,3].map(()=>_qCostRowHtml('','')).join('');
     const pricedRows=(act.costRows||[]).filter(r=>r.net!==null&&r.net!==undefined&&r.net!=='').length;
-    const sub=[trip.title, trip.pax?`${trip.pax} Guests`:''].filter(Boolean).join(' · ');
+    // Con piu' venue in sequenza, una tabella costi senza nome non si sa di chi sia.
+    const sub=[venueName, trip.pax?`${trip.pax} Guests`:''].filter(Boolean).join(' · ');
     return `
     <section class="slide-qcost">
       <div class="q-eyebrow">Cost Breakdown</div>
@@ -1227,16 +1231,23 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
 
   // Deck "Quotazione Venue": 5 slide su UN solo venue (il primo del programma)
   if(DECK==='quotation'){
-    let qDay=null,qAct=null,qDayIdx,qActIdx;
+    // Nato per UN venue, ora regge anche una selezione: la copertina resta una
+    // sola e la sequenza scheda → planimetria → gallery → costi si ripete per
+    // ogni voce. Ripetere anche la cover darebbe quattro "Event Proposal" di
+    // fila, che non e' un documento ma un'accozzaglia di documenti.
+    const qList=[];
     TRIP.days.forEach((d,di)=>d.activities.forEach((a,ai)=>{
-      if(!qAct && a.showSlide!==false){ qDay=d;qAct=a;qDayIdx=di;qActIdx=ai; }
+      if(a.showSlide!==false) qList.push({act:a,dayIdx:di,actIdx:ai});
     }));
-    if(qAct){
-      slideBuilders.push((n,t)=>buildQCover(TRIP,qAct,n,t));
-      slideBuilders.push((n,t)=>buildQVenue(TRIP,qAct,n,t,qDayIdx,qActIdx));
-      if((qAct.floorplans||[]).length) slideBuilders.push((n,t)=>buildQPlan(TRIP,qAct,n,t));
-      slideBuilders.push((n,t)=>buildQGallery(TRIP,qAct,n,t,qDayIdx,qActIdx));
-      slideBuilders.push((n,t)=>buildQCost(TRIP,qAct,n,t));
+    if(qList.length){
+      const first=qList[0];
+      slideBuilders.push((n,t)=>buildQCover(TRIP,first.act,n,t,qList.length>1));
+      qList.forEach(q=>{
+        slideBuilders.push((n,t)=>buildQVenue(TRIP,q.act,n,t,q.dayIdx,q.actIdx));
+        if((q.act.floorplans||[]).length) slideBuilders.push((n,t)=>buildQPlan(TRIP,q.act,n,t));
+        slideBuilders.push((n,t)=>buildQGallery(TRIP,q.act,n,t,q.dayIdx,q.actIdx));
+        slideBuilders.push((n,t)=>buildQCost(TRIP,q.act,n,t));
+      });
     }
   } else {
   slideBuilders.push((num, total) => buildCover(TRIP, num, total));

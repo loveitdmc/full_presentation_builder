@@ -26,7 +26,14 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
   - "Dark Journey" produce un giorno per voce (e' un programma); "Venue Options"
     e "Hotel Proposal" mettono tutto in un giorno solo, perche' sono confronti
     fra alternative e numerare i giorni non vorrebbe dire nulla.
-  - Il template "quotation" resta escluso di proposito: e' costruito su UN venue.
+  - **"Quotazione Venue" ora regge piu' venue.** Nato per uno solo, con una
+    selezione tiene una sola copertina e ripete scheda → planimetria → gallery →
+    costi per ogni voce (la planimetria solo per chi ce l'ha). Ripetere anche la
+    cover avrebbe dato quattro "Event Proposal" di fila, che non e' un documento
+    ma un'accozzaglia di documenti. Con piu' venue la copertina porta il titolo
+    della selezione invece del nome del primo, e ogni tabella costi porta il nome
+    del venue a cui appartiene — senza, non si capisce di chi sia.
+    Con un venue solo il deck resta identico a prima: 5 slide, nome in copertina.
 - `public/index.html` accetta `?suppliers=A|B|act:C&tpl=venues` oltre al
   `?supplier=` singolo della v54. Il prefisso `act:` instrada la ricerca sulle
   tabelle degli artisti.
