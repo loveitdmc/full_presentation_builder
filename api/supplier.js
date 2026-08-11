@@ -238,7 +238,9 @@ async function fetchPriceLines(priceIds) {
   if (!priceIds?.length || !token || !baseId) return [];
   const idClauses = priceIds.slice(0, 30).map(id => `RECORD_ID()="${id}"`).join(",");
   const formula = encodeURIComponent(`OR(${idClauses})`);
-  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_PRICES_ID}?filterByFormula=${formula}&fields[]=${encodeURIComponent("Price Line")}&fields[]=${encodeURIComponent("VAT Rate")}&maxRecords=30`;
+  const wanted = ["Price Line", "VAT Rate", "Net Price", "Unit", "Currency"];
+  const fieldParams = wanted.map(n => `fields[]=${encodeURIComponent(n)}`).join("&");
+  const url = `https://api.airtable.com/v0/${baseId}/${TABLE_PRICES_ID}?filterByFormula=${formula}&${fieldParams}&maxRecords=30`;
   try {
     const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(7000) });
     if (!resp.ok) return [];
@@ -251,7 +253,20 @@ async function fetchPriceLines(priceIds) {
       seen.add(label);
       const vatRaw = r.fields["VAT Rate"];
       const vat = typeof vatRaw === "object" ? (vatRaw?.name || "") : (vatRaw || "");
-      out.push({ label, vat: /^\d+%?$/.test(String(vat)) || /%/.test(String(vat)) ? String(vat) : "" });
+      // Il costo netto agenzia viaggia con la riga ma resta invisibile finche'
+      // non si applica un ricarico in edit mode: e' il dato che permette di
+      // calcolare il prezzo cliente, non di mostrarlo cosi' com'e'.
+      const netRaw = r.fields["Net Price"];
+      const net = netRaw == null || netRaw === "" ? null : Number(netRaw);
+      const unitRaw = r.fields["Unit"];
+      const unit = typeof unitRaw === "object" ? (unitRaw?.name || "") : (unitRaw || "");
+      out.push({
+        label,
+        vat: /^\d+%?$/.test(String(vat)) || /%/.test(String(vat)) ? String(vat) : "",
+        net: Number.isFinite(net) ? net : null,
+        unit: String(unit || ""),
+        currency: String(r.fields["Currency"] || "EUR"),
+      });
     }
     return out.slice(0, 12);
   } catch {
@@ -578,7 +593,7 @@ async function mainHandler(req, res) {
 
   let result;
   try {
-    result = await generateSupplierFullPage(supplier.trim(), apiKey, template, req);
+    result = await generateSupplierFullPage(supplier.trim(), apiKey, template, req, { deckTemplate: body?.deckTemplate });
   } catch (e) {
     return res.status(502).json({ error: e.message });
   }
@@ -588,7 +603,12 @@ async function mainHandler(req, res) {
 // ─── REUSABLE PIPELINE (also called from acts.js unified search) ─────────────
 // Returns either { status:'fuzzy', candidates } when the name is ambiguous, or
 // the full { html, filename, supplier, city, fromAirtable } page payload.
-export async function generateSupplierFullPage(supplierNameRaw, apiKey, template, req) {
+export async function generateSupplierFullPage(supplierNameRaw, apiKey, template, req, opts = {}) {
+  // Quale dei quattro deck costruire. Finora la scheda fornitore non lo passava
+  // mai al template, quindi TRIP.deckTemplate restava "dark" e il deck
+  // "Quotazione Venue" era irraggiungibile dalla ricerca database.
+  const deckTemplate = ["dark", "venues", "hotel", "quotation"].includes(opts.deckTemplate)
+    ? opts.deckTemplate : "dark";
   // Step 1: Smart keyword search — returns 0–8 Airtable records
   const matches = await findSuppliers(supplierNameRaw);
 
@@ -692,6 +712,7 @@ export async function generateSupplierFullPage(supplierNameRaw, apiKey, template
   // Use the Airtable-confirmed name when available (correct capitalisation)
   const supplierName = selected?.name || supplierNameRaw;
   const tripObj = {
+    deckTemplate,
     client:            "",
     projectRef:        "",
     title:             supplierName,
@@ -752,7 +773,9 @@ export async function generateSupplierFullPage(supplierNameRaw, apiKey, template
   // Step 6: Hide slides not needed in supplier mode + inject API base
   const proto = req.headers["x-forwarded-proto"] || "https";
   const apiBase = `${proto}://${req.headers.host}`;
-  const supplierCss = `<style>
+  const supplierCss = deckTemplate === "quotation"
+    ? ""  // il deck quotation costruisce solo le proprie slide: niente da nascondere
+    : `<style>
     .slide-cover, .slide-overview, .slide-closing { display: none !important; }
   </style>`;
   const apiScript = `<script>window.LOVEIT_API_BASE="${apiBase}";</script>`;

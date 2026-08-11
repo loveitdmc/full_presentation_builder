@@ -566,6 +566,7 @@ export default async function handler(req, res) {
   };
   const act = _s(_body.act), activity = _s(_body.activity), supplierParam = _s(_body.supplier),
         search = _s(_body.search), kindHint = _s(_body.kind), format = _body.format;
+  const deckTemplate = _s(_body.deckTemplate);
   if (!act?.trim() && !activity?.trim() && !supplierParam?.trim() && !search?.trim()) {
     return res.status(400).json({ error: "Missing act, activity, supplier or search name" });
   }
@@ -594,7 +595,7 @@ export default async function handler(req, res) {
     } catch {
       return res.status(500).json({ error: "Template file not found" });
     }
-    return handleUnifiedSearch(search.trim(), kindHint?.trim() || null, res, token, baseId, searchTemplate, req, apiKey);
+    return handleUnifiedSearch(search.trim(), kindHint?.trim() || null, res, token, baseId, searchTemplate, req, apiKey, deckTemplate);
   }
 
   // For JSON-only mode we don't need the template
@@ -914,7 +915,7 @@ async function generateActivityFullPage(selectedName, token, baseId, template, r
 
 // ─── UNIFIED SEARCH (Suppliers + Artists & Shows + Activities in one box) ─────
 
-async function handleUnifiedSearch(query, kindHint, res, token, baseId, template, req, apiKey) {
+async function handleUnifiedSearch(query, kindHint, res, token, baseId, template, req, apiKey, deckTemplate) {
   let kind = kindHint, name = query;
 
   if (!kind) {
@@ -944,7 +945,7 @@ async function handleUnifiedSearch(query, kindHint, res, token, baseId, template
 
   try {
     if (kind === "supplier") {
-      const result = await generateSupplierFullPage(name, apiKey, template, req);
+      const result = await generateSupplierFullPage(name, apiKey, template, req, { deckTemplate });
       if (result.status === "fuzzy") {
         return res.status(200).json({
           status: "fuzzy",

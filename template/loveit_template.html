@@ -653,6 +653,14 @@ body.deck-quotation section{ background:#F7F4EF; }
 .qcost-pp{ font-family:'Calibri',var(--sans);font-size:.76rem;font-style:italic;color:#7A8288;margin-top:.45rem; }
 .qcost-foot{ font-family:'Calibri',var(--sans);font-size:.68rem;font-style:italic;color:#7A8288;margin-top:.7rem;line-height:1.5; }
 body.edit-mode .add-qcostrow-btn{ display:inline-block;pointer-events:auto; }
+/* Il controllo del ricarico e' uno strumento di redazione: non esiste fuori
+   dall'edit mode, quindi non finisce ne' nel PDF ne' nel PPTX ne' sotto gli
+   occhi del cliente. */
+.qmargin{ display:none; }
+body.edit-mode .qmargin{ display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-top:.7rem;padding:.6rem .8rem;border:1px dashed rgba(52,110,116,.4);border-radius:2px;pointer-events:auto; }
+.qmargin-label{ font-family:var(--sans);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:#346E74;display:flex;align-items:center;gap:.4rem; }
+.qmargin-input,.qmargin-guests{ width:4.5rem;font-family:'Calibri',var(--sans);font-size:.8rem;padding:.25rem .4rem;border:1px solid rgba(52,110,116,.35);border-radius:2px;background:#fff;color:#2B323A; }
+.qmargin-note{ font-family:'Calibri',var(--sans);font-size:.68rem;font-style:italic;color:#7A8288;flex:1 1 12rem; }
 .add-qcostrow-btn{ display:none;margin-top:.8rem;align-self:flex-start;background:transparent;border:1px dashed rgba(52,110,116,.5);color:#346E74;font-family:var(--sans);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;padding:.42rem 1rem;cursor:pointer;border-radius:2px; }
 .add-qcostrow-btn:hover{ border-color:#346E74;background:rgba(52,110,116,.07); }
 body.edit-mode .qcost-table .del-dtrow-btn{ color:rgba(220,80,80,.6); }
@@ -1091,8 +1099,14 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
       ${_qCounter(num,total)}
     </section>`;
   }
-  function _qCostRowHtml(label, vat){
-    return `<tr>
+  // Il costo netto agenzia e l'unita' viaggiano nella riga ma non si vedono: le
+  // celle restano vuote finche' non si applica un ricarico. E' la stessa regola
+  // di sempre — un prezzo Airtable e' un costo, non un prezzo cliente — solo
+  // che ora il calcolo si puo' fare senza ribattere i numeri a mano.
+  function _qCostRowHtml(label, vat, net, unit){
+    const dataNet  = (net!==null && net!==undefined && net!=='') ? ` data-net="${net}"` : '';
+    const dataUnit = unit ? ` data-unit="${String(unit).replace(/"/g,'&quot;')}"` : '';
+    return `<tr${dataNet}${dataUnit}>
       <td class="qcost-cell">${label||'Voce di costo'}</td>
       <td class="qcost-cell num">€ —</td>
       <td class="qcost-cell mid">${vat||'—'}</td>
@@ -1102,8 +1116,9 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
   }
   function buildQCost(trip, act, num, total){
     const rows=(act.costRows&&act.costRows.length)
-      ? act.costRows.map(r=>_qCostRowHtml(r.label, r.vat)).join('')
+      ? act.costRows.map(r=>_qCostRowHtml(r.label, r.vat, r.net, r.unit)).join('')
       : [1,2,3].map(()=>_qCostRowHtml('','')).join('');
+    const pricedRows=(act.costRows||[]).filter(r=>r.net!==null&&r.net!==undefined&&r.net!=='').length;
     const sub=[trip.title, trip.pax?`${trip.pax} Guests`:''].filter(Boolean).join(' · ');
     return `
     <section class="slide-qcost">
@@ -1114,6 +1129,17 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
         <tbody>${rows}</tbody>
       </table>
       <button type="button" class="add-qcostrow-btn">+ Aggiungi voce</button>
+      <div class="qmargin" data-pax="${trip.pax||0}">
+        <label class="qmargin-label">Ricarico
+          <input type="number" class="qmargin-input" min="0" step="1" placeholder="%">%
+        </label>
+        <label class="qmargin-label">Ospiti
+          <input type="number" class="qmargin-guests" min="0" step="1" value="${trip.pax||''}" placeholder="n">
+        </label>
+        <span class="qmargin-note">${pricedRows
+          ? pricedRows+' voc'+(pricedRows===1?'e ha':'i hanno')+' un costo in archivio. Il ricarico si applica al netto, l\'IVA al netto ricaricato.'
+          : 'Nessuna voce ha un costo in archivio: compila gli importi a mano.'}</span>
+      </div>
       <div class="qcost-total">
         <span class="qcost-total-label">Total (VAT included)</span>
         <span class="qcost-total-value">€ —</span>
@@ -2402,6 +2428,7 @@ try{ LoveitEditor=(function(){
       return;
     }
     const addQCostBtn=e.target.closest('.add-qcostrow-btn');
+    if(addQCostBtn){ setTimeout(()=>_qRecalc(addQCostBtn.closest('.slide-qcost')),0); }
     if(addQCostBtn){
       e.preventDefault();e.stopPropagation();
       const tbody=addQCostBtn.previousElementSibling?.querySelector('tbody');
@@ -3998,5 +4025,92 @@ try{ LoveitEditor=(function(){
 })(); } catch(e){ console.error('LoveitEditor init error:',e); document.getElementById('pdf-btn').title='Error: '+e.message; }
 </script>
 
+<script>
+// ── Ricarico e calcolo delle voci di costo ───────────────────────────────────
+// I prezzi in Airtable sono costi netti agenzia. Questa e' l'unica cosa che li
+// trasforma in un prezzo cliente, e lo fa solo quando qualcuno digita una
+// percentuale: ricarico sul netto, poi IVA sul netto ricaricato — mai il
+// contrario, o il cliente pagherebbe l'IVA sul nostro compenso.
+//
+// Una voce "a persona" viene moltiplicata per il numero di ospiti prima di
+// tutto il resto. Senza questo passaggio un menu da 168 euro a testa per 100
+// persone risultava un totale di 168 euro, ed e' esattamente l'errore che ha
+// prodotto un "≈ €2 a persona" in fondo alla slide.
+(function(){
+  const PER_PERSON = /per\s*(person|persona|pax|guest|ospite)|a\s*(persona|testa)|\bpp\b/i;
+  const PER_COUPLE = /per\s*(couple|coppia)|a\s*coppia/i;
+
+  // Raggruppamento esplicito invece di toLocaleString: i dati locale variano fra
+  // browser e ambienti, e un preventivo che scrive 2500 su una riga e 21.000 su
+  // quella sotto sembra sciatto.
+  function _eur(n){
+    if(n===null||n===undefined||!isFinite(n)) return '€ —';
+    const r = Math.round(n), digits = String(Math.abs(r));
+    let out = '';
+    for(let i=0;i<digits.length;i++){
+      if(i>0 && (digits.length-i)%3===0) out += '.';
+      out += digits[i];
+    }
+    return (r<0?'-':'') + '€' + out;
+  }
+
+  window._qRecalc = function(section){
+    if(!section) return;
+    const box = section.querySelector('.qmargin');
+    if(!box) return;
+    const marginRaw = parseFloat((section.querySelector('.qmargin-input')||{}).value);
+    const guests    = parseInt((section.querySelector('.qmargin-guests')||{}).value, 10) || 0;
+    const hasMargin = isFinite(marginRaw);
+    const factor    = 1 + (hasMargin ? marginRaw : 0) / 100;
+
+    let grand = 0, priced = 0, unstated = 0;
+    section.querySelectorAll('.qcost-table tbody tr').forEach(function(tr){
+      const netAttr = tr.getAttribute('data-net');
+      const netCell = tr.querySelector('.qcost-cell.num');
+      const totCell = tr.querySelector('.q-total-cell');
+      const vatText = (tr.querySelector('.qcost-cell.mid')||{}).textContent || '';
+      if(netAttr === null || !hasMargin){
+        // Nessun costo in archivio, o nessun ricarico ancora scelto: la riga
+        // resta com'era, da compilare a mano.
+        return;
+      }
+      const unit = tr.getAttribute('data-unit') || '';
+      const qty = PER_PERSON.test(unit) ? (guests || 1)
+                : PER_COUPLE.test(unit) ? Math.ceil((guests || 1) / 2)
+                : 1;
+      const netSell = parseFloat(netAttr) * qty * factor;
+      const vatPct  = parseFloat(String(vatText).replace('%',''));
+      const known   = isFinite(vatPct);
+      const total   = netSell + (known ? netSell * vatPct / 100 : 0);
+      if(!known) unstated++;
+      if(netCell) netCell.textContent = _eur(netSell);
+      if(totCell) totCell.textContent = _eur(total);
+      grand += total; priced++;
+    });
+
+    const totalEl = section.querySelector('.qcost-total-value');
+    const ppEl    = section.querySelector('.qcost-pp');
+    if(hasMargin && priced){
+      if(totalEl) totalEl.textContent = _eur(grand);
+      if(ppEl) ppEl.textContent = guests
+        ? '≈ ' + _eur(grand / guests) + ' a persona, IVA inclusa'
+        : 'IVA inclusa';
+    }
+    const note = section.querySelector('.qmargin-note');
+    if(note && hasMargin){
+      note.textContent = priced
+        ? priced + ' voc' + (priced===1?'e calcolata':'i calcolate') + ' con ricarico ' + marginRaw + '%'
+          + (unstated ? ' · ' + unstated + ' senza aliquota IVA in archivio, mostrate al netto' : '')
+        : 'Nessuna voce ha un costo in archivio: compila gli importi a mano.';
+    }
+  };
+
+  document.addEventListener('input', function(e){
+    if(e.target.classList.contains('qmargin-input') || e.target.classList.contains('qmargin-guests')){
+      window._qRecalc(e.target.closest('.slide-qcost'));
+    }
+  });
+})();
+</script>
 </body>
 </html>

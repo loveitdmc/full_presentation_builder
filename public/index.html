@@ -466,7 +466,7 @@ async function generateSupplier(confirmedName, confirmedKind) {
   try {
     const resp = await fetch('/api/acts', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ search: name, kind: confirmedKind || undefined })
+      body: JSON.stringify({ search: name, kind: confirmedKind || undefined, deckTemplate })
     });
     clearTimeout(t);
     if (!resp.ok) { const e = await resp.json().catch(() => ({error:`HTTP ${resp.status}`})); throw new Error(e.error); }
@@ -727,6 +727,42 @@ function toBase64(file) {
   }
   sendBtn.addEventListener('click',send);
   input.addEventListener('keydown',e=>{ if(e.key==='Enter') send(); });
+})();
+
+// ── Deep link dal Vault ──────────────────────────────────────────────────────
+// Il Vault (l'app Apps Script che cura i dati su Airtable) apre questa pagina con
+// il fornitore gia' scelto: ?supplier=<nome esatto>&tpl=quotation
+// Il nome arriva da Airtable, quindi combacia esattamente con il record e la
+// ricerca procede senza passare dal picker "Intendi forse...".
+// I due progetti restano separati e comunicano solo attraverso questo URL: il
+// Vault sa cosa c'e' in archivio, Presenta sa come si presenta al cliente.
+(function(){
+  const params = new URLSearchParams(location.search);
+  const supplier = (params.get('supplier') || '').trim();
+  if (!supplier) return;
+  const tpl = (params.get('tpl') || '').trim();
+
+  // Scheda "Cerca nel Database"
+  const tabBtn = document.querySelector('.tab-btn[data-tab="database"]')
+              || document.querySelector('.tab-btn[data-tab="fornitore"]')
+              || document.querySelectorAll('.tab-btn')[2];
+  if (tabBtn) tabBtn.click();
+
+  if (tpl) {
+    const card = document.querySelector('.tpl-card[data-tpl="' + tpl + '"]');
+    if (card) card.click();
+  }
+
+  const box = document.getElementById('supplier-input');
+  if (box) {
+    box.value = supplier;
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  // Un attimo di respiro: i click sopra resettano risultato e progresso.
+  setTimeout(function(){
+    const btn = document.getElementById('btn-generate-supplier');
+    if (btn && !btn.disabled) btn.click();
+  }, 150);
 })();
 </script>
 </body>

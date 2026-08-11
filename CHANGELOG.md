@@ -8,6 +8,41 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v54 — 2026-08-11
+- **Integrazione con il Vault** (l'app Apps Script che cura i dati su Airtable).
+  I due progetti restano separati e comunicano con un solo URL: il Vault fa
+  entrare e pulire i dati ed e' l'unico che scrive su Airtable; Presenta li
+  porta al cliente e da Airtable legge soltanto.
+  - `public/index.html` accetta `?supplier=<nome esatto>&tpl=quotation`: apre la
+    scheda "Cerca nel Database", seleziona il template e lancia la generazione.
+    Il nome arriva da Airtable, quindi combacia col record e si salta il picker
+    "Intendi forse...". Senza parametri il comportamento e' identico a prima.
+  - **Fix: `deckTemplate` non arrivava mai alla scheda fornitore.** `tripObj` in
+    `generateSupplierFullPage` non lo impostava, quindi `TRIP.deckTemplate`
+    restava "dark" e il deck "Quotazione Venue" era di fatto irraggiungibile
+    dalla ricerca database, nonostante la v53. Ora passa da `/api/acts` e
+    `/api/supplier` (body `deckTemplate`) fino al template. Default invariato.
+- **Ricarico sulle voci di costo.** `fetchPriceLines()` porta anche Net Price,
+  Unit e Currency; la riga li conserva in `data-net`/`data-unit` ma le celle
+  restano vuote — la regola non cambia, un prezzo Airtable e' un costo agenzia.
+  In edit mode compare un controllo Ricarico % + Ospiti: alla digitazione
+  calcola netto ricaricato, IVA sul netto ricaricato e totale, somma il totale
+  generale e il costo a persona.
+  - Le voci "a persona"/"a coppia" vengono moltiplicate per gli ospiti **prima**
+    del ricarico. Senza questo passaggio un menu da 168 EUR a testa per 100
+    persone risultava un totale di 168 EUR e un "circa 2 EUR a persona".
+  - Le righe senza aliquota IVA in archivio restano al netto e vengono contate
+    nella nota, invece di essere trattate come 0% (che sottostimava il totale).
+  - Il controllo e' `display:none` fuori dall'edit mode: non entra nel PDF, nel
+    PPTX, ne' sotto gli occhi del cliente.
+  - Formattazione importi con raggruppamento esplicito invece di
+    `toLocaleString`: i dati locale variano fra ambienti e produceva "2500"
+    accanto a "21.000".
+- Verifica jsdom: deep link (scheda, template e ricerca corretti; nessun effetto
+  senza parametri; ricerca manuale invariata su "dark") e calcolo ricarico
+  (menu 168x100x1,25 +10% = 23.100 · sala 2.500 +22% = 3.050 · audio 625 senza
+  IVA · totale 26.775 · 268 a persona).
+
 ## v53 — 2026-08-06
 - **Nuovo template "Quotazione Venue"** (4ª card nella scelta iniziale), fedele
   al pptx `loveit_single_venue_quotation_template.js` caricato dall'utente:
