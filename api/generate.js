@@ -40,6 +40,15 @@ SCHEMA:
           "photo":        string,   // Unsplash search keyword for main slide photo
           "photoPosition": string,  // CSS background-position
           "photos": [string, string, string],  // 3 Unsplash search keywords for gallery
+          "costLines": [            // cost lines of THIS supplier, exactly as in the quote
+            {
+              "label":  string,   // service description, e.g. "Exclusive Venue Hire"
+              "detail": string,   // optional extra detail/date shown in the quote, "" if none
+              "qty":    string,   // quantity as written, e.g. "1", "30 pax", "" if none
+              "vat":    string,   // VAT rate as written: "22%", "10%", "TBC", "" if none
+              "amount": string    // line total as written, e.g. "€ 14.274,00"
+            }
+          ],
           "options": [              // fill ONLY if quote has Option A / B / C for same service
             {
               "label":       string,  // "Option A"
@@ -69,7 +78,15 @@ RULES (strict):
 5. description → luxury travel copywriting, in English, 2-3 sentences
 6. supplierName → extract exactly as written in the quote (will be used to search the supplier database)
 7. contact email → use marco@loveit-dmc.com unless the quote specifies a different Love IT contact
-8. Return ONLY the JSON object`;
+8. costLines → extract EVERY cost line belonging to that supplier, keeping the
+   quote's own wording, amounts and VAT rates verbatim (do not recalculate, do
+   not convert, do not invent lines). A quote table typically reads
+   DESCRIPTION / DETAILS / QTY / VAT / UNIT / AMOUNT: use DESCRIPTION as label,
+   DETAILS as detail, QTY as qty, VAT as vat and AMOUNT (line total) as amount.
+   Group the lines under the supplier they are listed for. Leave costLines
+   empty [] when the quote shows no prices for that supplier. Never include
+   subtotal/total rows as cost lines.
+9. Return ONLY the JSON object`;
 
 // ─── AIRTABLE SUPPLIER LOOKUP ────────────────────────────────────────────────
 
@@ -208,6 +225,7 @@ async function enrichFromAirtable(tripObj) {
 
           return {
             ...activity,
+            costLines:   activity.costLines || [],
             description: match.description || activity.description,
             photo:       match.photos?.[0] || activity.photo,
             photos:      match.photos?.slice(1, 4) || activity.photos,

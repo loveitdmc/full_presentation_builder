@@ -8,72 +8,25 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
-## v55 — 2026-08-11
-- **Selezione multipla dal carrello del Vault.** `/api/acts` accetta
-  `searchList: [...]` e costruisce un solo deck con N voci **nell'ordine
-  ricevuto** — nessun riordino, nessun passaggio dall'AI: in una proposta la
-  sequenza e' un argomento (la location preferita per prima, l'alternativa
-  economica dopo).
-  - Nuova `generateMultiSupplierPage()` in `supplier.js`, che riusa
-    `findSuppliers` / `fetchPriceLines` / `getFloorPlans` / `resolvePhotos` /
-    `injectTrip` del percorso a fornitore singolo.
-  - Ogni voce e' una stringa (fornitore) oppure `{name, kind:"act"}` per un
-    artista o un'attivita': in quel caso il record viene cercato in
-    "Artists & Shows" e poi in "Activities" e va nel deck con il proprio nome e
-    la propria descrizione, non con quelli dell'azienda che lo rappresenta.
-  - Un nome non trovato non blocca il deck: viene saltato e restituito in
-    `missing`, che il frontend mostra nel badge del risultato.
-  - "Dark Journey" produce un giorno per voce (e' un programma); "Venue Options"
-    e "Hotel Proposal" mettono tutto in un giorno solo, perche' sono confronti
-    fra alternative e numerare i giorni non vorrebbe dire nulla.
-  - **"Quotazione Venue" ora regge piu' venue.** Nato per uno solo, con una
-    selezione tiene una sola copertina e ripete scheda → planimetria → gallery →
-    costi per ogni voce (la planimetria solo per chi ce l'ha). Ripetere anche la
-    cover avrebbe dato quattro "Event Proposal" di fila, che non e' un documento
-    ma un'accozzaglia di documenti. Con piu' venue la copertina porta il titolo
-    della selezione invece del nome del primo, e ogni tabella costi porta il nome
-    del venue a cui appartiene — senza, non si capisce di chi sia.
-    Con un venue solo il deck resta identico a prima: 5 slide, nome in copertina.
-- `public/index.html` accetta `?suppliers=A|B|act:C&tpl=venues` oltre al
-  `?supplier=` singolo della v54. Il prefisso `act:` instrada la ricerca sulle
-  tabelle degli artisti.
-- Verifica jsdom: URL prodotto dal carrello del Vault dato in pasto a Presenta —
-  ordine, tipi e template arrivano intatti fino al body della richiesta.
-
-## v54 — 2026-08-11
-- **Integrazione con il Vault** (l'app Apps Script che cura i dati su Airtable).
-  I due progetti restano separati e comunicano con un solo URL: il Vault fa
-  entrare e pulire i dati ed e' l'unico che scrive su Airtable; Presenta li
-  porta al cliente e da Airtable legge soltanto.
-  - `public/index.html` accetta `?supplier=<nome esatto>&tpl=quotation`: apre la
-    scheda "Cerca nel Database", seleziona il template e lancia la generazione.
-    Il nome arriva da Airtable, quindi combacia col record e si salta il picker
-    "Intendi forse...". Senza parametri il comportamento e' identico a prima.
-  - **Fix: `deckTemplate` non arrivava mai alla scheda fornitore.** `tripObj` in
-    `generateSupplierFullPage` non lo impostava, quindi `TRIP.deckTemplate`
-    restava "dark" e il deck "Quotazione Venue" era di fatto irraggiungibile
-    dalla ricerca database, nonostante la v53. Ora passa da `/api/acts` e
-    `/api/supplier` (body `deckTemplate`) fino al template. Default invariato.
-- **Ricarico sulle voci di costo.** `fetchPriceLines()` porta anche Net Price,
-  Unit e Currency; la riga li conserva in `data-net`/`data-unit` ma le celle
-  restano vuote — la regola non cambia, un prezzo Airtable e' un costo agenzia.
-  In edit mode compare un controllo Ricarico % + Ospiti: alla digitazione
-  calcola netto ricaricato, IVA sul netto ricaricato e totale, somma il totale
-  generale e il costo a persona.
-  - Le voci "a persona"/"a coppia" vengono moltiplicate per gli ospiti **prima**
-    del ricarico. Senza questo passaggio un menu da 168 EUR a testa per 100
-    persone risultava un totale di 168 EUR e un "circa 2 EUR a persona".
-  - Le righe senza aliquota IVA in archivio restano al netto e vengono contate
-    nella nota, invece di essere trattate come 0% (che sottostimava il totale).
-  - Il controllo e' `display:none` fuori dall'edit mode: non entra nel PDF, nel
-    PPTX, ne' sotto gli occhi del cliente.
-  - Formattazione importi con raggruppamento esplicito invece di
-    `toLocaleString`: i dati locale variano fra ambienti e produceva "2500"
-    accanto a "21.000".
-- Verifica jsdom: deep link (scheda, template e ricerca corretti; nessun effetto
-  senza parametri; ricerca manuale invariata su "dark") e calcolo ricarico
-  (menu 168x100x1,25 +10% = 23.100 · sala 2.500 +22% = 3.050 · audio 625 senza
-  IVA · totale 26.775 · 268 a persona).
+## v54 — 2026-08-09
+- **Quotazione Venue da PDF: voci di costo estratte dal preventivo, un blocco
+  di slide per OGNI fornitore.** Caricando un preventivo Love IT (es.
+  "8am — Rome — February 2027") e scegliendo il template Quotazione Venue:
+  - l'AI estrae ora anche `costLines` per ogni fornitore
+    (`label`/`detail`/`qty`/`vat`/`amount`), copiando alla lettera descrizioni,
+    aliquote e importi del preventivo — nessun ricalcolo, nessuna riga
+    inventata, righe di subtotale/totale escluse (`api/generate.js`, schema +
+    regola 8; anche in `generate-text.js` per i programmi testuali);
+  - il deck non è più limitato a un solo venue: **cover unica**, poi per ogni
+    fornitore The Venue → (Floor Plan) → Gallery → **Cost Breakdown con le sue
+    voci**, con titolo "Nome fornitore · Evento · N Guests";
+  - la tabella mostra Item (descrizione + dettaglio), Net, VAT e Total presi
+    dal PDF; il **totale è calcolato** sommando gli importi (parsing formato
+    italiano "€ 14.274,00") e il costo/persona è diviso per i pax del
+    preventivo. Verificato: 97,50 + 14.274,00 = € 14.371,50.
+- Fallback invariati: se il preventivo non ha prezzi per quel fornitore si
+  usano le voci Airtable con importi vuoti (v53); se non c'è nulla, 3 righe
+  vuote da compilare. Non-regressione verificata su deck dark e venues.
 
 ## v53 — 2026-08-06
 - **Nuovo template "Quotazione Venue"** (4ª card nella scelta iniziale), fedele

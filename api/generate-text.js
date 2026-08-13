@@ -285,6 +285,7 @@ Required JSON structure:
           "photoPosition":"center center",
           "photos":       [],
           "allPhotos":    [],
+          "costLines":    [],     // [{label,detail,qty,vat,amount}] se il testo indica prezzi per questo fornitore
           "options":      []
         }
       ]

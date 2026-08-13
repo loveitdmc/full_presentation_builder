@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { generateSupplierFullPage, generateMultiSupplierPage, aiCaptionPhotos } from "./supplier.js";
+import { generateSupplierFullPage, aiCaptionPhotos } from "./supplier.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -566,21 +566,7 @@ export default async function handler(req, res) {
   };
   const act = _s(_body.act), activity = _s(_body.activity), supplierParam = _s(_body.supplier),
         search = _s(_body.search), kindHint = _s(_body.kind), format = _body.format;
-  const deckTemplate = _s(_body.deckTemplate);
-  // Piu' fornitori in un solo deck, nell'ordine deciso nel carrello del Vault.
-  // Ogni voce e' una stringa (fornitore) oppure {name, kind:"act"} per un artista
-  // o un'attivita' scelti dalla ricerca "Artists & activities" del Vault.
-  const searchList = Array.isArray(_body.searchList)
-    ? _body.searchList.map(v => {
-        if (v && typeof v === "object" && !Array.isArray(v)) {
-          const n = String(v.name || "").trim();
-          return n ? { name: n, kind: v.kind === "act" ? "act" : "supplier" } : null;
-        }
-        const n = String(_s(v) || "").trim();
-        return n ? { name: n, kind: "supplier" } : null;
-      }).filter(Boolean)
-    : null;
-  if (!act?.trim() && !activity?.trim() && !supplierParam?.trim() && !search?.trim() && !searchList?.length) {
+  if (!act?.trim() && !activity?.trim() && !supplierParam?.trim() && !search?.trim()) {
     return res.status(400).json({ error: "Missing act, activity, supplier or search name" });
   }
   const jsonOnly = format === "json";
@@ -588,25 +574,6 @@ export default async function handler(req, res) {
   const token  = process.env.AIRTABLE_TOKEN;
   const baseId = process.env.AIRTABLE_BASE_ID;
   if (!token || !baseId) return res.status(500).json({ error: "Missing Airtable configuration (AIRTABLE_TOKEN or AIRTABLE_BASE_ID)" });
-
-  // Selezione multipla dal carrello: un solo deck con N fornitori, in ordine.
-  if (searchList?.length) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: "Missing ANTHROPIC_API_KEY" });
-    const templatePath = path.resolve(process.cwd(), "template", "loveit_template.html");
-    let listTemplate;
-    try {
-      listTemplate = fs.readFileSync(templatePath, "utf8");
-    } catch {
-      return res.status(500).json({ error: "Template file not found" });
-    }
-    try {
-      const result = await generateMultiSupplierPage(searchList, apiKey, listTemplate, req, { deckTemplate });
-      return res.status(200).json(result);
-    } catch (e) {
-      return res.status(502).json({ error: e.message });
-    }
-  }
 
   // Activities / Supplier modes — always JSON (used by the in-presentation pickers)
   if (activity?.trim()) {
@@ -627,7 +594,7 @@ export default async function handler(req, res) {
     } catch {
       return res.status(500).json({ error: "Template file not found" });
     }
-    return handleUnifiedSearch(search.trim(), kindHint?.trim() || null, res, token, baseId, searchTemplate, req, apiKey, deckTemplate);
+    return handleUnifiedSearch(search.trim(), kindHint?.trim() || null, res, token, baseId, searchTemplate, req, apiKey);
   }
 
   // For JSON-only mode we don't need the template
@@ -947,7 +914,7 @@ async function generateActivityFullPage(selectedName, token, baseId, template, r
 
 // ─── UNIFIED SEARCH (Suppliers + Artists & Shows + Activities in one box) ─────
 
-async function handleUnifiedSearch(query, kindHint, res, token, baseId, template, req, apiKey, deckTemplate) {
+async function handleUnifiedSearch(query, kindHint, res, token, baseId, template, req, apiKey) {
   let kind = kindHint, name = query;
 
   if (!kind) {
@@ -977,7 +944,7 @@ async function handleUnifiedSearch(query, kindHint, res, token, baseId, template
 
   try {
     if (kind === "supplier") {
-      const result = await generateSupplierFullPage(name, apiKey, template, req, { deckTemplate });
+      const result = await generateSupplierFullPage(name, apiKey, template, req);
       if (result.status === "fuzzy") {
         return res.status(200).json({
           status: "fuzzy",
