@@ -183,7 +183,7 @@ async function findSuppliers(supplierName) {
   if (!words.length) return [];
 
   const clauses = words.map(w => `SEARCH("${w}", LOWER({Name}))>0`);
-  const fields    = ["Name","City","Description","Photos","Type","Media","Address","Capacity","Rooms","Features","Prices"]
+  const fields    = ["Name","City","Description","Photos","Type","Media","Address","Capacity","Rooms","Features","Prices","Website"]
     .map(f => `fields[]=${encodeURIComponent(f)}`).join("&");
   const mkUrl = (formula,max) => `https://api.airtable.com/v0/${baseId}/${tableId}?filterByFormula=${encodeURIComponent(formula)}&maxRecords=${max}&${fields}`;
 
@@ -216,6 +216,7 @@ async function findSuppliers(supplierName) {
         rooms:       f.Rooms       || null,
         features:    Array.isArray(f.Features) ? f.Features.map(x => (typeof x === "object" ? x?.name : x)).filter(Boolean) : [],
         priceIds:    f.Prices      || [],
+        website:     f.Website     || null,
       };
     }).filter(r => r.name);
   } catch {
@@ -651,6 +652,7 @@ export async function generateSupplierFullPage(supplierNameRaw, apiKey, template
       rooms:         selected.rooms    || null,
       features:      selected.features || [],
       priceIds:      selected.priceIds || [],
+      website:       selected.website  || null,
       costRows:      selected.costRows || [],
       cityPhoto:     `${cityName.toLowerCase()} italy aerial landmark`,
       fromAirtable:  true,
@@ -723,6 +725,7 @@ export async function generateSupplierFullPage(supplierNameRaw, apiKey, template
         rooms:        profile.rooms    || null,
         features:     profile.features || [],
         costRows:     profile.costRows || [],
+        website:      profile.website  || null,
         floorplans,
         options:      [],
         _airtable:    profile.fromAirtable,

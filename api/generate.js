@@ -44,9 +44,10 @@ SCHEMA:
             {
               "label":  string,   // service description, e.g. "Exclusive Venue Hire"
               "detail": string,   // optional extra detail/date shown in the quote, "" if none
-              "qty":    string,   // quantity as written, e.g. "1", "30 pax", "" if none
+              "qty":    string,   // quantity as written, e.g. "1", "30", "" if none
               "vat":    string,   // VAT rate as written: "22%", "10%", "TBC", "" if none
-              "amount": string    // line total as written, e.g. "€ 14.274,00"
+              "unit":   string,   // unit price as written, e.g. "€ 130,00", "" if none
+              "amount": string    // line total (qty × unit) as written, e.g. "€ 14.274,00"
             }
           ],
           "options": [              // fill ONLY if quote has Option A / B / C for same service
@@ -82,7 +83,8 @@ RULES (strict):
    quote's own wording, amounts and VAT rates verbatim (do not recalculate, do
    not convert, do not invent lines). A quote table typically reads
    DESCRIPTION / DETAILS / QTY / VAT / UNIT / AMOUNT: use DESCRIPTION as label,
-   DETAILS as detail, QTY as qty, VAT as vat and AMOUNT (line total) as amount.
+   DETAILS as detail, QTY as qty, VAT as vat, UNIT as unit and AMOUNT
+   (line total) as amount.
    Group the lines under the supplier they are listed for. Leave costLines
    empty [] when the quote shows no prices for that supplier. Never include
    subtotal/total rows as cost lines.

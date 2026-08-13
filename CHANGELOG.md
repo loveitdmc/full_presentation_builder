@@ -8,6 +8,34 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v55 — 2026-08-13
+- **Quotazione Venue allineato alla nuova versione del template pptx**
+  (`loveit_single_venue_quotation_template.js`, rev. caricata dall'utente):
+  - **Cost Breakdown ora è UNA sola slide raggruppata per fornitore** (non più
+    una per fornitore come in v54): ogni gruppo ha una riga intestazione con
+    nome del fornitore e sito web su fondo #EFEAE0, seguita dalle sue voci.
+  - **Nuove colonne**: Description / Details / Qty / VAT / Unit / Amount
+    (prima erano Item / Net / VAT / Total). Header della tabella ora testo
+    scuro su crema — non più barra teal piena. Details e VAT in grigio,
+    Amount in grassetto, bande alternate bianco/crema che ripartono a ogni
+    gruppo.
+  - **Testi in inglese** come richiesto dal template (deck client-facing):
+    "≈ € X per person, VAT included" e footnote "Estimate based on available
+    data. Final costs are subject to written confirmation from the supplier
+    once event dates are set."
+  - Export PPTX aggiornato di conseguenza: `colW [4.83,2.0,0.9,0.9,1.5,2.0]`,
+    righe di gruppo con `colspan:6` e testo ricco (nome + sito), altezze
+    riga adattive (0.55 gruppo, 0.5 se la descrizione supera 55 caratteri,
+    0.36 standard) e posizione del blocco totale calcolata sommando le
+    altezze reali — come nel nuovo template.
+  - Backend: `costLines` ora estrae anche `unit` (prezzo unitario) dal
+    preventivo; il fornitore porta con sé il campo **Website** di Airtable
+    per l'intestazione di gruppo.
+- Verifica jsdom: 2 fornitori → 6 slide con una sola cost breakdown, gruppi
+  con sito, 3 voci, totale € 17.658,50 (15.600 + 2.000 + 58,50), footnote
+  inglese, add/del riga, export PPTX con colW e colspan corretti.
+  Non-regressione su fallback Airtable/vuoto e sui deck dark, venues, hotel.
+
 ## v54 — 2026-08-09
 - **Quotazione Venue da PDF: voci di costo estratte dal preventivo, un blocco
   di slide per OGNI fornitore.** Caricando un preventivo Love IT (es.

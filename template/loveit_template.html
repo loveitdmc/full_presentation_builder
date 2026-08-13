@@ -647,6 +647,15 @@ body.deck-quotation section{ background:#F7F4EF; }
 .qcost-table tr:nth-child(even) td{ background:#F7F4EF; }
 .qcost-table td.q-total-cell{ font-weight:700; }
 .qcost-table td.qc-del{ width:1.6rem;background:transparent!important;border:none; }
+/* Header tabella: testo scuro su crema (nuovo template), non più barra teal */
+.qcost-table th{ background:transparent;color:#2B323A;font-size:.6rem;letter-spacing:.06em;border-bottom:1px solid #E5DFD0; }
+/* Riga intestazione fornitore (colspan) */
+.qcost-table tr.qc-group td{ background:#EFEAE0!important;padding:.5rem .7rem; }
+.qc-group-name{ font-family:var(--sans);font-size:.78rem;font-weight:700;color:#2B323A;display:block; }
+.qc-group-site{ font-family:'Calibri',var(--sans);font-size:.66rem;color:#7A8288;display:block; }
+.qcost-table td.qc-detail{ color:#7A8288;font-size:.74rem; }
+.qcost-table td.qc-qty,.qcost-table td.qc-vat{ text-align:center; }
+.qcost-table td.qc-vat{ color:#7A8288;font-size:.74rem; }
 .qcost-total{ display:flex;align-items:baseline;justify-content:space-between;border-top:1px solid #2B323A;margin-top:1.1rem;padding-top:.8rem; }
 .qcost-total-label{ font-family:var(--sans);font-size:.88rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#2B323A; }
 .qcost-total-value{ font-family:var(--serif);font-style:italic;font-weight:600;font-size:1.9rem;color:#346E74; }
@@ -1122,17 +1131,34 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
     if(!seen) return null;
     return '€ '+tot.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
   }
-  function buildQCost(trip, act, num, total){
+  function _qGroupRows(act){
     const lines=(act.costLines||[]).filter(l=>l&&(l.label||l.amount));
-    const rows=lines.length
-      ? lines.map(l=>_qCostRowFilled(
-          [l.label,l.detail].filter(Boolean).join(' — '),
-          l.vat,
-          l.amount)).join('')
-      : ((act.costRows&&act.costRows.length)
-          ? act.costRows.map(r=>_qCostRowHtml(r.label, r.vat)).join('')
-          : [1,2,3].map(()=>_qCostRowHtml('','')).join(''));
-    const grand=_qSumAmounts(lines);
+    if(lines.length) return lines.map(l=>({
+      desc:[l.label,''].filter(Boolean)[0]||'Voce di costo',
+      detail:l.detail||'', qty:l.qty||'', vat:l.vat||'', unit:l.unit||'', amount:l.amount||'€ —',
+    }));
+    return (act.costRows||[]).map(r=>({ desc:r.label||'Voce di costo', detail:'', qty:'', vat:r.vat||'', unit:'', amount:'€ —' }));
+  }
+  function _qRowHtml(r){
+    return `<tr>
+      <td class="qcost-cell">${r.desc}</td>
+      <td class="qcost-cell qc-detail">${r.detail}</td>
+      <td class="qcost-cell qc-qty">${r.qty}</td>
+      <td class="qcost-cell qc-vat">${r.vat}</td>
+      <td class="qcost-cell num">${r.unit}</td>
+      <td class="qcost-cell num q-total-cell">${r.amount}</td>
+      <td class="qc-del"><button type="button" class="del-dtrow-btn" title="Rimuovi riga">×</button></td>
+    </tr>`;
+  }
+  // Cost Breakdown: UNA slide, raggruppata per fornitore (nuovo template)
+  function buildQCost(trip, acts, num, total){
+    const groups=acts.map(a=>({ act:a, rows:_qGroupRows(a) })).filter(g=>g.rows.length);
+    const allLines=acts.flatMap(a=>(a.costLines||[]));
+    const body=groups.map(g=>{
+      const head=`<tr class="qc-group"><td colspan="7"><span class="qc-group-name qcost-cell">${g.act.supplierName||g.act.title}</span>${g.act.website?`<span class="qc-group-site qcost-cell">${String(g.act.website).replace(/^https?:\/\//,'')}</span>`:''}</td></tr>`;
+      return head + g.rows.map(_qRowHtml).join('');
+    }).join('') || [1,2,3].map(()=>_qRowHtml({desc:'Voce di costo',detail:'',qty:'',vat:'',unit:'',amount:'€ —'})).join('');
+    const grand=_qSumAmounts(allLines);
     const pp=(grand&&trip.pax)
       ? '€ '+(parseFloat(grand.replace(/[^\d.,]/g,'').replace(/\./g,'').replace(',','.'))/trip.pax)
           .toLocaleString('it-IT',{minimumFractionDigits:0,maximumFractionDigits:0})
@@ -1141,18 +1167,18 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
     return `
     <section class="slide-qcost">
       <div class="q-eyebrow">Cost Breakdown</div>
-      <h2 class="q-title">${act.supplierName || act.title}${sub?` · ${sub}`:''}</h2>
+      <h2 class="q-title">${sub || trip.destination || ''}</h2>
       <table class="qcost-table">
-        <thead><tr><th>Item</th><th class="num">Net</th><th class="mid">VAT</th><th class="num">Total</th><th></th></tr></thead>
-        <tbody>${rows}</tbody>
+        <thead><tr><th>Description</th><th>Details</th><th class="mid">Qty</th><th class="mid">VAT</th><th class="num">Unit</th><th class="num">Amount</th><th></th></tr></thead>
+        <tbody>${body}</tbody>
       </table>
       <button type="button" class="add-qcostrow-btn">+ Aggiungi voce</button>
       <div class="qcost-total">
         <span class="qcost-total-label">Total (VAT included)</span>
         <span class="qcost-total-value">${grand||'€ —'}</span>
       </div>
-      <p class="qcost-pp">≈ ${pp} a persona, IVA inclusa</p>
-      <p class="qcost-foot">Stima basata sui dati disponibili. I costi finali sono soggetti a conferma scritta del fornitore una volta definite le date dell'evento.</p>
+      <p class="qcost-pp">≈ ${pp} per person, VAT included</p>
+      <p class="qcost-foot">Estimate based on available data. Final costs are subject to written confirmation from the supplier once event dates are set.</p>
       ${_qCounter(num,total)}
     </section>`;
   }
@@ -1246,8 +1272,9 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
         slideBuilders.push((n,t)=>buildQVenue(TRIP,act,n,t,dayIdx,actIdx));
         if((act.floorplans||[]).length) slideBuilders.push((n,t)=>buildQPlan(TRIP,act,n,t));
         slideBuilders.push((n,t)=>buildQGallery(TRIP,act,n,t,dayIdx,actIdx));
-        slideBuilders.push((n,t)=>buildQCost(TRIP,act,n,t));
       });
+      // Cost Breakdown: una sola slide finale, raggruppata per fornitore
+      slideBuilders.push((n,t)=>buildQCost(TRIP,qActs.map(q=>q.act),n,t));
     }
   } else {
   slideBuilders.push((num, total) => buildCover(TRIP, num, total));
@@ -2445,7 +2472,7 @@ try{ LoveitEditor=(function(){
       if(tbody){
         // riga vuota (stessa struttura del builder, che vive nell'altro script)
         const wrap=document.createElement('tbody');
-        wrap.innerHTML=`<tr><td class="qcost-cell">Voce di costo</td><td class="qcost-cell num">€ —</td><td class="qcost-cell mid">—</td><td class="qcost-cell num q-total-cell">€ —</td><td class="qc-del"><button type="button" class="del-dtrow-btn" title="Rimuovi riga">×</button></td></tr>`;
+        wrap.innerHTML=`<tr><td class="qcost-cell">Voce di costo</td><td class="qcost-cell qc-detail"></td><td class="qcost-cell qc-qty"></td><td class="qcost-cell qc-vat"></td><td class="qcost-cell num"></td><td class="qcost-cell num q-total-cell">€ —</td><td class="qc-del"><button type="button" class="del-dtrow-btn" title="Rimuovi riga">×</button></td></tr>`;
         const tr=wrap.firstElementChild;
         tbody.appendChild(tr);
         if(textMode) tr.querySelectorAll('.qcost-cell').forEach(el=>{ el.contentEditable='true';el.spellcheck=false; });
@@ -3896,25 +3923,37 @@ try{ LoveitEditor=(function(){
         } else if(cls.contains('slide-qcost')){
           sl.addText(_txt(sec.querySelector('.q-eyebrow')).toUpperCase(),{x:0.6,y:0.4,w:12,h:0.35,fontSize:12,bold:true,color:'FF5149',charSpacing:3,fontFace:'Montserrat'});
           sl.addText(_txt(sec.querySelector('.q-title')),{x:0.6,y:0.72,w:12,h:0.55,fontSize:22,italic:true,color:'2B323A',fontFace:'Georgia'});
-          const rows=[[
-            {text:'Item',options:{bold:true,color:'FFFFFF',fill:{color:'346E74'},fontFace:'Montserrat',fontSize:10.5,align:'left'}},
-            {text:'Net',options:{bold:true,color:'FFFFFF',fill:{color:'346E74'},fontFace:'Montserrat',fontSize:10.5,align:'right'}},
-            {text:'VAT',options:{bold:true,color:'FFFFFF',fill:{color:'346E74'},fontFace:'Montserrat',fontSize:10.5,align:'center'}},
-            {text:'Total',options:{bold:true,color:'FFFFFF',fill:{color:'346E74'},fontFace:'Montserrat',fontSize:10.5,align:'right'}},
-          ]];
-          [...sec.querySelectorAll('tbody tr')].forEach((tr,i)=>{
+          // Tabella a 6 colonne, raggruppata per fornitore (header con colspan)
+          const colW=[4.83,2.0,0.9,0.9,1.5,2.0];
+          const rows=[['DESCRIPTION','DETAILS','QTY','VAT','UNIT','AMOUNT'].map(t=>({
+            text:t,options:{bold:true,color:'2B323A',fontFace:'Montserrat',fontSize:9,align:'left',valign:'middle'}}))];
+          const rowHeights=[0.32];
+          let bandIdx=0;
+          [...sec.querySelectorAll('tbody tr')].forEach(tr=>{
+            if(tr.classList.contains('qc-group')){
+              bandIdx=0;
+              const nm=_txt(tr.querySelector('.qc-group-name')), site=_txt(tr.querySelector('.qc-group-site'));
+              rows.push([{text:[{text:nm+(site?'\n':''),options:{bold:true,color:'2B323A',fontFace:'Montserrat',fontSize:10.5}},
+                                {text:site,options:{color:'7A8288',fontFace:'Calibri',fontSize:9}}],
+                          options:{colspan:6,fill:{color:'EFEAE0'},valign:'middle',margin:[4,6,4,6]}}]);
+              rowHeights.push(0.55);
+              return;
+            }
             const c=[...tr.querySelectorAll('.qcost-cell')].map(_txt);
-            const fillC=i%2===1?'F7F4EF':'FFFFFF';
+            if(!c.length) return;
+            const bg=bandIdx%2===1?'F7F4EF':'FFFFFF'; bandIdx++;
             rows.push([
-              {text:c[0]||'',options:{color:'2B323A',fontFace:'Calibri',fontSize:10,align:'left',fill:{color:fillC}}},
-              {text:c[1]||'',options:{color:'2B323A',fontFace:'Calibri',fontSize:10,align:'right',fill:{color:fillC}}},
-              {text:c[2]||'',options:{color:'7A8288',fontFace:'Calibri',fontSize:9.5,align:'center',fill:{color:fillC}}},
-              {text:c[3]||'',options:{color:'2B323A',bold:true,fontFace:'Calibri',fontSize:10,align:'right',fill:{color:fillC}}},
+              {text:c[0]||'',options:{color:'2B323A',fontFace:'Calibri',fontSize:10,align:'left',valign:'middle',fill:{color:bg}}},
+              {text:c[1]||'',options:{color:'7A8288',fontFace:'Calibri',fontSize:9.5,align:'left',valign:'middle',fill:{color:bg}}},
+              {text:c[2]||'',options:{color:'2B323A',fontFace:'Calibri',fontSize:10,align:'center',valign:'middle',fill:{color:bg}}},
+              {text:c[3]||'',options:{color:'7A8288',fontFace:'Calibri',fontSize:9.5,align:'center',valign:'middle',fill:{color:bg}}},
+              {text:c[4]||'',options:{color:'2B323A',fontFace:'Calibri',fontSize:10,align:'right',valign:'middle',fill:{color:bg}}},
+              {text:c[5]||'',options:{color:'2B323A',bold:true,fontFace:'Calibri',fontSize:10,align:'right',valign:'middle',fill:{color:bg}}},
             ]);
+            rowHeights.push((c[0]||'').length>55?0.5:0.36);
           });
-          const rowH=0.35;
-          sl.addTable(rows,{x:0.6,y:1.5,w:12.13,colW:[6.63,2.0,1.5,2.0],border:{type:'solid',pt:0.5,color:'E5DFD0'},autoPage:false,rowH});
-          const ty=1.5+rowH*rows.length+0.3;
+          sl.addTable(rows,{x:0.6,y:1.5,w:12.13,colW,border:{type:'solid',pt:0.5,color:'E5DFD0'},autoPage:false,rowH:rowHeights});
+          const ty=1.5+rowHeights.reduce((a,b)=>a+b,0)+0.3;
           sl.addShape('line',{x:0.6,y:ty,w:12.13,h:0,line:{color:'2B323A',width:1}});
           sl.addText(_txt(sec.querySelector('.qcost-total-label')).toUpperCase(),{x:0.6,y:ty+0.15,w:8.0,h:0.5,fontSize:14,bold:true,color:'2B323A',fontFace:'Montserrat'});
           sl.addText(_txt(sec.querySelector('.qcost-total-value')),{x:9.13,y:ty+0.1,w:3.6,h:0.6,align:'right',fontSize:26,italic:true,bold:true,color:'346E74',fontFace:'Georgia'});
