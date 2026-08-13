@@ -371,6 +371,7 @@ export default async function handler(req, res) {
   else if (typeof _body === "string") { try { _body = JSON.parse(_body); } catch { _body = {}; } }
   const { pdf, filename } = _body;
   const deckTemplate = ["dark","venues","hotel","quotation"].includes(_body.deckTemplate) ? _body.deckTemplate : "dark";
+  const costLayout = ["both","per-supplier","grouped"].includes(_body.costLayout) ? _body.costLayout : "both";
   if (!pdf) return res.status(400).json({ error: "Missing pdf field" });
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -434,6 +435,7 @@ export default async function handler(req, res) {
   let finalHtml;
   try {
     resolvedTrip.deckTemplate = deckTemplate;
+    resolvedTrip.costLayout = costLayout;
     finalHtml = injectTrip(template, resolvedTrip);
   } catch (e) {
     return res.status(500).json({ error: `Template error: ${e.message}` });

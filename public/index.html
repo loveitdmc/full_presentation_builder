@@ -103,6 +103,12 @@ main{max-width:680px;margin:0 auto;padding:0 1.5rem 6rem}
 .tpl-swatch-cream{background:linear-gradient(90deg,#F7F4EF 60%,#C9A96A 60%);border:1px solid #333}
 .tpl-name{font-size:.74rem;font-weight:600;color:#eee;letter-spacing:.04em}
 .tpl-desc{font-size:.6rem;line-height:1.5;color:var(--stone)}
+.cost-opt{display:none;margin-top:.2rem}
+.cost-opt.show{display:block}
+.cost-btns{display:flex;gap:.4rem;flex-wrap:wrap}
+.cost-btn{background:var(--card);border:1px solid #2a2a2a;border-radius:3px;padding:.5rem .8rem;cursor:pointer;color:var(--stone);font-family:var(--sans);font-size:.62rem;letter-spacing:.06em;transition:all .2s}
+.cost-btn:hover{border-color:rgba(201,169,110,.55);color:#eee}
+.cost-btn.active{border-color:var(--gold);color:var(--gold);background:#1a1610}
 .mode-toggle{display:flex;gap:0;margin-bottom:1.4rem}
 .mode-btn{flex:1;padding:.7rem .8rem;background:var(--card);border:1px solid #2a2a2a;color:var(--stone);font-family:var(--sans);font-size:.65rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;transition:all .2s}
 .mode-btn:first-child{border-radius:3px 0 0 3px}
@@ -222,6 +228,14 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
           <span class="tpl-desc">Crema/teal — 5 slide per UN venue: cover, scheda, planimetria, gallery, costi</span>
         </button>
       </div>
+      <div class="cost-opt" id="cost-opt">
+        <p class="tpl-select-label" style="margin:.9rem 0 .5rem">Cost breakdown</p>
+        <div class="cost-btns">
+          <button type="button" class="cost-btn active" data-cost="both">Per fornitore + riepilogo</button>
+          <button type="button" class="cost-btn" data-cost="per-supplier">Solo per fornitore</button>
+          <button type="button" class="cost-btn" data-cost="grouped">Solo riepilogo unico</button>
+        </div>
+      </div>
     </div>
 
     <button class="btn-generate" id="btn-generate-pdf" disabled>Genera Presentazione</button>
@@ -292,6 +306,15 @@ document.querySelectorAll('.tpl-card').forEach(card=>{
     document.querySelectorAll('.tpl-card').forEach(c=>c.classList.remove('active'));
     card.classList.add('active');
     deckTemplate=card.dataset.tpl;
+    document.getElementById('cost-opt').classList.toggle('show', deckTemplate==='quotation');
+  });
+});
+let costLayout = 'both'; // 'both' | 'per-supplier' | 'grouped'
+document.querySelectorAll('.cost-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.cost-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    costLayout=b.dataset.cost;
   });
 });
 
@@ -407,7 +430,7 @@ async function generateFromPdf() {
   try {
     const resp = await fetch('/api/generate', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ pdf: pdfBase64, filename: selectedFile.name, deckTemplate })
+      body: JSON.stringify({ pdf: pdfBase64, filename: selectedFile.name, deckTemplate, costLayout })
     });
     clearTimeout(t); setStep(4);
     if (!resp.ok) { const e = await resp.json().catch(() => ({error:`HTTP ${resp.status}`})); throw new Error(e.error); }
@@ -435,7 +458,7 @@ async function generateFromText() {
   try {
     const resp = await fetch('/api/generate-text', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ programText: text, deckTemplate })
+      body: JSON.stringify({ programText: text, deckTemplate, costLayout })
     });
     clearTimeout(t1); clearTimeout(t2); setStep(4);
     if (!resp.ok) { const e = await resp.json().catch(() => ({error:`HTTP ${resp.status}`})); throw new Error(e.error); }

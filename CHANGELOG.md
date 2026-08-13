@@ -8,6 +8,26 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v56 — 2026-08-13
+- **Cost breakdown: ora si scelgono entrambe le modalità.** Selezionando
+  "Quotazione Venue" nella home compare il selettore "Cost breakdown" con tre
+  opzioni (`costLayout`, inviato a `/api/generate` e `/api/generate-text` e
+  salvato nel TRIP):
+  - **Per fornitore + riepilogo** (default) — dopo le slide di ogni fornitore
+    la SUA tabella costi, e in fondo il riepilogo unico raggruppato con il
+    totale generale. Con un solo fornitore il riepilogo viene saltato per non
+    duplicare la stessa tabella.
+  - **Solo per fornitore** — come piaceva nella v54: una cost breakdown in
+    coda a ogni fornitore, nessun riepilogo finale.
+  - **Solo riepilogo unico** — comportamento v55: una sola slide raggruppata.
+  Il titolo della slide si adatta: "Nome fornitore · Evento · N Guests" per le
+  tabelle singole, "Evento · N Guests" per il riepilogo.
+- Formattazione importi resa deterministica (`_qFmt`): il separatore delle
+  migliaia non dipende più dall'ICU del browser ("€ 2.600,00" ovunque).
+- Verifica jsdom su tutte e tre le modalità con 2 fornitori + caso a fornitore
+  singolo: sequenze slide, gruppi, righe e totali corretti
+  (2.600,00 + 58,50 = € 2.658,50).
+
 ## v55 — 2026-08-13
 - **Quotazione Venue allineato alla nuova versione del template pptx**
   (`loveit_single_venue_quotation_template.js`, rev. caricata dall'utente):

@@ -27,6 +27,8 @@ const TRIP = {
   /* ── Template deck ────────────────────────────────────── */
   // "dark" (journey attuale) | "venues" (crema, tabella stati) | "hotel" (crema, tariffe)
   deckTemplate: "dark",
+  // Solo per deckTemplate "quotation": "both" | "per-supplier" | "grouped"
+  costLayout: "both",
 
   /* ── Trip basics ─────────────────────────────────────────── */
   title:       "Incentive Trip",
@@ -1119,6 +1121,13 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
       <td class="qc-del"><button type="button" class="del-dtrow-btn" title="Rimuovi riga">×</button></td>
     </tr>`;
   }
+  // Formato italiano "1.234,50" senza dipendere da toLocaleString/ICU
+  function _qFmt(n, dec){
+    const fixed=Math.abs(n).toFixed(dec);
+    const [int,frac]=fixed.split('.');
+    const withDots=int.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+    return (n<0?'-':'')+withDots+(dec?','+frac:'');
+  }
   // Somma gli importi "€ 14.274,00" / "€ 97,50" (formato italiano) di una lista voci
   function _qSumAmounts(lines){
     let tot=0, seen=false;
@@ -1129,7 +1138,7 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
       if(!isNaN(n)){ tot+=n; seen=true; }
     });
     if(!seen) return null;
-    return '€ '+tot.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
+    return '€ '+_qFmt(tot,2);
   }
   function _qGroupRows(act){
     const lines=(act.costLines||[]).filter(l=>l&&(l.label||l.amount));
@@ -1160,14 +1169,13 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
     }).join('') || [1,2,3].map(()=>_qRowHtml({desc:'Voce di costo',detail:'',qty:'',vat:'',unit:'',amount:'€ —'})).join('');
     const grand=_qSumAmounts(allLines);
     const pp=(grand&&trip.pax)
-      ? '€ '+(parseFloat(grand.replace(/[^\d.,]/g,'').replace(/\./g,'').replace(',','.'))/trip.pax)
-          .toLocaleString('it-IT',{minimumFractionDigits:0,maximumFractionDigits:0})
+      ? '€ '+_qFmt(parseFloat(grand.replace(/[^\d.,]/g,'').replace(/\./g,'').replace(',','.'))/trip.pax, 0)
       : '€ —';
     const sub=[trip.title, trip.pax?`${trip.pax} Guests`:''].filter(Boolean).join(' · ');
     return `
     <section class="slide-qcost">
       <div class="q-eyebrow">Cost Breakdown</div>
-      <h2 class="q-title">${sub || trip.destination || ''}</h2>
+      <h2 class="q-title">${acts.length===1 ? (acts[0].supplierName||acts[0].title)+(sub?` · ${sub}`:'') : (sub || trip.destination || '')}</h2>
       <table class="qcost-table">
         <thead><tr><th>Description</th><th>Details</th><th class="mid">Qty</th><th class="mid">VAT</th><th class="num">Unit</th><th class="num">Amount</th><th></th></tr></thead>
         <tbody>${body}</tbody>
@@ -1268,13 +1276,19 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
     if(qActs.length){
       const first=qActs[0].act;
       slideBuilders.push((n,t)=>buildQCover(TRIP,first,n,t));
+      const CL=['both','per-supplier','grouped'].includes(TRIP.costLayout)?TRIP.costLayout:'both';
       qActs.forEach(({act,dayIdx,actIdx})=>{
         slideBuilders.push((n,t)=>buildQVenue(TRIP,act,n,t,dayIdx,actIdx));
         if((act.floorplans||[]).length) slideBuilders.push((n,t)=>buildQPlan(TRIP,act,n,t));
         slideBuilders.push((n,t)=>buildQGallery(TRIP,act,n,t,dayIdx,actIdx));
+        // Cost breakdown del singolo fornitore, subito dopo le sue slide
+        if(CL!=='grouped') slideBuilders.push((n,t)=>buildQCost(TRIP,[act],n,t));
       });
-      // Cost Breakdown: una sola slide finale, raggruppata per fornitore
-      slideBuilders.push((n,t)=>buildQCost(TRIP,qActs.map(q=>q.act),n,t));
+      // Riepilogo finale raggruppato per fornitore (salta se c'è un solo
+      // fornitore e la sua tabella è già stata inserita qui sopra)
+      if(CL!=='per-supplier' && !(CL==='both' && qActs.length===1)){
+        slideBuilders.push((n,t)=>buildQCost(TRIP,qActs.map(q=>q.act),n,t));
+      }
     }
   } else {
   slideBuilders.push((num, total) => buildCover(TRIP, num, total));
