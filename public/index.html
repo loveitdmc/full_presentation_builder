@@ -671,6 +671,61 @@ function hideError() { errorMsg.style.display = 'none'; }
 function toBase64(file) {
   return new Promise((res,rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
 }
+
+// ── Handoff from the Vault ───────────────────────────────────────────────
+// The Vault's cart/supplier card sends a selection by URL and nothing else —
+// same relationship as with Preventivi: this app already reads the same
+// Airtable base, so there is nothing to hand over except which name(s) to
+// look up and which deck to build.
+//
+// Two shapes, because this app itself only has two flows that take a name:
+//   ?supplier=Name&tpl=quotation   → one name → "Cerca nel Database" (single
+//                                     search box, exactly one result)
+//   ?suppliers=Name1|Name2&tpl=... → several names → "Scrivi programma": the
+//                                     free-text reader is the only flow here
+//                                     that accepts more than one name at all,
+//                                     since the AI matches each line on its
+//                                     own against Suppliers/Artists & Shows/
+//                                     Activities. There is no bulk search box
+//                                     to fill instead.
+// Every step below fires the page's own click/input handlers rather than
+// duplicating what they do, so this behaves exactly like a person clicking
+// the same sequence by hand — right down to Generate staying a manual,
+// deliberate press.
+(function readVaultHandoff(){
+  const params = new URLSearchParams(location.search);
+  const supplierParam = params.get('supplier');
+  const suppliersParam = params.get('suppliers');
+  const tplParam = params.get('tpl');
+  if (!supplierParam && !suppliersParam && !tplParam) return;
+
+  function pickTemplate(id){
+    const card = document.querySelector('.tpl-card[data-tpl="'+id+'"]');
+    if (card) card.click();
+  }
+
+  if (suppliersParam) {
+    document.querySelector('.tab-btn[data-tab="preventivo"]').click();
+    document.querySelector('.mode-btn[data-mode="text"]').click();
+    const names = suppliersParam.split('|').map(s=>s.trim()).filter(Boolean).map(s=>s.replace(/^act:/,''));
+    programTextEl.value = names.map(n=>'- '+n).join('\n');
+    programTextEl.dispatchEvent(new Event('input'));
+    if (tplParam) pickTemplate(tplParam);
+    programTextEl.focus();
+  } else if (supplierParam) {
+    document.querySelector('.tab-btn[data-tab="fornitore"]').click();
+    supplierInput.value = supplierParam;
+    supplierInput.dispatchEvent(new Event('input'));
+    if (tplParam) pickTemplate(tplParam);
+    supplierInput.focus();
+  } else if (tplParam) {
+    pickTemplate(tplParam);
+  }
+
+  // Read once — a refresh should land on a clean, empty tool, not replay the
+  // same handoff and silently discard whatever the person typed since.
+  history.replaceState(null, '', location.pathname);
+})();
 </script>
 
 <!-- ── DATABASE CHAT ─────────────────────────────────────────────────────── -->
