@@ -83,6 +83,90 @@ function isVideoLinkOrType(assetType, driveLink, fileUrls) {
   return false;
 }
 
+// ─── §4.1 — Identità Google (pronta, inattiva finché manca il Client ID) ─────
+// Verifica il token dell'utente lato server: gli endpoint sotto api/ sono
+// raggiungibili direttamente, quindi il controllo non può stare nel browser.
+// Senza GOOGLE_CLIENT_ID configurato l'app si comporta come prima
+// dell'introduzione del login — nessuno resta fuori per una variabile mancante.
+const AUTH_DOMAIN = "loveit-dmc.com";
+
+export async function verifyGoogleIdToken(idToken) {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) return { enabled: false, email: null };          // login non ancora attivo
+  if (!idToken) return { enabled: true, email: null, error: "Accesso richiesto." };
+  try {
+    const r = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
+      { signal: AbortSignal.timeout(6000) }
+    );
+    if (!r.ok) return { enabled: true, email: null, error: "Sessione non valida: rifai l'accesso." };
+    const t = await r.json();
+    const audOk = t.aud === clientId;
+    const expOk = Number(t.exp) * 1000 > Date.now();
+    const domOk = (t.hd === AUTH_DOMAIN) || String(t.email || "").endsWith("@" + AUTH_DOMAIN);
+    if (!audOk || !expOk) return { enabled: true, email: null, error: "Sessione scaduta: rifai l'accesso." };
+    if (!domOk) return { enabled: true, email: null, error: `Serve un account @${AUTH_DOMAIN}.` };
+    return { enabled: true, email: t.email || null };
+  } catch (e) {
+    // In dubbio non si concede: meglio chiedere di rifare l'accesso
+    return { enabled: true, email: null, error: "Verifica dell'accesso non riuscita: riprova." };
+  }
+}
+
+// ─── §4.4 — Archivio presentazioni (Love IT Projects › Presentations) ────────
+// Presenta scrive SOLO qui. Mai su Clients/Quotes/Quote Lines, mai sulla base
+// Fornitori. I fornitori si salvano per NOME: gli ID non sopravvivono alla
+// copia fra basi (§0.1).
+const PROJECTS_BASE_ID   = "appdvIG3LsRARALRP";
+const TABLE_PRESENTATIONS = "tblqE4NEkpj28xH8f";
+const VALID_TEMPLATES     = new Set(["dark", "venues", "hotel", "quotation"]);
+
+async function handleSavePresentation(payload, res, token, req) {
+  const auth = await verifyGoogleIdToken(payload?.idToken);
+  if (auth.enabled && !auth.email) return res.status(401).json({ error: auth.error || "Accesso richiesto." });
+
+  const title = String(payload?.title || "").trim().slice(0, 200);
+  if (!title) return res.status(400).json({ error: "Manca il titolo della presentazione." });
+
+  const template = VALID_TEMPLATES.has(payload?.template) ? payload.template : "dark";
+  const suppliers = Array.isArray(payload?.suppliers)
+    ? [...new Set(payload.suppliers.map(x => String(x || "").trim()).filter(Boolean))].slice(0, 60)
+    : [];
+
+  // Il file resta dove Presenta lo genera: questa tabella è un indice (§4.4).
+  const proto = req.headers["x-forwarded-proto"] || "https";
+  const host  = req.headers.host || "";
+  const fileUrl = String(payload?.fileUrl || "").trim()
+    || (payload?.filename ? `${proto}://${host}/?file=${encodeURIComponent(String(payload.filename).slice(0, 120))}` : "");
+
+  const fields = {
+    "Title":      title,
+    "Template":   template,
+    "Suppliers":  suppliers.join("\n"),
+    "Created At": new Date().toISOString(),
+  };
+  if (auth.email) fields["Created By"] = auth.email;
+  if (fileUrl)    fields["File"] = fileUrl;
+  if (payload?.notes) fields["Notes"] = String(payload.notes).slice(0, 2000);
+
+  try {
+    const r = await fetch(`https://api.airtable.com/v0/${PROJECTS_BASE_ID}/${TABLE_PRESENTATIONS}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ records: [{ fields }], typecast: true }),
+      signal: AbortSignal.timeout(9000),
+    });
+    if (!r.ok) {
+      const txt = await r.text();
+      return res.status(502).json({ error: `Archivio non raggiungibile (${r.status}). La presentazione è comunque scaricabile. ${txt.slice(0, 160)}` });
+    }
+    const data = await r.json();
+    return res.status(200).json({ ok: true, id: data.records?.[0]?.id || null, savedBy: auth.email || null });
+  } catch (e) {
+    return res.status(502).json({ error: `Archivio non raggiungibile: ${e.message}. La presentazione è comunque scaricabile.` });
+  }
+}
+
 // ─── AIRTABLE HELPERS ─────────────────────────────────────────────────────────
 
 async function airtableFetch(url, token) {
@@ -564,6 +648,13 @@ export default async function handler(req, res) {
     if (v != null && typeof v === "object") return ""; // reject stray objects (e.g. serialized DOM event)
     return String(v);
   };
+  // §4.4 — salvataggio in archivio (unico punto in cui Presenta scrive su Airtable)
+  if (_body.savePresentation) {
+    const tk = process.env.AIRTABLE_TOKEN;
+    if (!tk) return res.status(500).json({ error: "Configurazione Airtable mancante." });
+    return handleSavePresentation(_body.savePresentation, res, tk, req);
+  }
+
   const act = _s(_body.act), activity = _s(_body.activity), supplierParam = _s(_body.supplier),
         search = _s(_body.search), kindHint = _s(_body.kind), format = _body.format;
   if (!act?.trim() && !activity?.trim() && !supplierParam?.trim() && !search?.trim()) {

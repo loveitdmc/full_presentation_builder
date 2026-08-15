@@ -8,9 +8,33 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet"/>
 <style>
 :root{
-  --nero:#0a0a0a;--notte:#111;--card:#161616;
-  --warm-white:#f5f0e8;--gold:#c9a96e;--gold-dim:#8a6d42;
-  --stone:#6a6058;
+  /* §4.3 — token "Studio", gli stessi di Vault e Preventivi.
+     Raggi, ombre e accent-deep sono i valori ESATTI di Styles.html del Vault
+     (blocco "Studio", riga 429), passati da Ing. A il 15/08 — non stime. */
+  --charcoal:#1B1F24;
+  --canvas:#FAFAF9;
+  --ink:#1B1F24;
+  --muted:#767D87;
+  --border:#E7E5E2;
+  --teal:#2F6F6B;      --teal-wash:#E4EEEC;
+  --coral:#E8604F;     --coral-wash:#FBE7E3;
+  --amber:#B9862E;     --amber-wash:#F7EEDC;
+  /* Valori esatti copiati da Styles.html del Vault (blocco "Studio", riga 429),
+     non stimati: card 12px, bottoni/campi 8px, pannelli 18px. */
+  --radius:12px;
+  --radius-sm:8px;
+  --radius-lg:18px;
+  --shadow:0 1px 2px rgba(20,20,20,.04),0 1px 1px rgba(20,20,20,.03);   /* --shadow-card */
+  --shadow-hover:0 6px 20px rgba(20,20,20,.08);                          /* lift su hover */
+  --shadow-pop:0 20px 60px rgba(20,20,20,.16);                           /* overlay/pannelli */
+  --accent-deep:#C94E3F;
+  --side-2:#242930; --side-ink:#B7BCC2; --side-muted:#6B7178;
+
+  /* Alias di compatibilità: le regole scritte prima del restyle continuano a
+     funzionare, ma dipingono con i colori nuovi. */
+  --nero:var(--canvas); --notte:#FFFFFF; --card:#FFFFFF;
+  --warm-white:var(--ink); --gold:var(--coral); --gold-dim:#CF4B3B;
+  --stone:var(--muted);
   --serif:'Cormorant Garamond',Georgia,serif;
   --sans:'Montserrat',sans-serif;
 }
@@ -87,6 +111,12 @@ main{max-width:680px;margin:0 auto;padding:0 1.5rem 6rem}
 #btn-download:hover{background:var(--gold);color:var(--nero)}
 #btn-preview{display:inline-block;padding:.9rem 2rem;background:transparent;color:var(--stone);border:1.5px solid #333;cursor:pointer;font-family:var(--sans);font-size:.72rem;font-weight:500;letter-spacing:.2em;text-transform:uppercase;border-radius:3px;text-decoration:none;transition:border-color .25s,color .25s}
 #btn-preview:hover{border-color:var(--stone);color:var(--warm-white)}
+#btn-archive{display:inline-block;margin-left:.75rem;padding:.9rem 2rem;background:transparent;color:var(--stone);border:1.5px solid #333;cursor:pointer;font-family:var(--sans);font-size:.72rem;font-weight:500;letter-spacing:.2em;text-transform:uppercase;border-radius:3px;transition:border-color .25s,color .25s}
+#btn-archive:hover:not(:disabled){border-color:var(--stone);color:var(--warm-white)}
+#btn-archive:disabled{opacity:.55;cursor:default}
+#archive-msg{margin-top:1rem;font-size:.68rem;letter-spacing:.06em;text-transform:none;min-height:1em}
+#archive-msg.ok{color:#7fb69b}
+#archive-msg.err{color:#e08b7d}
 #btn-new{display:block;margin:1.5rem auto 0;background:none;border:none;color:var(--stone);font-family:var(--sans);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:color .2s}
 #btn-new:hover{color:var(--warm-white)}
 
@@ -138,10 +168,95 @@ footer{text-align:center;padding:2rem;font-size:.65rem;letter-spacing:.12em;text
 #preview-overlay{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.9)}
 #preview-overlay iframe{width:100%;height:100%;border:none}
 #close-preview{position:fixed;top:1.2rem;right:1.5rem;z-index:1001;background:rgba(0,0,0,.8);border:1px solid #444;color:var(--warm-white);font-size:.9rem;padding:.5rem 1rem;cursor:pointer;border-radius:3px;font-family:var(--sans);letter-spacing:.1em}
+
+#preview-overlay,#preview-wrap{ box-shadow:var(--shadow-pop); }
+#auth-bar{display:none;align-items:center;justify-content:flex-end;gap:.7rem;padding:.5rem 2rem;background:#fff;border-bottom:1px solid var(--border);font-size:.78rem;color:var(--muted)}
+#auth-bar.show{display:flex}
+#auth-who{font-weight:600;color:var(--ink)}
+
+/* ══ §4.3 — Restyle "Studio" (solo lo strumento; i template restano com'erano) ══ */
+html,body{ background:var(--canvas);color:var(--ink);font-weight:400; }
+
+header{ background:#fff;border-bottom:1px solid var(--border);padding:1.1rem 2rem; }
+.logo-mark{ border:1.5px solid var(--coral);color:var(--coral);border-radius:var(--radius-sm);width:34px;height:34px; }
+.logo-text,header nav{ color:var(--muted);letter-spacing:.14em; }
+
+.hero{ padding:2.8rem 2rem 1.6rem; }
+.hero h1{ color:var(--ink);font-size:clamp(1.7rem,4vw,2.5rem); }
+.hero h1 em{ color:var(--coral); }
+.hero p{ color:var(--muted);text-transform:none;letter-spacing:.02em;font-size:.9rem; }
+
+.tabs{ gap:.5rem;padding:0 1.5rem; }
+.tab-btn{ background:#fff;border:1px solid var(--border);border-radius:99px!important;color:var(--muted);
+  text-transform:none;letter-spacing:.01em;font-size:.82rem;padding:.7rem 1rem;box-shadow:var(--shadow); }
+.tab-btn:not(:last-child){ border-right:1px solid var(--border); }
+.tab-btn.active{ background:var(--coral-wash);border-color:var(--coral);color:var(--coral);font-weight:600; }
+.tab-btn:not(.active):hover{ color:var(--ink);border-color:#D8D5D1; }
+
+.panel{ background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:1.5rem; }
+
+.mode-toggle{ gap:.4rem; }
+.mode-btn{ background:#fff!important;border:1px solid var(--border)!important;border-radius:99px!important;
+  color:var(--muted)!important;text-transform:none;letter-spacing:.01em;font-size:.8rem; }
+.mode-btn.active{ background:var(--teal-wash)!important;border-color:var(--teal)!important;color:var(--teal)!important;font-weight:600; }
+
+#drop-zone{ background:var(--canvas);border:1.5px dashed #D8D5D1;border-radius:var(--radius);padding:2.6rem 2rem; }
+#drop-zone:hover,#drop-zone.dragover{ border-color:var(--teal);background:var(--teal-wash); }
+#drop-zone p.label{ color:var(--muted);text-transform:none;letter-spacing:.01em;font-size:.9rem; }
+#drop-zone p.sub{ color:var(--muted);opacity:.75; }
+
+#file-badge{ background:var(--teal-wash);border:1px solid var(--teal);border-radius:var(--radius-sm); }
+#file-badge .name{ color:var(--ink); }
+#file-badge .remove{ color:var(--muted); }
+
+textarea,#program-text,.supplier-field input{ background:#fff!important;border:1px solid var(--border)!important;
+  border-radius:var(--radius-sm)!important;color:var(--ink)!important; }
+textarea:focus,#program-text:focus,.supplier-field input:focus{ border-color:var(--teal)!important;box-shadow:0 0 0 3px var(--teal-wash); }
+.supplier-field label{ color:var(--muted);text-transform:none;letter-spacing:.02em;font-size:.82rem; }
+.supplier-hint,.program-hint{ color:var(--muted);opacity:.9; }
+
+.tpl-select-label{ color:var(--muted);text-transform:none;letter-spacing:.02em;font-size:.82rem;font-weight:600; }
+.tpl-card{ background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow); }
+.tpl-card{ transition:box-shadow .15s,transform .1s,border-color .15s; }
+.tpl-card:hover{ border-color:#D8D5D1;box-shadow:var(--shadow-hover);transform:translateY(-2px); }
+.tpl-card.active{ border-color:var(--teal);background:var(--teal-wash);box-shadow:var(--shadow-hover); }
+.tpl-name{ color:var(--ink); }
+.tpl-desc{ color:var(--muted); }
+.cost-btn{ background:#fff;border:1px solid var(--border);border-radius:99px;color:var(--muted);font-size:.76rem; }
+.cost-btn:hover{ border-color:#D8D5D1;color:var(--ink); }
+.cost-btn.active{ background:var(--teal-wash);border-color:var(--teal);color:var(--teal);font-weight:600; }
+
+/* Azione primaria: pulsante pieno coral */
+.btn-generate{ background:var(--coral);color:#fff;border-radius:var(--radius-sm);text-transform:none;
+  letter-spacing:.02em;font-size:.95rem;font-weight:600;padding:.95rem;box-shadow:var(--shadow); }
+.btn-generate:hover:not(:disabled){ background:var(--accent-deep);color:#fff;box-shadow:var(--shadow-hover); }
+
+.step{ color:var(--muted);text-transform:none;letter-spacing:.01em;font-size:.86rem; }
+.step.active{ color:var(--ink);font-weight:600; }
+.step.done{ color:var(--teal); }
+#progress-note{ color:var(--muted); }
+
+#result h3{ color:var(--ink); }
+#result p{ color:var(--muted);text-transform:none;letter-spacing:.02em;font-size:.88rem; }
+#btn-download{ background:var(--coral);color:#fff;border:1.5px solid var(--coral);border-radius:var(--radius-sm);
+  text-transform:none;letter-spacing:.02em;font-size:.88rem;font-weight:600; }
+#btn-download:hover{ background:var(--accent-deep);border-color:var(--accent-deep);color:#fff; }
+#btn-preview,#btn-archive{ background:#fff;color:var(--ink);border:1px solid var(--border);border-radius:var(--radius-sm);
+  text-transform:none;letter-spacing:.02em;font-size:.88rem;box-shadow:var(--shadow); }
+#btn-preview:hover,#btn-archive:hover:not(:disabled){ border-color:var(--teal);color:var(--teal); }
+#archive-msg.ok{ color:var(--teal); }
+#archive-msg.err{ color:var(--amber); }
+#btn-new{ color:var(--muted);text-transform:none;letter-spacing:.02em;font-size:.84rem; }
+#btn-new:hover{ color:var(--ink); }
+
+/* Errori e conferme: pastiglie, non testo nudo */
+#error,.error-box{ background:var(--amber-wash)!important;border:1px solid var(--amber)!important;
+  border-radius:var(--radius-sm)!important;color:#7A5A1E!important; }
 </style>
 </head>
 <body>
 
+<div id="auth-bar"><span id="auth-who"></span><span id="auth-slot"></span></div>
 <header>
   <div class="logo">
     <div class="logo-mark">L</div>
@@ -285,6 +400,8 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
     <p id="result-info">Pronta per il download</p>
     <a id="btn-download" href="#" download>⬇ Scarica HTML</a>
     <a id="btn-preview" href="#">⊡ Anteprima</a>
+    <button id="btn-archive" type="button">☐ Salva in archivio</button>
+    <p id="archive-msg"></p>
     <button id="btn-new">Genera un'altra presentazione</button>
   </div>
 
@@ -554,6 +671,25 @@ function hideFuzzyConfirm() {
 }
 
 function showResult(data, title, badge = '') {
+  // Nomi dei fornitori inclusi — servono all'archivio (§4.4). Nomi, mai ID (§0.1).
+  window._lastSuppliers = (() => {
+    const out = [];
+    try {
+      const m = data.html && data.html.match(/const TRIP = ([\s\S]*?)\n\};/);
+      if (m) {
+        const re = /"supplierName":\s*"([^"]+)"/g;
+        let x; while ((x = re.exec(m[1]))) if (!out.includes(x[1])) out.push(x[1]);
+      }
+    } catch {}
+    if (!out.length && (data.supplier || data.act)) out.push(data.supplier || data.act);
+    return out;
+  })();
+  // Titolo leggibile per l'archivio: cliente/fornitore + destinazione, non il nome file
+  window._lastTitle = [
+    data.client || data.supplier || data.act || (window._lastSuppliers || [])[0] || '',
+    data.city || data.destination || ''
+  ].filter(Boolean).join(' — ') || (data.filename || '').replace(/\.html?$/i,'').replace(/_/g,' ');
+  if (window._resetArchiveBtn) window._resetArchiveBtn();
   generatedHtml = data.html;
   generatedFilename = data.filename ?? 'presentazione.html';
   const blob = new Blob([generatedHtml], {type:'text/html'});
@@ -671,61 +807,6 @@ function hideError() { errorMsg.style.display = 'none'; }
 function toBase64(file) {
   return new Promise((res,rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
 }
-
-// ── Handoff from the Vault ───────────────────────────────────────────────
-// The Vault's cart/supplier card sends a selection by URL and nothing else —
-// same relationship as with Preventivi: this app already reads the same
-// Airtable base, so there is nothing to hand over except which name(s) to
-// look up and which deck to build.
-//
-// Two shapes, because this app itself only has two flows that take a name:
-//   ?supplier=Name&tpl=quotation   → one name → "Cerca nel Database" (single
-//                                     search box, exactly one result)
-//   ?suppliers=Name1|Name2&tpl=... → several names → "Scrivi programma": the
-//                                     free-text reader is the only flow here
-//                                     that accepts more than one name at all,
-//                                     since the AI matches each line on its
-//                                     own against Suppliers/Artists & Shows/
-//                                     Activities. There is no bulk search box
-//                                     to fill instead.
-// Every step below fires the page's own click/input handlers rather than
-// duplicating what they do, so this behaves exactly like a person clicking
-// the same sequence by hand — right down to Generate staying a manual,
-// deliberate press.
-(function readVaultHandoff(){
-  const params = new URLSearchParams(location.search);
-  const supplierParam = params.get('supplier');
-  const suppliersParam = params.get('suppliers');
-  const tplParam = params.get('tpl');
-  if (!supplierParam && !suppliersParam && !tplParam) return;
-
-  function pickTemplate(id){
-    const card = document.querySelector('.tpl-card[data-tpl="'+id+'"]');
-    if (card) card.click();
-  }
-
-  if (suppliersParam) {
-    document.querySelector('.tab-btn[data-tab="preventivo"]').click();
-    document.querySelector('.mode-btn[data-mode="text"]').click();
-    const names = suppliersParam.split('|').map(s=>s.trim()).filter(Boolean).map(s=>s.replace(/^act:/,''));
-    programTextEl.value = names.map(n=>'- '+n).join('\n');
-    programTextEl.dispatchEvent(new Event('input'));
-    if (tplParam) pickTemplate(tplParam);
-    programTextEl.focus();
-  } else if (supplierParam) {
-    document.querySelector('.tab-btn[data-tab="fornitore"]').click();
-    supplierInput.value = supplierParam;
-    supplierInput.dispatchEvent(new Event('input'));
-    if (tplParam) pickTemplate(tplParam);
-    supplierInput.focus();
-  } else if (tplParam) {
-    pickTemplate(tplParam);
-  }
-
-  // Read once — a refresh should land on a clean, empty tool, not replay the
-  // same handoff and silently discard whatever the person typed since.
-  history.replaceState(null, '', location.pathname);
-})();
 </script>
 
 <!-- ── DATABASE CHAT ─────────────────────────────────────────────────────── -->
@@ -805,6 +886,157 @@ function toBase64(file) {
   }
   sendBtn.addEventListener('click',send);
   input.addEventListener('keydown',e=>{ if(e.key==='Enter') send(); });
+})();
+
+/* ═══ §4.1 — Accesso Google (si accende quando arriva il Client ID) ═════════
+   Finché la variabile GOOGLE_CLIENT_ID non è configurata su Vercel, questo
+   blocco non fa nulla e l'applicazione si comporta come prima: nessuno resta
+   fuori per una configurazione mancante. Il controllo vero è comunque lato
+   server (api/acts.js): il pulsante nascosto non è una barriera. */
+window._authToken = null;
+(async function(){
+  try{
+    const r = await fetch('/api/acts-list?auth=config');
+    if(!r.ok) return;
+    const cfg = await r.json();
+    if(!cfg.enabled || !cfg.clientId) return;   // login non ancora attivo
+
+    const bar  = document.getElementById('auth-bar');
+    const slot = document.getElementById('auth-slot');
+    const who  = document.getElementById('auth-who');
+    bar.classList.add('show');
+
+    const sc = document.createElement('script');
+    sc.src = 'https://accounts.google.com/gsi/client';
+    sc.async = true;
+    sc.onload = () => {
+      if(!window.google?.accounts?.id) return;
+      window.google.accounts.id.initialize({
+        client_id: cfg.clientId,
+        hd: cfg.domain,
+        callback: resp => {
+          window._authToken = resp.credential || null;
+          try{
+            const p = JSON.parse(atob((resp.credential||'').split('.')[1]||''));
+            who.textContent = p.email || '';
+            slot.innerHTML = '';
+          }catch{}
+        },
+      });
+      window.google.accounts.id.renderButton(slot, { type:'standard', size:'medium', text:'signin' });
+      window.google.accounts.id.prompt();
+    };
+    document.head.appendChild(sc);
+  }catch{ /* offline o endpoint non raggiungibile: si continua come oggi */ }
+})();
+
+/* ═══ §4.2 — Handoff dal Vault ══════════════════════════════════════════════
+   Il carrello del Vault apre Presenta con i fornitori già scelti:
+     ?supplier=Nome&tpl=…            → tab "Cerca nel Database", nome scritto
+     ?suppliers=Nome1|Nome2&tpl=…    → tab "Da Preventivo" / Scrivi programma
+   Due cose deliberate (§4.2): la generazione NON parte da sola, e i parametri
+   si leggono una volta sola e si rimuovono dall'indirizzo, così un F5 non
+   sovrascrive quello che l'utente ha scritto nel frattempo. */
+(function(){
+  const VALID_TPL = ['dark','venues','hotel','quotation'];
+  const qs = new URLSearchParams(location.search);
+  const one  = (qs.get('supplier')  || '').trim();
+  const many = (qs.get('suppliers') || '').trim();
+  const tpl  = (qs.get('tpl')       || '').trim();
+  if (!one && !many && !tpl) return;
+
+  // Consuma i parametri subito: da qui in poi l'indirizzo è pulito
+  history.replaceState(null, '', location.pathname);
+
+  const selectTpl = t => {
+    if (!VALID_TPL.includes(t)) return;
+    const card = document.querySelector(`.tpl-card[data-tpl="${t}"]`);
+    if (card) card.click();   // riusa il gestore esistente (aggiorna anche costLayout)
+  };
+  const openTab = name => {
+    const btn = document.querySelector(`.tab-btn[data-tab="${name}"]`);
+    if (btn) btn.click();
+  };
+
+  if (one) {
+    openTab('fornitore');
+    const inp = document.getElementById('supplier-input');
+    if (inp) { inp.value = one; inp.dispatchEvent(new Event('input')); inp.focus(); }
+    // il template non si applica alla ricerca singola: la scheda fornitore ha
+    // un suo formato. Lo teniamo comunque selezionato per la generazione da
+    // preventivo, se l'utente cambia tab.
+    selectTpl(tpl);
+  } else {
+    openTab('preventivo');
+    selectTpl(tpl);
+    if (many) {
+      const names = many.split('|').map(x => x.trim()).filter(Boolean);
+      const modeBtn = document.querySelector('.mode-btn[data-mode="text"]');
+      if (modeBtn) modeBtn.click();
+      const ta = document.getElementById('program-text');
+      if (ta && names.length) {
+        const existing = ta.value.trim();
+        const block = names.map(n => `- ${n}`).join('\n');
+        ta.value = existing ? existing + '\n' + block : block;
+        ta.dispatchEvent(new Event('input'));
+        ta.focus();
+      }
+    }
+  }
+})();
+
+/* ═══ §4.4 — Salvataggio in archivio (Love IT Projects › Presentations) ═════
+   Un solo salvataggio per generazione, su azione esplicita: mai in anteprima. */
+(function(){
+  const btn = document.getElementById('btn-archive');
+  const msg = document.getElementById('archive-msg');
+  if (!btn) return;
+  let savedFor = null;   // filename già archiviato: evita il doppio salvataggio
+
+  window._resetArchiveBtn = () => {
+    savedFor = null;
+    btn.disabled = false;
+    btn.textContent = '☐ Salva in archivio';
+    msg.textContent = '';
+    msg.className = '';
+  };
+
+  btn.addEventListener('click', async () => {
+    if (!window.generatedFilename && !generatedFilename) return;
+    const fname = generatedFilename;
+    if (savedFor === fname) return;
+    btn.disabled = true;
+    btn.textContent = '… salvataggio';
+    msg.className = '';
+    msg.textContent = '';
+    try {
+      const suppliers = (window._lastSuppliers || []).filter(Boolean);
+      const resp = await fetch('/api/acts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          savePresentation: {
+            idToken:   window._authToken || undefined,
+            title:     (window._lastTitle || fname.replace(/\.html?$/i,'').replace(/_/g,' ')),
+            template:  (typeof deckTemplate !== 'undefined' ? deckTemplate : 'dark'),
+            suppliers,
+            filename:  fname,
+          }
+        })
+      });
+      const data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
+      savedFor = fname;
+      btn.textContent = '✓ In archivio';
+      msg.className = 'ok';
+      msg.textContent = 'Salvato in Love IT Projects › Presentations.';
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = '☐ Salva in archivio';
+      msg.className = 'err';
+      msg.textContent = 'Non salvato: ' + e.message + ' — la presentazione resta scaricabile qui sopra.';
+    }
+  });
 })();
 </script>
 </body>

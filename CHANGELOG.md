@@ -8,6 +8,77 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v59 — 2026-08-15 — Allineamento a Vault e configurazione accesso
+- **Token "Studio" riallineati sui valori esatti del Vault** (`Styles.html`,
+  blocco "Studio" riga 429, passato da Ing. A): `--radius:12px` per le card,
+  `--radius-sm:8px` per bottoni e campi, `--radius-lg:18px` per i pannelli;
+  ombre `0 1px 2px rgba(20,20,20,.04),0 1px 1px rgba(20,20,20,.03)` (card),
+  `0 6px 20px rgba(20,20,20,.08)` (lift su hover, con `translateY(-2px)` come
+  `.db-card`), `0 20px 60px rgba(20,20,20,.16)` (overlay). Aggiunti
+  `--accent-deep:#C94E3F` per gli hover della primaria (prima era una mia
+  stima) e i toni sidebar `--side-2/--side-ink/--side-muted`. Adottato anche
+  il pattern pastiglia del Vault: tab, selettori modo e opzioni costi a
+  `border-radius:99px` come `.status`/`.chip`. Nessun valore più stimato a
+  occhio.
+- **Client ID ricevuto e documentato** in `SETUP.md` con la procedura
+  nell'ordine giusto (prima gli Authorized JavaScript origins su Google Cloud,
+  poi la variabile su Vercel), il comando per verificare che il login sia
+  acceso, e la nota sui deploy di anteprima: Google non accetta wildcard e
+  Vercel cambia indirizzo a ogni push, quindi lì il login non si potrà fare e
+  il salvataggio risponderà "Accesso richiesto".
+- Confermato con Ing. A: i nomi template restano `dark`, `venues`, `hotel`,
+  `quotation` — il carrello del Vault può contare su questi quattro valori
+  (§6, contratto fra le due applicazioni).
+
+## v57 — 2026-08-15 — Istruzioni di lavoro §4 (Ing. C)
+Attuata la parte di Presenta del documento operativo del 15/08.
+
+- **§4.2 Handoff dal Vault.** `public/index.html` legge i parametri
+  dell'indirizzo: `?supplier=Nome&tpl=…` apre "Cerca nel Database" col nome già
+  scritto; `?suppliers=A|B&tpl=…` apre "Scrivi programma" con i nomi in elenco
+  e il template selezionato. Le due cose deliberate del documento sono
+  rispettate: la generazione **non parte da sola** (il pulsante resta da
+  premere) e i parametri si leggono **una volta sola** e vengono rimossi
+  dall'indirizzo con `history.replaceState`, così un F5 non sovrascrive quanto
+  scritto nel frattempo. Template accettati solo dall'elenco
+  `dark|venues|hotel|quotation`: un valore fuori elenco viene ignorato senza
+  errori. **Se questi nomi cambiano va avvisato Ing. A** (§6).
+- **§4.3 Restyle "Studio".** Interfaccia dello strumento passata ai token
+  condivisi (`--charcoal/--canvas/--ink/--muted/--border/--teal/--coral/--amber`):
+  fondo chiaro, card bianche con raggio 14px e ombra morbida, tab e selettori a
+  pastiglia, azione primaria in coral pieno, stati positivi in teal, avvisi in
+  amber. **I template delle presentazioni non sono stati toccati**: Dark
+  Journey, Venue Options, Hotel Proposal e Quotazione Venue restano documenti
+  per il cliente col loro linguaggio. Raggio/ombra/spaziature sono la lettura
+  più fedele dell'elenco nelle istruzioni: **da riallineare su `Styles.html`
+  del Vault** quando Ing. A lo passa (§4.3).
+- **§4.4 Archivio presentazioni.** Creata la tabella `Presentations` nella base
+  Love IT Projects (`tblqE4NEkpj28xH8f`) con Title, Template, Suppliers,
+  Project (link a Projects), Created By, Created At, File, Notes. Campo `File`
+  come **URL** e non allegato: la tabella è un indice, il file resta dove
+  Presenta lo genera (decisione presa con Marco). Nuovo pulsante "Salva in
+  archivio" nella schermata di risultato: salva **solo su azione esplicita**,
+  una volta per generazione (il secondo click non riscrive), mai in anteprima.
+  I fornitori si salvano **per nome** (§0.1: gli ID non sopravvivono alla copia
+  fra basi), deduplicati. Se l'archivio non risponde il messaggio lo dice e
+  ricorda che la presentazione resta scaricabile. Endpoint dentro `acts.js`
+  (regola: mai nuovi file in `api/`). **Presenta non scrive da nessun'altra
+  parte**: né su Clients/Quotes/Quote Lines, né sulla base Fornitori.
+- **§4.1 Accesso Google, pronto ma spento.** Verifica del token **lato server**
+  in `acts.js` (`verifyGoogleIdToken`: audience, scadenza e dominio
+  loveit-dmc.com) applicata al salvataggio, più barra di accesso nella home che
+  compare solo quando `/api/acts-list?auth=config` risponde `enabled:true`.
+  Finché `GOOGLE_CLIENT_ID` non è configurato su Vercel l'app funziona
+  esattamente come oggi — **in attesa del Client ID da Ing. B (§1.1)**. In caso
+  di dubbio sulla verifica non si concede: si chiede di rifare l'accesso.
+- Verifiche fatte eseguendo davvero la pagina (§0.5, §7): handoff nelle due
+  forme e con template non valido, URL ripulito, generazione non avviata;
+  salvataggio con payload corretto, doppio click innocuo, errore archivio
+  gestito; chiamata all'endpoint **direttamente** con login attivo e senza
+  token → 401, con token di dominio estraneo → 401, con token valido → salvato
+  con Created By. Schema della tabella verificato con una scrittura reale su
+  Airtable, poi cancellata.
+
 ## v56 — 2026-08-13
 - **Cost breakdown: ora si scelgono entrambe le modalità.** Selezionando
   "Quotazione Venue" nella home compare il selettore "Cost breakdown" con tre

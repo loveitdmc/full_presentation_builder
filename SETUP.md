@@ -123,6 +123,63 @@ Puoi modificarla direttamente su GitHub → salva → Vercel rideploya automatic
 
 ---
 
+## Accesso con Google (§4.1 delle istruzioni di lavoro)
+
+L'URL di produzione di Presenta è **https://full-presentation-builder.vercel.app**
+— lo stesso che Preventivi apre con "Generate Presentation" e che il carrello
+del Vault usa per l'handoff (§4.2).
+
+Il Sign-In è **già implementato** (Google Identity Services, verifica del token
+lato server in `api/acts.js`, solo dominio `loveit-dmc.com`, nessun ruolo: chi
+entra può fare tutto quello che Presenta fa). Resta **spento** finché non è
+configurata la variabile: senza, l'applicazione funziona come prima e nessuno
+resta fuori per una configurazione mancante.
+
+### Come accenderlo — nell'ordine
+
+1. **Su Google Cloud**, nel Client ID
+   `827028007345-dc89kfa95gp492nduioeoq9nrmm67q5q.apps.googleusercontent.com`,
+   aggiungere agli **Authorized JavaScript origins**:
+
+   ```
+   https://full-presentation-builder.vercel.app
+   http://localhost:3000                        (solo se si sviluppa in locale)
+   ```
+
+   Non servono Authorized redirect URIs: GIS restituisce il token a una callback
+   JavaScript, non con un redirect.
+
+   Nota sui **deploy di anteprima**: Vercel genera un indirizzo diverso ad ogni
+   push (`…-abc123.vercel.app`) e Google **non accetta wildcard** fra gli
+   origins. Sulle anteprime il login non si potrà quindi fare: l'app resta
+   utilizzabile, ma il salvataggio in archivio risponderà "Accesso richiesto".
+   È il comportamento voluto — meglio che una scrittura anonima.
+
+2. **Su Vercel**, Settings → Environment Variables:
+
+   | Variabile | Valore |
+   |---|---|
+   | `GOOGLE_CLIENT_ID` | `827028007345-dc89kfa95gp492nduioeoq9nrmm67q5q.apps.googleusercontent.com` |
+
+   Non è un segreto (è pubblico per definizione in un client web), ma va tenuto
+   in variabile e non nel codice: è quello che permette di spegnere il login
+   senza rideployare.
+
+3. **Ridistribuire** (o attendere il deploy successivo). Da quel momento in cima
+   alla pagina compare la barra di accesso e il salvataggio in archivio registra
+   l'email di chi ha generato la presentazione.
+
+### Come verificare che sia acceso
+
+```
+curl https://full-presentation-builder.vercel.app/api/acts-list?auth=config
+→ {"enabled":true,"clientId":"827028007345-…","domain":"loveit-dmc.com"}
+```
+
+`enabled:false` significa che la variabile non è arrivata alla funzione.
+
+---
+
 ## Troubleshooting
 
 **"Template file not found"** → Verifica che `template/loveit_template.html` sia nel repository.

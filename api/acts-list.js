@@ -71,6 +71,17 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
+  // ── §4.1 — Configurazione del login (?auth=config) ──────────────────────────
+  // Il client chiede se il Sign-In è attivo. Finché GOOGLE_CLIENT_ID non è
+  // configurato su Vercel risponde {enabled:false} e l'app resta com'è oggi.
+  if (req.query?.auth === "config") {
+    return res.status(200).json({
+      enabled:  !!process.env.GOOGLE_CLIENT_ID,
+      clientId: process.env.GOOGLE_CLIENT_ID || null,
+      domain:   "loveit-dmc.com",
+    });
+  }
+
   // ── Image proxy per l'export PPTX (?img=<url>) ──────────────────────────────
   // Le foto Airtable/Unsplash non mandano header CORS: il browser non può
   // leggerle per incorporarle nel .pptx. Questo proxy le rigira con CORS aperto.
