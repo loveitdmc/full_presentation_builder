@@ -170,6 +170,11 @@ async function handleSavePresentation(payload, res, token, req) {
   if (auth.email) fields["Created By"] = auth.email;
   if (fileUrl)    fields["File"] = fileUrl;
   if (payload?.notes) fields["Notes"] = String(payload.notes).slice(0, 2000);
+  // v62 — collegamento (opzionale) al progetto: stessa base, campo Project già
+  // esistente in Presentations. Non è l'ID che attraversa applicazioni diverse
+  // (§0.1 vieta quello): resta tutto dentro Love IT Projects.
+  const projectId = String(payload?.projectId || "").trim();
+  if (/^rec[A-Za-z0-9]{14}$/.test(projectId)) fields["Project"] = [projectId];
 
   try {
     const r = await fetch(`https://api.airtable.com/v0/${PROJECTS_BASE_ID}/${TABLE_PRESENTATIONS}`, {
@@ -195,6 +200,38 @@ async function handleSavePresentation(payload, res, token, req) {
     return res.status(200).json({ ok: true, id: data.records?.[0]?.id || null, savedBy: auth.email || null, warning: blobWarning });
   } catch (e) {
     return res.status(502).json({ error: `Archivio non raggiungibile: ${e.message}. La presentazione è comunque scaricabile.` });
+  }
+}
+
+// v62 — cancellazione: "Deleted At"/"Deleted By" invece di una DELETE vera,
+// stessa convenzione già in uso per Quotes/Projects/Quote Lines in questa
+// base ("un record con questo campo impostato è nel cestino; svuotarlo lo
+// ripristina esattamente com'era"). Coerenza col resto della base, non solo
+// prudenza: gli altri strumenti dei colleghi si aspettano di trovarla.
+async function handleDeletePresentation(payload, res, token, req) {
+  const auth = await verifyGoogleIdToken(payload?.idToken);
+  if (auth.enabled && !auth.email) return res.status(401).json({ error: auth.error || "Accesso richiesto." });
+
+  const id = String(payload?.id || "").trim();
+  if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return res.status(400).json({ error: "ID presentazione mancante o non valido." });
+
+  const fields = { "Deleted At": new Date().toISOString() };
+  if (auth.email) fields["Deleted By"] = auth.email;
+
+  try {
+    const r = await fetch(`https://api.airtable.com/v0/${PROJECTS_BASE_ID}/${TABLE_PRESENTATIONS}/${id}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ fields }),
+      signal: AbortSignal.timeout(9000),
+    });
+    if (!r.ok) {
+      const txt = await r.text();
+      return res.status(502).json({ error: `Non riesco a cancellarla (${r.status}). ${txt.slice(0, 160)}` });
+    }
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    return res.status(502).json({ error: `Non riesco a cancellarla: ${e.message}` });
   }
 }
 
@@ -687,6 +724,11 @@ export default async function handler(req, res) {
     const tk = process.env.AIRTABLE_PROJECTS_TOKEN || process.env.AIRTABLE_TOKEN;
     if (!tk) return res.status(500).json({ error: "Configurazione Airtable mancante." });
     return handleSavePresentation(_body.savePresentation, res, tk, req);
+  }
+  if (_body.deletePresentation) {
+    const tk = process.env.AIRTABLE_PROJECTS_TOKEN || process.env.AIRTABLE_TOKEN;
+    if (!tk) return res.status(500).json({ error: "Configurazione Airtable mancante." });
+    return handleDeletePresentation(_body.deletePresentation, res, tk, req);
   }
 
   const act = _s(_body.act), activity = _s(_body.activity), supplierParam = _s(_body.supplier),

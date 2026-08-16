@@ -8,6 +8,31 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v62 — 2026-08-16 — Cancellazione, collegamento a un progetto, login che non chiede più ogni volta
+- **Cancellare una presentazione salvata.** Nel modal "Le mie presentazioni"
+  ogni voce ha ora un cestino. Cancellare non fa una DELETE vera su Airtable:
+  imposta `Deleted At`/`Deleted By` (due campi nuovi su Presentations) ed
+  esce dall'elenco — la stessa convenzione già in uso per Quotes, Projects e
+  Quote Lines in questa base ("un record con questo campo impostato è nel
+  cestino; svuotarlo lo ripristina esattamente com'era"). Non l'ho inventata:
+  è coerente con quello che i colleghi si aspettano di trovare qui.
+- **Collegare una presentazione a un progetto.** Presentations aveva già un
+  campo `Project` (link verso Projects, mai usato finora). Prima di "Salva in
+  archivio" compare ora un selettore facoltativo con l'elenco dei progetti
+  non cancellati (nuovo endpoint `?archive=projects` su `acts-list.js`); nel
+  modal, il nome del progetto compare accanto a data e fornitori. L'ID che
+  viaggia resta dentro la stessa base — non attraversa applicazioni diverse,
+  quindi non tocca la regola §0.1.
+- **Login che non chiede più ad ogni ricarica.** Prima ogni caricamento
+  pagina richiamava `google.accounts.id.prompt()` da zero, quindi il
+  selettore account di Google si riproponeva in continuazione anche a
+  sessione valida. Ora il token viene tenuto in `localStorage` con la sua
+  scadenza reale (il campo `exp` del JWT — circa un'ora, non inventata): se
+  è ancora valido, Presenta lo riusa direttamente e non richiama affatto
+  Google, niente script GIS caricato, niente prompt. Il login torna a
+  servire solo quando il token scade o dopo aver premuto il nuovo link
+  "Cambia account" (cancella la cache e forza una nuova scelta di account).
+
 ## v61 — 2026-08-16 — Archivio davvero riapribile + template anche nella ricerca
 - **"Le mie presentazioni":** nuovo pulsante nell'header apre un elenco delle
   presentazioni salvate in Love IT Projects › Presentations (titolo,

@@ -279,6 +279,19 @@ textarea:focus,#program-text:focus,.supplier-field input:focus{ border-color:var
   padding:.55rem 1rem;font-size:.8rem;font-weight:600;text-decoration:none;cursor:pointer;transition:background .15s}
 .arc-open:hover{background:var(--accent-deep)}
 .arc-open.disabled{background:var(--border);color:var(--muted);pointer-events:none}
+.arc-del{flex-shrink:0;background:none;border:1px solid var(--border);border-radius:var(--radius-sm);
+  color:var(--muted);padding:.55rem .7rem;font-size:.85rem;cursor:pointer;transition:all .15s;margin-left:.4rem}
+.arc-del:hover{border-color:var(--amber);color:var(--amber)}
+
+/* ── v62 — progetto (facoltativo) al momento del salvataggio ── */
+#archive-project-row{display:inline-flex;align-items:center;gap:.5rem;margin:.9rem 0 0;width:100%;justify-content:center}
+#archive-project-row label{color:var(--muted);font-size:.8rem}
+#archive-project{background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--ink);
+  font-family:var(--sans);font-size:.82rem;padding:.4rem .6rem;max-width:280px}
+
+/* ── v62 — login persistente: link "Cambia account" ── */
+#auth-switch{background:none;border:none;color:var(--muted);font-size:.76rem;text-decoration:underline;cursor:pointer;margin-left:.3rem}
+#auth-switch:hover{color:var(--ink)}
 </style>
 </head>
 <body>
@@ -475,6 +488,10 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
     <a id="btn-download" href="#" download>⬇ Scarica HTML</a>
     <a id="btn-preview" href="#">⊡ Anteprima</a>
     <button id="btn-archive" type="button">☐ Salva in archivio</button>
+    <div id="archive-project-row">
+      <label for="archive-project">Progetto (facoltativo)</label>
+      <select id="archive-project"><option value="">Nessun progetto</option></select>
+    </div>
     <p id="archive-msg"></p>
     <button id="btn-new">Genera un'altra presentazione</button>
   </div>
@@ -970,12 +987,36 @@ function toBase64(file) {
   input.addEventListener('keydown',e=>{ if(e.key==='Enter') send(); });
 })();
 
-/* ═══ §4.1 — Accesso Google (si accende quando arriva il Client ID) ═════════
+/* ═══ §4.1/v62 — Accesso Google (si accende quando arriva il Client ID) ═════
    Finché la variabile GOOGLE_CLIENT_ID non è configurata su Vercel, questo
    blocco non fa nulla e l'applicazione si comporta come prima: nessuno resta
    fuori per una configurazione mancante. Il controllo vero è comunque lato
-   server (api/acts.js): il pulsante nascosto non è una barriera. */
+   server (api/acts.js): il pulsante nascosto non è una barriera.
+   v62 — il token viene tenuto in localStorage con la sua scadenza reale
+   (il campo "exp" del JWT, non inventata): finché è valido non si richiama
+   affatto Google, quindi niente prompt ripetuto ad ogni ricarica. Il login
+   vero e proprio torna a servire solo quando il token scade (circa un'ora)
+   o dopo "Cambia account". */
 window._authToken = null;
+const AUTH_CACHE_KEY = 'loveit_auth_v1';
+
+function _authFromCache(){
+  try {
+    const raw = localStorage.getItem(AUTH_CACHE_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!saved?.credential || !saved?.exp) return null;
+    if (saved.exp * 1000 < Date.now() + 60000) return null; // scaduto (margine 60s)
+    return saved;
+  } catch { return null; }
+}
+function _authToCache(credential, email, exp){
+  try { localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify({ credential, email, exp })); } catch {}
+}
+function _authClearCache(){
+  try { localStorage.removeItem(AUTH_CACHE_KEY); } catch {}
+}
+
 (async function(){
   try{
     const r = await fetch('/api/acts-list?auth=config');
@@ -988,6 +1029,25 @@ window._authToken = null;
     const who  = document.getElementById('auth-who');
     bar.classList.add('show');
 
+    function showSignedIn(email){
+      window._authToken = _authFromCache()?.credential || window._authToken;
+      who.textContent = email || '';
+      slot.innerHTML = '<button id="auth-switch" type="button">Cambia account</button>';
+      document.getElementById('auth-switch').addEventListener('click', () => {
+        _authClearCache();
+        try { window.google?.accounts?.id?.disableAutoSelect(); } catch {}
+        location.reload();
+      });
+    }
+
+    // Percorso rapido: token ancora valido in cache, nessuna chiamata a Google.
+    const cached = _authFromCache();
+    if (cached) {
+      window._authToken = cached.credential;
+      showSignedIn(cached.email);
+      return;
+    }
+
     const sc = document.createElement('script');
     sc.src = 'https://accounts.google.com/gsi/client';
     sc.async = true;
@@ -996,12 +1056,13 @@ window._authToken = null;
       window.google.accounts.id.initialize({
         client_id: cfg.clientId,
         hd: cfg.domain,
+        auto_select: true,   // se il browser ha già una sessione Google attiva, non chiede di scegliere l'account ogni volta
         callback: resp => {
           window._authToken = resp.credential || null;
           try{
             const p = JSON.parse(atob((resp.credential||'').split('.')[1]||''));
-            who.textContent = p.email || '';
-            slot.innerHTML = '';
+            _authToCache(resp.credential, p.email || '', Number(p.exp) || (Date.now()/1000 + 3300));
+            showSignedIn(p.email || '');
           }catch{}
         },
       });
@@ -1071,8 +1132,29 @@ window._authToken = null;
 (function(){
   const btn = document.getElementById('btn-archive');
   const msg = document.getElementById('archive-msg');
+  const projSel = document.getElementById('archive-project');
   if (!btn) return;
   let savedFor = null;   // filename già archiviato: evita il doppio salvataggio
+  let projectsLoaded = false;
+
+  // v62 — elenco progetti caricato una sola volta, alla prima presentazione
+  // pronta (non subito al caricamento pagina: nessuna chiamata inutile se
+  // non si arriva mai al salvataggio).
+  async function loadProjectsOnce(){
+    if (projectsLoaded || !projSel) return;
+    projectsLoaded = true;
+    try {
+      const resp = await fetch('/api/acts-list?archive=projects');
+      const data = await resp.json();
+      (data.items || []).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.destination ? `${p.name} — ${p.destination}` : p.name;
+        projSel.appendChild(opt);
+      });
+    } catch { /* selettore resta con la sola opzione "Nessun progetto" */ }
+  }
+  window._loadArchiveProjects = loadProjectsOnce;
 
   window._resetArchiveBtn = () => {
     savedFor = null;
@@ -1080,6 +1162,8 @@ window._authToken = null;
     btn.textContent = '☐ Salva in archivio';
     msg.textContent = '';
     msg.className = '';
+    if (projSel) projSel.value = '';
+    loadProjectsOnce();
   };
 
   btn.addEventListener('click', async () => {
@@ -1103,6 +1187,7 @@ window._authToken = null;
             suppliers,
             filename:  fname,
             html:      window.generatedHtml || generatedHtml || '',
+            projectId: (projSel && projSel.value) || undefined,
           }
         })
       });
@@ -1147,36 +1232,69 @@ window._authToken = null;
     catch { return ''; }
   }
 
+  function render(items){
+    if (!items.length) {
+      listEl.innerHTML = '<div class="arc-empty">Nessuna presentazione salvata finora.<br>Usa "☐ Salva in archivio" dopo aver generato una presentazione.</div>';
+      return;
+    }
+    listEl.innerHTML = items.map(it => {
+      const tplLabel = TPL_LABELS[it.template] || it.template;
+      const meta = [fmtDate(it.createdAt), it.createdBy, it.projectName, it.suppliers.slice(0,3).join(', ') + (it.suppliers.length>3 ? '…' : '')]
+        .filter(Boolean).map(esc).join(' · ');
+      const openHtml = it.fileUrl
+        ? `<a class="arc-open" href="${esc(it.fileUrl)}" target="_blank" rel="noopener">Apri</a>`
+        : `<span class="arc-open disabled" title="Salvata senza file (vedi messaggio al momento del salvataggio)">Non disponibile</span>`;
+      return `<div class="arc-item" data-id="${esc(it.id)}">
+        <div class="arc-info">
+          <div class="arc-title">${esc(it.title)}</div>
+          <div class="arc-meta"><span class="arc-tpl">${esc(tplLabel)}</span>${meta ? ' · ' + meta : ''}</div>
+        </div>
+        ${openHtml}
+        <button type="button" class="arc-del" data-del="${esc(it.id)}" title="Cancella">🗑</button>
+      </div>`;
+    }).join('');
+  }
+
   async function load(){
     listEl.innerHTML = '<div class="arc-loading">Caricamento…</div>';
     try {
       const resp = await fetch('/api/acts-list?archive=list');
       const data = await resp.json();
       if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
-      const items = data.items || [];
-      if (!items.length) {
-        listEl.innerHTML = '<div class="arc-empty">Nessuna presentazione salvata finora.<br>Usa "☐ Salva in archivio" dopo aver generato una presentazione.</div>';
-        return;
-      }
-      listEl.innerHTML = items.map(it => {
-        const tplLabel = TPL_LABELS[it.template] || it.template;
-        const meta = [fmtDate(it.createdAt), it.createdBy, it.suppliers.slice(0,3).join(', ') + (it.suppliers.length>3 ? '…' : '')]
-          .filter(Boolean).map(esc).join(' · ');
-        const openHtml = it.fileUrl
-          ? `<a class="arc-open" href="${esc(it.fileUrl)}" target="_blank" rel="noopener">Apri</a>`
-          : `<span class="arc-open disabled" title="Salvata senza file (vedi messaggio al momento del salvataggio)">Non disponibile</span>`;
-        return `<div class="arc-item">
-          <div class="arc-info">
-            <div class="arc-title">${esc(it.title)}</div>
-            <div class="arc-meta"><span class="arc-tpl">${esc(tplLabel)}</span>${meta ? ' · ' + meta : ''}</div>
-          </div>
-          ${openHtml}
-        </div>`;
-      }).join('');
+      render(data.items || []);
     } catch (e) {
       listEl.innerHTML = `<div class="arc-error">Non riesco a caricare l'archivio: ${esc(e.message)}</div>`;
     }
   }
+
+  // Cancellazione (v62): un solo listener delegato, l'elenco viene ridisegnato
+  // ad ogni salvataggio/apertura quindi i pulsanti cambiano di continuo.
+  listEl.addEventListener('click', async e => {
+    const btn = e.target.closest('[data-del]');
+    if (!btn) return;
+    const id = btn.dataset.del;
+    const item = btn.closest('.arc-item');
+    const titleEl = item?.querySelector('.arc-title');
+    const title = titleEl ? titleEl.textContent : 'questa presentazione';
+    if (!confirm(`Cancellare "${title}" dall'archivio?\n\nIl file resta scaricabile finché il link è aperto altrove, ma sparisce da questo elenco.`)) return;
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      const resp = await fetch('/api/acts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deletePresentation: { id, idToken: window._authToken || undefined } }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
+      item.remove();
+      if (!listEl.querySelector('.arc-item')) render([]);
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = '🗑';
+      alert('Non cancellata: ' + err.message);
+    }
+  });
 
   openBtn.addEventListener('click', () => {
     overlay.classList.add('open');

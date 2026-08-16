@@ -33,35 +33,78 @@ async function airtableFetch(url, token) {
   return resp.json();
 }
 
-// ── v61 — "Le mie presentazioni": lettura della tabella Presentations ───────
+// ── v61/v62 — "Le mie presentazioni": lettura di Presentations e Projects ───
 // (Love IT Projects, non Fornitori — stessa base/tabella scritta da §4.4).
 const PROJECTS_BASE_ID    = "appdvIG3LsRARALRP";
 const TABLE_PRESENTATIONS = "tblqE4NEkpj28xH8f";
+const TABLE_PROJECTS      = "tbluxqrkeHZXliVTH";
 
 async function handleArchiveList(res) {
   const token = process.env.AIRTABLE_PROJECTS_TOKEN || process.env.AIRTABLE_TOKEN;
   if (!token) return res.status(500).json({ error: "Configurazione Airtable mancante." });
-  const fields = ["Title", "Template", "Suppliers", "Created At", "Created By", "File"]
+  const fields = ["Title", "Template", "Suppliers", "Created At", "Created By", "File", "Project", "Deleted At"]
     .map(f => `fields[]=${encodeURIComponent(f)}`).join("&");
+  // v62 — nel cestino (Deleted At impostato) non compare nell'elenco, stessa
+  // convenzione delle altre tabelle di questa base.
+  const formula = encodeURIComponent(`{Deleted At}=BLANK()`);
   const url = `https://api.airtable.com/v0/${PROJECTS_BASE_ID}/${TABLE_PRESENTATIONS}`
-    + `?${fields}&sort[0][field]=${encodeURIComponent("Created At")}&sort[0][direction]=desc&maxRecords=100`;
+    + `?${fields}&filterByFormula=${formula}&sort[0][field]=${encodeURIComponent("Created At")}&sort[0][direction]=desc&maxRecords=100`;
   try {
     const data = await airtableFetch(url, token);
-    const items = (data.records || []).map(r => ({
-      id:        r.id,
-      title:     r.fields["Title"] || "(senza titolo)",
-      template:  r.fields["Template"] || "dark",
-      suppliers: (r.fields["Suppliers"] || "").split("\n").map(s => s.trim()).filter(Boolean),
-      createdAt: r.fields["Created At"] || null,
-      createdBy: r.fields["Created By"] || null,
-      fileUrl:   r.fields["File"] || null,
-    }));
+    const records = data.records || [];
+
+    // Nomi dei progetti collegati — una sola richiesta batch, come per i
+    // thumbnail dei Media più sopra.
+    const projectIds = [...new Set(records.flatMap(r => r.fields["Project"] || []))].slice(0, 100);
+    const projectMap = new Map();
+    if (projectIds.length) {
+      try {
+        const idsClause = projectIds.map(id => `RECORD_ID()="${id}"`).join(",");
+        const purl = `https://api.airtable.com/v0/${PROJECTS_BASE_ID}/${TABLE_PROJECTS}?filterByFormula=${encodeURIComponent(`OR(${idsClause})`)}&fields[]=${encodeURIComponent("Project Name")}&maxRecords=100`;
+        const pData = await airtableFetch(purl, token);
+        for (const pr of (pData.records || [])) projectMap.set(pr.id, pr.fields["Project Name"] || "");
+      } catch { /* nome progetto opzionale — l'elenco resta utile senza */ }
+    }
+
+    const items = records.map(r => {
+      const projId = (r.fields["Project"] || [])[0] || null;
+      return {
+        id:          r.id,
+        title:       r.fields["Title"] || "(senza titolo)",
+        template:    r.fields["Template"] || "dark",
+        suppliers:   (r.fields["Suppliers"] || "").split("\n").map(s => s.trim()).filter(Boolean),
+        createdAt:   r.fields["Created At"] || null,
+        createdBy:   r.fields["Created By"] || null,
+        fileUrl:     r.fields["File"] || null,
+        projectId:   projId,
+        projectName: projId ? (projectMap.get(projId) || null) : null,
+      };
+    });
     return res.status(200).json({ items });
   } catch (e) {
     if (/Airtable 40[34]/.test(e.message)) {
       return res.status(502).json({ error: "Il token Airtable non ha accesso in lettura alla base Love IT Projects." });
     }
     return res.status(502).json({ error: `Archivio non raggiungibile: ${e.message}` });
+  }
+}
+
+// v62 — elenco progetti per il selettore opzionale al momento del salvataggio.
+async function handleArchiveProjects(res) {
+  const token = process.env.AIRTABLE_PROJECTS_TOKEN || process.env.AIRTABLE_TOKEN;
+  if (!token) return res.status(500).json({ error: "Configurazione Airtable mancante." });
+  const fields = ["Project Name", "Destination", "Deleted At"].map(f => `fields[]=${encodeURIComponent(f)}`).join("&");
+  const formula = encodeURIComponent(`{Deleted At}=BLANK()`);
+  const url = `https://api.airtable.com/v0/${PROJECTS_BASE_ID}/${TABLE_PROJECTS}`
+    + `?${fields}&filterByFormula=${formula}&sort[0][field]=${encodeURIComponent("Project Name")}&maxRecords=200`;
+  try {
+    const data = await airtableFetch(url, token);
+    const items = (data.records || [])
+      .map(r => ({ id: r.id, name: r.fields["Project Name"] || "(senza nome)", destination: r.fields["Destination"] || "" }))
+      .filter(p => p.name);
+    return res.status(200).json({ items });
+  } catch (e) {
+    return res.status(502).json({ error: `Elenco progetti non raggiungibile: ${e.message}` });
   }
 }
 
@@ -114,9 +157,12 @@ export default async function handler(req, res) {
     });
   }
 
-  // ── §4.4/v61 — Archivio presentazioni (?archive=list) ───────────────────────
+  // ── §4.4/v61-v62 — Archivio presentazioni (?archive=list|projects) ──────────
   if (req.query?.archive === "list") {
     return handleArchiveList(res);
+  }
+  if (req.query?.archive === "projects") {
+    return handleArchiveProjects(res);
   }
 
   // ── Image proxy per l'export PPTX (?img=<url>) ──────────────────────────────
