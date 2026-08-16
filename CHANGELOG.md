@@ -8,6 +8,52 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v61 — 2026-08-16 — Archivio davvero riapribile + template anche nella ricerca
+- **"Le mie presentazioni":** nuovo pulsante nell'header apre un elenco delle
+  presentazioni salvate in Love IT Projects › Presentations (titolo,
+  template, data, chi l'ha salvata, fornitori inclusi), con un pulsante
+  "Apri" per ciascuna. Endpoint di lettura aggiunto a `acts-list.js`
+  (`?archive=list`), non un file nuovo (regola d'oro in cima a questo file).
+- **Il file adesso viene davvero salvato, non solo referenziato.** Fino alla
+  v60 il campo `File` era un link `/?file=…` che non è mai stato servito da
+  nessuna parte — puntava a niente. Ora "Salva in archivio" carica l'HTML
+  generato su **Vercel Blob** (`@vercel/blob`, nuova dipendenza) e usa l'URL
+  reale del file come campo `File`. Aprire quel link apre la presentazione
+  stessa, editabile — non una copia statica — perché l'editor è incorporato
+  nell'HTML esportato fin dalla v11.
+  **Serve un passo manuale su Vercel** (Storage → Create → Blob, poi
+  collegare il progetto): finché `BLOB_READ_WRITE_TOKEN` non è configurato,
+  il salvataggio prosegue comunque — titolo/template/fornitori restano
+  utili — ma "Le mie presentazioni" mostra "Non disponibile" al posto del
+  pulsante Apri. Vedi `SETUP.md`.
+- **Template scelto anche in "Cerca nel Database".** Prima la ricerca
+  unificata (Suppliers + Artists & Shows + Activities) generava sempre una
+  "scheda" nel tema scuro, senza copertina/chiusura. Ora le stesse quattro
+  card del tab "Da Preventivo" sono disponibili anche qui (stato
+  sincronizzato fra le due copie): scegliendo Venue Options, Hotel Proposal
+  o Quotazione Venue si ottiene un mini-deck con copertina, invece della sola
+  scheda. Il default resta "Scheda semplice" (ex comportamento dark), che
+  continua a nascondere copertina/overview/chiusura come sempre.
+  `api/acts.js`, `api/supplier.js`: `deckTemplate`/`costLayout` propagati
+  in `generateActFullPage`, `generateActivityFullPage`,
+  `generateSupplierFullPage` e nella dispatch di `handleUnifiedSearch`.
+
+## v60 — 2026-08-15 — Permessi Airtable per l'archivio
+- **Diagnosi del 403 in produzione** ("INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND"
+  al primo salvataggio reale): il token Airtable di Presenta ha accesso alla
+  sola base Fornitori — fino alla v57 l'app non scriveva da nessuna parte, il
+  permesso su Love IT Projects non era mai servito. Non è un bug del codice:
+  la richiesta è corretta, manca l'autorizzazione.
+- **Messaggio d'errore che dice cosa fare** invece del solo codice (§7): su
+  403/404 la schermata ora spiega che il token non ha accesso alla base e dove
+  aggiungerlo, ricordando che la presentazione resta scaricabile.
+- **Token dedicato opzionale:** se esiste `AIRTABLE_PROJECTS_TOKEN` viene usato
+  per la scrittura sull'archivio, altrimenti si ricade su `AIRTABLE_TOKEN`.
+  Permette di lasciare il token principale in sola lettura sulla base Fornitori
+  e concedere la scrittura solo dove serve.
+- `SETUP.md`: procedura per entrambe le strade (estendere il token esistente —
+  nessun redeploy necessario — oppure crearne uno separato).
+
 ## v59 — 2026-08-15 — Allineamento a Vault e configurazione accesso
 - **Token "Studio" riallineati sui valori esatti del Vault** (`Styles.html`,
   blocco "Studio" riga 429, passato da Ing. A): `--radius:12px` per le card,

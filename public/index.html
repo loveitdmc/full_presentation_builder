@@ -252,6 +252,33 @@ textarea:focus,#program-text:focus,.supplier-field input:focus{ border-color:var
 /* Errori e conferme: pastiglie, non testo nudo */
 #error,.error-box{ background:var(--amber-wash)!important;border:1px solid var(--amber)!important;
   border-radius:var(--radius-sm)!important;color:#7A5A1E!important; }
+
+/* ── v61 — "Le mie presentazioni" (archivio) ── */
+#btn-archive-open{background:none;border:1px solid var(--border);border-radius:99px;color:var(--muted);
+  font-family:var(--sans);font-size:.78rem;padding:.45rem .95rem;cursor:pointer;transition:all .15s;margin-left:.9rem}
+#btn-archive-open:hover{border-color:var(--teal);color:var(--teal)}
+#archive-overlay{display:none;position:fixed;inset:0;z-index:1000;background:rgba(20,20,20,.55);
+  align-items:flex-start;justify-content:center;padding:4vh 1.2rem}
+#archive-overlay.open{display:flex}
+#archive-modal{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-pop);
+  width:min(640px,100%);max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+#archive-head{display:flex;align-items:center;justify-content:space-between;padding:1.2rem 1.5rem;border-bottom:1px solid var(--border)}
+#archive-head h2{font-family:var(--serif);font-size:1.3rem;font-weight:400;color:var(--ink)}
+#archive-close{background:none;border:none;font-size:1.2rem;color:var(--muted);cursor:pointer;padding:.2rem .5rem}
+#archive-close:hover{color:var(--ink)}
+#archive-list{overflow-y:auto;padding:.6rem 1.5rem 1.5rem}
+.arc-empty,.arc-loading,.arc-error{color:var(--muted);font-size:.88rem;padding:2rem 0;text-align:center}
+.arc-error{color:var(--amber)}
+.arc-item{display:flex;align-items:center;gap:.9rem;padding:.9rem 0;border-bottom:1px solid var(--border)}
+.arc-item:last-child{border-bottom:none}
+.arc-info{flex:1;min-width:0}
+.arc-title{color:var(--ink);font-size:.92rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arc-meta{color:var(--muted);font-size:.76rem;margin-top:.2rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.arc-tpl{background:var(--teal-wash);color:var(--teal);border-radius:99px;padding:.1rem .55rem;font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.arc-open{flex-shrink:0;background:var(--coral);color:#fff;border:none;border-radius:var(--radius-sm);
+  padding:.55rem 1rem;font-size:.8rem;font-weight:600;text-decoration:none;cursor:pointer;transition:background .15s}
+.arc-open:hover{background:var(--accent-deep)}
+.arc-open.disabled{background:var(--border);color:var(--muted);pointer-events:none}
 </style>
 </head>
 <body>
@@ -262,8 +289,19 @@ textarea:focus,#program-text:focus,.supplier-field input:focus{ border-color:var
     <div class="logo-mark">L</div>
     <div class="logo-text">Love IT DMC</div>
   </div>
-  <nav>Presenta</nav>
+  <nav>Presenta<button id="btn-archive-open" type="button">📂 Le mie presentazioni</button></nav>
 </header>
+
+<!-- v61 — Archivio: elenco delle presentazioni salvate in Love IT Projects › Presentations -->
+<div id="archive-overlay">
+  <div id="archive-modal">
+    <div id="archive-head">
+      <h2>Le mie presentazioni</h2>
+      <button id="archive-close" type="button">✕</button>
+    </div>
+    <div id="archive-list"><div class="arc-loading">Caricamento…</div></div>
+  </div>
+</div>
 
 <div class="hero">
   <h1>Genera una <em>presentazione</em></h1>
@@ -343,7 +381,7 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
           <span class="tpl-desc">Crema/teal — 5 slide per UN venue: cover, scheda, planimetria, gallery, costi</span>
         </button>
       </div>
-      <div class="cost-opt" id="cost-opt">
+      <div class="cost-opt" data-costopt>
         <p class="tpl-select-label" style="margin:.9rem 0 .5rem">Cost breakdown</p>
         <div class="cost-btns">
           <button type="button" class="cost-btn active" data-cost="both">Per fornitore + riepilogo</button>
@@ -363,6 +401,42 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
       <input type="text" id="supplier-input" placeholder="es. Rimessa Roscioli, Incanto Quartet, Golf Cart Tour…" autocomplete="off"/>
       <p class="supplier-hint">Cerca in un colpo solo nelle tabelle Suppliers, Artists &amp; Shows e Activities.<br>Se trovato nel database verranno usate descrizione e foto/video reali, altrimenti l'AI genera la scheda.</p>
     </div>
+
+    <!-- Template selector (v61) — stesso set di card del tab "Da Preventivo" -->
+    <div class="tpl-select">
+      <p class="tpl-select-label">Template della presentazione</p>
+      <div class="tpl-cards">
+        <button type="button" class="tpl-card active" data-tpl="dark">
+          <span class="tpl-swatch tpl-swatch-dark"></span>
+          <span class="tpl-name">Scheda semplice</span>
+          <span class="tpl-desc">Tema scuro — solo la scheda, senza copertina/chiusura</span>
+        </button>
+        <button type="button" class="tpl-card" data-tpl="venues">
+          <span class="tpl-swatch tpl-swatch-cream"></span>
+          <span class="tpl-name">Venue Options</span>
+          <span class="tpl-desc">Crema/oro — copertina + tabella stati + scheda e galleria</span>
+        </button>
+        <button type="button" class="tpl-card" data-tpl="hotel">
+          <span class="tpl-swatch tpl-swatch-cream"></span>
+          <span class="tpl-name">Hotel Proposal</span>
+          <span class="tpl-desc">Crema/oro — copertina + tabella tariffe + scheda e galleria</span>
+        </button>
+        <button type="button" class="tpl-card" data-tpl="quotation">
+          <span class="tpl-swatch tpl-swatch-quote"></span>
+          <span class="tpl-name">Quotazione Venue</span>
+          <span class="tpl-desc">Crema/teal — cover, scheda, planimetria, gallery, costi</span>
+        </button>
+      </div>
+      <div class="cost-opt" data-costopt>
+        <p class="tpl-select-label" style="margin:.9rem 0 .5rem">Cost breakdown</p>
+        <div class="cost-btns">
+          <button type="button" class="cost-btn active" data-cost="both">Per fornitore + riepilogo</button>
+          <button type="button" class="cost-btn" data-cost="per-supplier">Solo per fornitore</button>
+          <button type="button" class="cost-btn" data-cost="grouped">Solo riepilogo unico</button>
+        </div>
+      </div>
+    </div>
+
     <button class="btn-generate" id="btn-generate-supplier" disabled>Genera Scheda</button>
   </div>
 
@@ -417,21 +491,29 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
 <script>
 let selectedFile = null, generatedHtml = null, generatedFilename = null, activeTab = 'preventivo';
 let programMode = 'pdf'; // 'pdf' | 'text'
-let deckTemplate = 'dark'; // 'dark' | 'venues' | 'hotel'
+// Il tab "Da Preventivo" e il tab "Cerca nel Database" hanno ciascuno la
+// propria copia delle card (v61): un solo stato condiviso (deckTemplate/
+// costLayout), tenuto sincronizzato su ENTRAMBE le copie così che passando
+// da un tab all'altro la scelta resti visibile e coerente.
+let deckTemplate = 'dark'; // 'dark' | 'venues' | 'hotel' | 'quotation'
+function syncTplCards(){
+  document.querySelectorAll('.tpl-card').forEach(c=>c.classList.toggle('active', c.dataset.tpl===deckTemplate));
+  document.querySelectorAll('[data-costopt]').forEach(el=>el.classList.toggle('show', deckTemplate==='quotation'));
+}
 document.querySelectorAll('.tpl-card').forEach(card=>{
   card.addEventListener('click',()=>{
-    document.querySelectorAll('.tpl-card').forEach(c=>c.classList.remove('active'));
-    card.classList.add('active');
     deckTemplate=card.dataset.tpl;
-    document.getElementById('cost-opt').classList.toggle('show', deckTemplate==='quotation');
+    syncTplCards();
   });
 });
 let costLayout = 'both'; // 'both' | 'per-supplier' | 'grouped'
+function syncCostBtns(){
+  document.querySelectorAll('.cost-btn').forEach(b=>b.classList.toggle('active', b.dataset.cost===costLayout));
+}
 document.querySelectorAll('.cost-btn').forEach(b=>{
   b.addEventListener('click',()=>{
-    document.querySelectorAll('.cost-btn').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
     costLayout=b.dataset.cost;
+    syncCostBtns();
   });
 });
 
@@ -606,7 +688,7 @@ async function generateSupplier(confirmedName, confirmedKind) {
   try {
     const resp = await fetch('/api/acts', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ search: name, kind: confirmedKind || undefined })
+      body: JSON.stringify({ search: name, kind: confirmedKind || undefined, deckTemplate, costLayout })
     });
     clearTimeout(t);
     if (!resp.ok) { const e = await resp.json().catch(() => ({error:`HTTP ${resp.status}`})); throw new Error(e.error); }
@@ -962,9 +1044,8 @@ window._authToken = null;
     openTab('fornitore');
     const inp = document.getElementById('supplier-input');
     if (inp) { inp.value = one; inp.dispatchEvent(new Event('input')); inp.focus(); }
-    // il template non si applica alla ricerca singola: la scheda fornitore ha
-    // un suo formato. Lo teniamo comunque selezionato per la generazione da
-    // preventivo, se l'utente cambia tab.
+    // v61: il template si applica anche alla ricerca singola (card duplicata
+    // nel tab "Cerca nel Database", stato sincronizzato con syncTplCards()).
     selectTpl(tpl);
   } else {
     openTab('preventivo');
@@ -1021,6 +1102,7 @@ window._authToken = null;
             template:  (typeof deckTemplate !== 'undefined' ? deckTemplate : 'dark'),
             suppliers,
             filename:  fname,
+            html:      window.generatedHtml || generatedHtml || '',
           }
         })
       });
@@ -1028,8 +1110,13 @@ window._authToken = null;
       if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
       savedFor = fname;
       btn.textContent = '✓ In archivio';
-      msg.className = 'ok';
-      msg.textContent = 'Salvato in Love IT Projects › Presentations.';
+      if (data.warning) {
+        msg.className = 'err';
+        msg.textContent = data.warning;
+      } else {
+        msg.className = 'ok';
+        msg.textContent = 'Salvato in Love IT Projects › Presentations — riapribile dall’archivio.';
+      }
     } catch (e) {
       btn.disabled = false;
       btn.textContent = '☐ Salva in archivio';
@@ -1037,6 +1124,66 @@ window._authToken = null;
       msg.textContent = 'Non salvato: ' + e.message + ' — la presentazione resta scaricabile qui sopra.';
     }
   });
+})();
+
+/* ═══ v61 — "Le mie presentazioni" ════════════════════════════════════════
+   Elenca gli indici salvati in Love IT Projects › Presentations (§4.4) e
+   apre il link a Vercel Blob — che è la presentazione stessa, già
+   modificabile nell'editor incorporato, non solo una copia statica. */
+(function(){
+  const openBtn  = document.getElementById('btn-archive-open');
+  const overlay  = document.getElementById('archive-overlay');
+  const closeBtn = document.getElementById('archive-close');
+  const listEl   = document.getElementById('archive-list');
+  if (!openBtn || !overlay) return;
+
+  const TPL_LABELS = { dark: 'Dark Journey', venues: 'Venue Options', hotel: 'Hotel Proposal', quotation: 'Quotazione Venue' };
+  let loaded = false;
+
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function fmtDate(iso){
+    if (!iso) return '';
+    try { return new Date(iso).toLocaleDateString('it-IT', { day:'2-digit', month:'short', year:'numeric' }); }
+    catch { return ''; }
+  }
+
+  async function load(){
+    listEl.innerHTML = '<div class="arc-loading">Caricamento…</div>';
+    try {
+      const resp = await fetch('/api/acts-list?archive=list');
+      const data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
+      const items = data.items || [];
+      if (!items.length) {
+        listEl.innerHTML = '<div class="arc-empty">Nessuna presentazione salvata finora.<br>Usa "☐ Salva in archivio" dopo aver generato una presentazione.</div>';
+        return;
+      }
+      listEl.innerHTML = items.map(it => {
+        const tplLabel = TPL_LABELS[it.template] || it.template;
+        const meta = [fmtDate(it.createdAt), it.createdBy, it.suppliers.slice(0,3).join(', ') + (it.suppliers.length>3 ? '…' : '')]
+          .filter(Boolean).map(esc).join(' · ');
+        const openHtml = it.fileUrl
+          ? `<a class="arc-open" href="${esc(it.fileUrl)}" target="_blank" rel="noopener">Apri</a>`
+          : `<span class="arc-open disabled" title="Salvata senza file (vedi messaggio al momento del salvataggio)">Non disponibile</span>`;
+        return `<div class="arc-item">
+          <div class="arc-info">
+            <div class="arc-title">${esc(it.title)}</div>
+            <div class="arc-meta"><span class="arc-tpl">${esc(tplLabel)}</span>${meta ? ' · ' + meta : ''}</div>
+          </div>
+          ${openHtml}
+        </div>`;
+      }).join('');
+    } catch (e) {
+      listEl.innerHTML = `<div class="arc-error">Non riesco a caricare l'archivio: ${esc(e.message)}</div>`;
+    }
+  }
+
+  openBtn.addEventListener('click', () => {
+    overlay.classList.add('open');
+    if (!loaded) { loaded = true; load(); } else { load(); } // ricarica sempre: elenco può essere cambiato
+  });
+  closeBtn.addEventListener('click', () => overlay.classList.remove('open'));
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
 })();
 </script>
 </body>

@@ -133,11 +133,33 @@ async function handleSavePresentation(payload, res, token, req) {
     ? [...new Set(payload.suppliers.map(x => String(x || "").trim()).filter(Boolean))].slice(0, 60)
     : [];
 
-  // Il file resta dove Presenta lo genera: questa tabella è un indice (§4.4).
-  const proto = req.headers["x-forwarded-proto"] || "https";
-  const host  = req.headers.host || "";
-  const fileUrl = String(payload?.fileUrl || "").trim()
-    || (payload?.filename ? `${proto}://${host}/?file=${encodeURIComponent(String(payload.filename).slice(0, 120))}` : "");
+  // v61 — l'HTML generato viene caricato su Vercel Blob così la voce in
+  // archivio è davvero riapribile (prima "File" era un link a un file che
+  // esisteva solo nel browser di chi l'aveva generato, mai persistito da
+  // nessuna parte). Best-effort: se il Blob store non è collegato
+  // (BLOB_READ_WRITE_TOKEN assente) il salvataggio prosegue comunque —
+  // titolo/template/fornitori restano utili anche senza il link al file.
+  let fileUrl = String(payload?.fileUrl || "").trim();
+  let blobWarning = null;
+  if (!fileUrl && typeof payload?.html === "string" && payload.html.length) {
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      blobWarning = "Salvato senza il file: lo storage Vercel Blob non è collegato (BLOB_READ_WRITE_TOKEN mancante).";
+    } else {
+      try {
+        const { put } = await import("@vercel/blob");
+        const safeName = String(payload?.filename || `${title}.html`)
+          .replace(/[^a-zA-Z0-9_.\-]/g, "_").slice(0, 120) || "presentazione.html";
+        const blob = await put(`presentations/${Date.now()}_${safeName}`, payload.html, {
+          access: "public",
+          contentType: "text/html; charset=utf-8",
+          addRandomSuffix: false,
+        });
+        fileUrl = blob.url;
+      } catch (e) {
+        blobWarning = `Salvato senza il file: caricamento su Vercel Blob non riuscito (${e.message}).`;
+      }
+    }
+  }
 
   const fields = {
     "Title":      title,
@@ -158,10 +180,19 @@ async function handleSavePresentation(payload, res, token, req) {
     });
     if (!r.ok) {
       const txt = await r.text();
+      // 403/404 su questa base significa quasi sempre una cosa sola: il token
+      // non ha accesso a Love IT Projects (o non ha il permesso di scrittura).
+      if (r.status === 403 || r.status === 404) {
+        return res.status(502).json({
+          error: "Il token Airtable non ha accesso alla base Love IT Projects. " +
+                 "Su airtable.com/create/tokens aggiungi quella base al token e dagli " +
+                 "data.records:write. La presentazione resta scaricabile qui sopra.",
+        });
+      }
       return res.status(502).json({ error: `Archivio non raggiungibile (${r.status}). La presentazione è comunque scaricabile. ${txt.slice(0, 160)}` });
     }
     const data = await r.json();
-    return res.status(200).json({ ok: true, id: data.records?.[0]?.id || null, savedBy: auth.email || null });
+    return res.status(200).json({ ok: true, id: data.records?.[0]?.id || null, savedBy: auth.email || null, warning: blobWarning });
   } catch (e) {
     return res.status(502).json({ error: `Archivio non raggiungibile: ${e.message}. La presentazione è comunque scaricabile.` });
   }
@@ -650,7 +681,10 @@ export default async function handler(req, res) {
   };
   // §4.4 — salvataggio in archivio (unico punto in cui Presenta scrive su Airtable)
   if (_body.savePresentation) {
-    const tk = process.env.AIRTABLE_TOKEN;
+    // Token dedicato alla base Projects se configurato, altrimenti quello
+    // principale: così si può tenere AIRTABLE_TOKEN in sola lettura sulla base
+    // Fornitori e dare il permesso di scrittura solo dove serve davvero.
+    const tk = process.env.AIRTABLE_PROJECTS_TOKEN || process.env.AIRTABLE_TOKEN;
     if (!tk) return res.status(500).json({ error: "Configurazione Airtable mancante." });
     return handleSavePresentation(_body.savePresentation, res, tk, req);
   }
@@ -661,6 +695,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Missing act, activity, supplier or search name" });
   }
   const jsonOnly = format === "json";
+  // v61 — template scelto anche per la ricerca nel database (§ "Cerca nel
+  // Database" nell'UI). Stesso allow-list di generate.js/generate-text.js.
+  const deckTemplate = VALID_TEMPLATES.has(_body.deckTemplate) ? _body.deckTemplate : "dark";
+  const costLayout = ["both", "per-supplier", "grouped"].includes(_body.costLayout) ? _body.costLayout : "both";
 
   const token  = process.env.AIRTABLE_TOKEN;
   const baseId = process.env.AIRTABLE_BASE_ID;
@@ -685,7 +723,7 @@ export default async function handler(req, res) {
     } catch {
       return res.status(500).json({ error: "Template file not found" });
     }
-    return handleUnifiedSearch(search.trim(), kindHint?.trim() || null, res, token, baseId, searchTemplate, req, apiKey);
+    return handleUnifiedSearch(search.trim(), kindHint?.trim() || null, res, token, baseId, searchTemplate, req, apiKey, deckTemplate, costLayout);
   }
 
   // For JSON-only mode we don't need the template
@@ -727,7 +765,7 @@ export default async function handler(req, res) {
 
   // 1b. Fetch full record + build the page (or JSON slide data in picker mode)
   try {
-    const result = await generateActFullPage(selectedName, token, baseId, template, req, jsonOnly);
+    const result = await generateActFullPage(selectedName, token, baseId, template, req, jsonOnly, deckTemplate, costLayout);
     return res.status(200).json(result);
   } catch (e) {
     return res.status(502).json({ error: e.message });
@@ -737,7 +775,7 @@ export default async function handler(req, res) {
 // ─── FULL-PAGE GENERATORS (shared by legacy `act`/`activity` params and by the
 //     unified search below) ────────────────────────────────────────────────────
 
-async function generateActFullPage(selectedName, token, baseId, template, req, jsonOnly) {
+async function generateActFullPage(selectedName, token, baseId, template, req, jsonOnly, deckTemplate = "dark", costLayout = "both") {
   const actRecord = await searchAct(selectedName, token, baseId);
   if (!actRecord) throw new Error(`"${selectedName}" not found.`);
 
@@ -866,6 +904,10 @@ async function generateActFullPage(selectedName, token, baseId, template, req, j
     };
   }
 
+  // v61 — template scelto dall'utente anche per la ricerca nel database
+  tripObj.deckTemplate = deckTemplate;
+  tripObj.costLayout   = costLayout;
+
   // 8. Inject into template
   let finalHtml;
   try {
@@ -874,12 +916,14 @@ async function generateActFullPage(selectedName, token, baseId, template, req, j
     throw new Error(`Template error: ${e.message}`);
   }
 
-  // 9. Hide cover / overview / closing + inject API base for in-presentation features
+  // 9. "Scheda semplice" (dark, il default di sempre): nasconde copertina/
+  // overview/chiusura, resta solo la scheda. Gli altri template (venues,
+  // hotel, quotation) sono decks veri e propri: la copertina resta visibile.
   const proto = req.headers["x-forwarded-proto"] || "https";
   const apiBase = `${proto}://${req.headers.host}`;
-  const actCss = `<style>
-    .slide-cover, .slide-overview, .slide-closing { display: none !important; }
-  </style>`;
+  const actCss = deckTemplate === "dark"
+    ? `<style>.slide-cover, .slide-overview, .slide-closing { display: none !important; }</style>`
+    : "";
   const apiScript = `<script>window.LOVEIT_API_BASE="${apiBase}";</script>`;
   finalHtml = finalHtml.replace("</head>", actCss + "\n" + apiScript + "\n</head>");
 
@@ -897,7 +941,7 @@ async function generateActFullPage(selectedName, token, baseId, template, req, j
 
 // Full standalone page for an Activities-table record (no equivalent existed before —
 // handleActivity() above only ever returns JSON for the in-presentation picker).
-async function generateActivityFullPage(selectedName, token, baseId, template, req) {
+async function generateActivityFullPage(selectedName, token, baseId, template, req, deckTemplate = "dark", costLayout = "both") {
   const rec = await searchActivity(selectedName, token, baseId);
   if (!rec) throw new Error(`"${selectedName}" not found in Activities.`);
 
@@ -976,6 +1020,9 @@ async function generateActivityFullPage(selectedName, token, baseId, template, r
     },
   };
 
+  tripObj.deckTemplate = deckTemplate;
+  tripObj.costLayout   = costLayout;
+
   let finalHtml;
   try {
     finalHtml = injectTrip(template, tripObj);
@@ -985,9 +1032,9 @@ async function generateActivityFullPage(selectedName, token, baseId, template, r
 
   const proto = req.headers["x-forwarded-proto"] || "https";
   const apiBase = `${proto}://${req.headers.host}`;
-  const css = `<style>
-    .slide-cover, .slide-overview, .slide-closing { display: none !important; }
-  </style>`;
+  const css = deckTemplate === "dark"
+    ? `<style>.slide-cover, .slide-overview, .slide-closing { display: none !important; }</style>`
+    : "";
   const apiScript = `<script>window.LOVEIT_API_BASE="${apiBase}";</script>`;
   finalHtml = finalHtml.replace("</head>", css + "\n" + apiScript + "\n</head>");
 
@@ -1005,7 +1052,7 @@ async function generateActivityFullPage(selectedName, token, baseId, template, r
 
 // ─── UNIFIED SEARCH (Suppliers + Artists & Shows + Activities in one box) ─────
 
-async function handleUnifiedSearch(query, kindHint, res, token, baseId, template, req, apiKey) {
+async function handleUnifiedSearch(query, kindHint, res, token, baseId, template, req, apiKey, deckTemplate, costLayout) {
   let kind = kindHint, name = query;
 
   if (!kind) {
@@ -1035,7 +1082,7 @@ async function handleUnifiedSearch(query, kindHint, res, token, baseId, template
 
   try {
     if (kind === "supplier") {
-      const result = await generateSupplierFullPage(name, apiKey, template, req);
+      const result = await generateSupplierFullPage(name, apiKey, template, req, deckTemplate, costLayout);
       if (result.status === "fuzzy") {
         return res.status(200).json({
           status: "fuzzy",
@@ -1045,9 +1092,9 @@ async function handleUnifiedSearch(query, kindHint, res, token, baseId, template
       return res.status(200).json(result);
     }
     if (kind === "activity") {
-      return res.status(200).json(await generateActivityFullPage(name, token, baseId, template, req));
+      return res.status(200).json(await generateActivityFullPage(name, token, baseId, template, req, deckTemplate, costLayout));
     }
-    return res.status(200).json(await generateActFullPage(name, token, baseId, template, req, false));
+    return res.status(200).json(await generateActFullPage(name, token, baseId, template, req, false, deckTemplate, costLayout));
   } catch (e) {
     return res.status(502).json({ error: e.message });
   }

@@ -33,6 +33,38 @@ async function airtableFetch(url, token) {
   return resp.json();
 }
 
+// ── v61 — "Le mie presentazioni": lettura della tabella Presentations ───────
+// (Love IT Projects, non Fornitori — stessa base/tabella scritta da §4.4).
+const PROJECTS_BASE_ID    = "appdvIG3LsRARALRP";
+const TABLE_PRESENTATIONS = "tblqE4NEkpj28xH8f";
+
+async function handleArchiveList(res) {
+  const token = process.env.AIRTABLE_PROJECTS_TOKEN || process.env.AIRTABLE_TOKEN;
+  if (!token) return res.status(500).json({ error: "Configurazione Airtable mancante." });
+  const fields = ["Title", "Template", "Suppliers", "Created At", "Created By", "File"]
+    .map(f => `fields[]=${encodeURIComponent(f)}`).join("&");
+  const url = `https://api.airtable.com/v0/${PROJECTS_BASE_ID}/${TABLE_PRESENTATIONS}`
+    + `?${fields}&sort[0][field]=${encodeURIComponent("Created At")}&sort[0][direction]=desc&maxRecords=100`;
+  try {
+    const data = await airtableFetch(url, token);
+    const items = (data.records || []).map(r => ({
+      id:        r.id,
+      title:     r.fields["Title"] || "(senza titolo)",
+      template:  r.fields["Template"] || "dark",
+      suppliers: (r.fields["Suppliers"] || "").split("\n").map(s => s.trim()).filter(Boolean),
+      createdAt: r.fields["Created At"] || null,
+      createdBy: r.fields["Created By"] || null,
+      fileUrl:   r.fields["File"] || null,
+    }));
+    return res.status(200).json({ items });
+  } catch (e) {
+    if (/Airtable 40[34]/.test(e.message)) {
+      return res.status(502).json({ error: "Il token Airtable non ha accesso in lettura alla base Love IT Projects." });
+    }
+    return res.status(502).json({ error: `Archivio non raggiungibile: ${e.message}` });
+  }
+}
+
 // Suppliers filtered by category — thumbnails come straight from the Photos attachments
 const TABLE_SUPPLIERS = "tbl3rEBd03iC29uNb";
 const SUPPLIER_KINDS = { restaurants: "Restaurant", hotels: "Hotel", venues: "Venue" };
@@ -80,6 +112,11 @@ export default async function handler(req, res) {
       clientId: process.env.GOOGLE_CLIENT_ID || null,
       domain:   "loveit-dmc.com",
     });
+  }
+
+  // ── §4.4/v61 — Archivio presentazioni (?archive=list) ───────────────────────
+  if (req.query?.archive === "list") {
+    return handleArchiveList(res);
   }
 
   // ── Image proxy per l'export PPTX (?img=<url>) ──────────────────────────────

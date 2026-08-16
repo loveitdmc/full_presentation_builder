@@ -589,7 +589,7 @@ async function mainHandler(req, res) {
 // ─── REUSABLE PIPELINE (also called from acts.js unified search) ─────────────
 // Returns either { status:'fuzzy', candidates } when the name is ambiguous, or
 // the full { html, filename, supplier, city, fromAirtable } page payload.
-export async function generateSupplierFullPage(supplierNameRaw, apiKey, template, req) {
+export async function generateSupplierFullPage(supplierNameRaw, apiKey, template, req, deckTemplate = "dark", costLayout = "both") {
   // Step 1: Smart keyword search — returns 0–8 Airtable records
   const matches = await findSuppliers(supplierNameRaw);
 
@@ -744,6 +744,10 @@ export async function generateSupplierFullPage(supplierNameRaw, apiKey, template
   fallbackIndex = 0;
   const resolvedTrip = await resolvePhotos(tripObj);
 
+  // v61 — template scelto dall'utente anche per la ricerca nel database
+  resolvedTrip.deckTemplate = deckTemplate;
+  resolvedTrip.costLayout   = costLayout;
+
   // Step 5: Inject template
   let finalHtml;
   try {
@@ -752,12 +756,13 @@ export async function generateSupplierFullPage(supplierNameRaw, apiKey, template
     throw new Error(`Template error: ${e.message}`);
   }
 
-  // Step 6: Hide slides not needed in supplier mode + inject API base
+  // Step 6: "Scheda semplice" (dark, default): nasconde copertina/overview/
+  // chiusura. Gli altri template sono decks veri: la copertina resta visibile.
   const proto = req.headers["x-forwarded-proto"] || "https";
   const apiBase = `${proto}://${req.headers.host}`;
-  const supplierCss = `<style>
-    .slide-cover, .slide-overview, .slide-closing { display: none !important; }
-  </style>`;
+  const supplierCss = deckTemplate === "dark"
+    ? `<style>.slide-cover, .slide-overview, .slide-closing { display: none !important; }</style>`
+    : "";
   const apiScript = `<script>window.LOVEIT_API_BASE="${apiBase}";</script>`;
   finalHtml = finalHtml.replace('</head>', supplierCss + '\n' + apiScript + '\n</head>');
 

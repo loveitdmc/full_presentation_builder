@@ -123,6 +123,49 @@ Puoi modificarla direttamente su GitHub → salva → Vercel rideploya automatic
 
 ---
 
+## Permessi Airtable per l'archivio presentazioni (§4.4)
+
+Presenta **legge** dalla base *LoveIT Fornitori* e **scrive** una sola cosa, in
+una sola tabella: `Presentations` nella base *Love IT Projects*
+(`appdvIG3LsRARALRP`). Fino alla v57 non scriveva niente da nessuna parte, per
+cui il token configurato ha accesso alla sola base Fornitori — e il salvataggio
+risponde:
+
+```
+403 INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND
+```
+
+### Come sistemarlo
+
+Su **airtable.com/create/tokens**, aprire il token usato da Presenta
+(quello in `AIRTABLE_TOKEN` su Vercel) e:
+
+1. in **Scopes**, verificare che ci sia `data.records:read` e aggiungere
+   `data.records:write`;
+2. in **Access**, aggiungere la base **Love IT Projects** accanto a LoveIT
+   Fornitori;
+3. salvare. Il valore del token **non cambia**: non serve rigenerarlo, né
+   toccare Vercel, né ridistribuire. Basta riprovare il salvataggio.
+
+### Variante più prudente (consigliata se il token è condiviso)
+
+Se si preferisce tenere `AIRTABLE_TOKEN` in **sola lettura**, creare un secondo
+token con accesso alla sola base *Love IT Projects* e `data.records:write`, e
+metterlo su Vercel come:
+
+| Variabile | Uso |
+|---|---|
+| `AIRTABLE_PROJECTS_TOKEN` | usato solo per scrivere in `Presentations` |
+
+Se esiste, Presenta usa quello; altrimenti ricade su `AIRTABLE_TOKEN`. In questo
+caso serve un redeploy, perché è una variabile nuova.
+
+**Nota di confine (§0.1):** qualunque token si usi, Presenta scrive
+esclusivamente sulla tabella `Presentations`. Clients, Quotes, Quote Lines e
+l'intera base Fornitori non vengono mai toccati.
+
+---
+
 ## Accesso con Google (§4.1 delle istruzioni di lavoro)
 
 L'URL di produzione di Presenta è **https://full-presentation-builder.vercel.app**
@@ -177,6 +220,30 @@ curl https://full-presentation-builder.vercel.app/api/acts-list?auth=config
 ```
 
 `enabled:false` significa che la variabile non è arrivata alla funzione.
+
+---
+
+## Storage per l'archivio presentazioni (§4.4 / v61)
+
+Fino alla v60 "Salva in archivio" scriveva solo titolo/template/fornitori su
+Airtable — il campo `File` era un link che non serviva niente (nessuno storage
+dietro). Da v61 l'HTML generato viene caricato davvero su **Vercel Blob**, e
+"Le mie presentazioni" apre quel link.
+
+**Passo unico, una tantum:**
+
+1. Sul progetto in Vercel: **Storage → Create Database → Blob**.
+2. Collega il nuovo Blob store al progetto `full-presentation-builder`
+   (Vercel lo propone automaticamente dopo la creazione).
+3. Questo aggiunge da solo la variabile `BLOB_READ_WRITE_TOKEN` su Vercel —
+   non va copiata a mano da nessuna parte.
+4. Ridistribuire (o attendere il prossimo deploy) perché la funzione veda la
+   variabile.
+
+Senza questo passo l'app **non si rompe**: il salvataggio su Airtable prosegue
+comunque (titolo/template/fornitori restano consultabili), ma "Le mie
+presentazioni" mostra "Non disponibile" al posto del pulsante Apri, e il
+messaggio dopo il salvataggio lo dice esplicitamente.
 
 ---
 
