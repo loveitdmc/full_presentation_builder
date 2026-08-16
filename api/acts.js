@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import crypto from "crypto";
 import { generateSupplierFullPage, aiCaptionPhotos } from "./supplier.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -113,6 +114,73 @@ export async function verifyGoogleIdToken(idToken) {
   }
 }
 
+// ─── v65 — Sessione persistente (cookie li_session, 14 giorni) ──────────────
+// Prima ogni richiesta ripassava dal token Google, che dura circa un'ora —
+// col JWT scaduto il login si rifaceva ogni volta che il browser non aveva
+// più una sessione Google attiva. Preventivi risolve lo stesso problema con
+// un cookie di sessione firmato (li_session) che dura 14 giorni; Presenta
+// adotta lo stesso schema, non uno diverso, così l'esperienza è coerente fra
+// le app del team. Spento finché SESSION_SECRET non è configurato: senza
+// quella variabile il comportamento resta quello di prima (token Google
+// verificato ad ogni chiamata, nessun cookie emesso).
+const SESSION_COOKIE     = "li_session";
+const SESSION_MAX_AGE_S  = 60 * 60 * 24 * 14; // 14 giorni, come Preventivi
+
+function b64url(buf) { return Buffer.from(buf).toString("base64url"); }
+
+function signSession(email) {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) return null;
+  const payload = JSON.stringify({ email, exp: Date.now() + SESSION_MAX_AGE_S * 1000 });
+  const p = b64url(payload);
+  const sig = crypto.createHmac("sha256", secret).update(p).digest("base64url");
+  return `${p}.${sig}`;
+}
+
+function parseSession(cookieValue) {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || !cookieValue) return null;
+  const [p, sig] = String(cookieValue).split(".");
+  if (!p || !sig) return null;
+  const expectedSig = crypto.createHmac("sha256", secret).update(p).digest("base64url");
+  const a = Buffer.from(sig), b = Buffer.from(expectedSig);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  let data;
+  try { data = JSON.parse(Buffer.from(p, "base64url").toString("utf8")); } catch { return null; }
+  if (!data?.email || !data?.exp || data.exp < Date.now()) return null;
+  if (!data.email.endsWith("@" + AUTH_DOMAIN)) return null; // difesa in profondità
+  return { email: data.email };
+}
+
+function readCookie(req, name) {
+  const raw = req.headers?.cookie;
+  if (!raw) return null;
+  const m = raw.split(";").map(s => s.trim()).find(s => s.startsWith(name + "="));
+  return m ? decodeURIComponent(m.slice(name.length + 1)) : null;
+}
+
+function setSessionCookie(res, email) {
+  const token = signSession(email);
+  if (!token) return; // SESSION_SECRET non configurato — nessun cookie, comportamento invariato
+  res.setHeader("Set-Cookie", `${SESSION_COOKIE}=${token}; Max-Age=${SESSION_MAX_AGE_S}; Path=/; HttpOnly; Secure; SameSite=Lax`);
+}
+
+function clearSessionCookie(res) {
+  res.setHeader("Set-Cookie", `${SESSION_COOKIE}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax`);
+}
+
+// Risoluzione dell'accesso: prova prima il cookie di sessione (istantaneo,
+// nessuna chiamata a Google), poi ricade sul token Google della singola
+// richiesta come già faceva prima di v65. Stessa forma di ritorno di
+// verifyGoogleIdToken, così le funzioni sotto non cambiano.
+async function resolveAuth(req, idToken) {
+  if (!process.env.GOOGLE_CLIENT_ID) return { enabled: false, email: null };
+  const cookieVal = readCookie(req, SESSION_COOKIE);
+  const session = parseSession(cookieVal);
+  if (session) return { enabled: true, email: session.email };
+  return verifyGoogleIdToken(idToken);
+}
+
 // ─── §4.4 — Archivio presentazioni (Love IT Projects › Presentations) ────────
 // Presenta scrive SOLO qui. Mai su Clients/Quotes/Quote Lines, mai sulla base
 // Fornitori. I fornitori si salvano per NOME: gli ID non sopravvivono alla
@@ -122,7 +190,7 @@ const TABLE_PRESENTATIONS = "tblqE4NEkpj28xH8f";
 const VALID_TEMPLATES     = new Set(["dark", "venues", "hotel", "quotation"]);
 
 async function handleSavePresentation(payload, res, token, req) {
-  const auth = await verifyGoogleIdToken(payload?.idToken);
+  const auth = await resolveAuth(req, payload?.idToken);
   if (auth.enabled && !auth.email) return res.status(401).json({ error: auth.error || "Accesso richiesto." });
 
   const title = String(payload?.title || "").trim().slice(0, 200);
@@ -209,7 +277,7 @@ async function handleSavePresentation(payload, res, token, req) {
 // ripristina esattamente com'era"). Coerenza col resto della base, non solo
 // prudenza: gli altri strumenti dei colleghi si aspettano di trovarla.
 async function handleDeletePresentation(payload, res, token, req) {
-  const auth = await verifyGoogleIdToken(payload?.idToken);
+  const auth = await resolveAuth(req, payload?.idToken);
   if (auth.enabled && !auth.email) return res.status(401).json({ error: auth.error || "Accesso richiesto." });
 
   const id = String(payload?.id || "").trim();
@@ -716,6 +784,22 @@ export default async function handler(req, res) {
     if (v != null && typeof v === "object") return ""; // reject stray objects (e.g. serialized DOM event)
     return String(v);
   };
+  // v65 — scambia il token Google (di breve durata) con un cookie di
+  // sessione da 14 giorni, stesso schema di Preventivi (li_session). Se
+  // SESSION_SECRET non è configurato, setSessionCookie non fa nulla e il
+  // client ricade sul comportamento precedente da solo.
+  if (_body.login) {
+    const auth = await verifyGoogleIdToken(_body.login.idToken);
+    if (!auth.enabled) return res.status(200).json({ ok: true, sessionless: true }); // login spento: niente da fare
+    if (!auth.email) return res.status(401).json({ error: auth.error || "Accesso richiesto." });
+    setSessionCookie(res, auth.email);
+    return res.status(200).json({ ok: true, email: auth.email });
+  }
+  if (_body.logout) {
+    clearSessionCookie(res);
+    return res.status(200).json({ ok: true });
+  }
+
   // §4.4 — salvataggio in archivio (unico punto in cui Presenta scrive su Airtable)
   if (_body.savePresentation) {
     // Token dedicato alla base Projects se configurato, altrimenti quello

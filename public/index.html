@@ -998,16 +998,18 @@ function toBase64(file) {
   input.addEventListener('keydown',e=>{ if(e.key==='Enter') send(); });
 })();
 
-/* ═══ §4.1/v62 — Accesso Google (si accende quando arriva il Client ID) ═════
+/* ═══ §4.1/v62/v65 — Accesso Google (si accende quando arriva il Client ID) ═
    Finché la variabile GOOGLE_CLIENT_ID non è configurata su Vercel, questo
    blocco non fa nulla e l'applicazione si comporta come prima: nessuno resta
    fuori per una configurazione mancante. Il controllo vero è comunque lato
    server (api/acts.js): il pulsante nascosto non è una barriera.
-   v62 — il token viene tenuto in localStorage con la sua scadenza reale
-   (il campo "exp" del JWT, non inventata): finché è valido non si richiama
-   affatto Google, quindi niente prompt ripetuto ad ogni ricarica. Il login
-   vero e proprio torna a servire solo quando il token scade (circa un'ora)
-   o dopo "Cambia account". */
+   v65 — come Preventivi: se SESSION_SECRET è configurato, il server tiene un
+   cookie di sessione (li_session) che dura 14 giorni, non l'ora scarsa del
+   token Google. Il client controlla quel cookie PRIMA di toccare Google —
+   nessuna chiamata, nessun prompt, finché la sessione non scade davvero.
+   Se SESSION_SECRET non è ancora configurato, si ricade sulla cache
+   localStorage di v62 (~1h, legata alla scadenza del JWT): comportamento
+   identico a prima, nessuna regressione durante il passaggio. */
 window._authToken = null;
 const AUTH_CACHE_KEY = 'loveit_auth_v1';
 
@@ -1044,14 +1046,28 @@ function _authClearCache(){
       window._authToken = _authFromCache()?.credential || window._authToken;
       who.textContent = email || '';
       slot.innerHTML = '<button id="auth-switch" type="button">Cambia account</button>';
-      document.getElementById('auth-switch').addEventListener('click', () => {
+      document.getElementById('auth-switch').addEventListener('click', async () => {
         _authClearCache();
+        if (cfg.sessionEnabled) {
+          try { await fetch('/api/acts', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ logout: true }) }); } catch {}
+        }
         try { window.google?.accounts?.id?.disableAutoSelect(); } catch {}
         location.reload();
       });
     }
 
-    // Percorso rapido: token ancora valido in cache, nessuna chiamata a Google.
+    // v65 — percorso rapido con sessione server (14 giorni): un controllo,
+    // nessuna chiamata a Google se il cookie è ancora valido.
+    if (cfg.sessionEnabled) {
+      try {
+        const sr = await fetch('/api/acts-list?auth=session');
+        const sd = sr.ok ? await sr.json() : null;
+        if (sd?.email) { showSignedIn(sd.email); return; }
+      } catch { /* si continua col flusso normale sotto */ }
+    }
+
+    // Percorso rapido legacy (v62): token ancora valido in cache, nessuna
+    // chiamata a Google. Usato solo finché SESSION_SECRET non è configurato.
     const cached = _authFromCache();
     if (cached) {
       window._authToken = cached.credential;
@@ -1068,11 +1084,19 @@ function _authClearCache(){
         client_id: cfg.clientId,
         hd: cfg.domain,
         auto_select: true,   // se il browser ha già una sessione Google attiva, non chiede di scegliere l'account ogni volta
-        callback: resp => {
+        callback: async resp => {
           window._authToken = resp.credential || null;
           try{
             const p = JSON.parse(atob((resp.credential||'').split('.')[1]||''));
             _authToCache(resp.credential, p.email || '', Number(p.exp) || (Date.now()/1000 + 3300));
+            // v65 — scambia il token Google col cookie di sessione da 14 giorni,
+            // se il server lo supporta. Se fallisce, resta comunque valido il
+            // percorso legacy appena salvato in cache sopra.
+            if (cfg.sessionEnabled) {
+              try {
+                await fetch('/api/acts', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ login: { idToken: resp.credential } }) });
+              } catch {}
+            }
             showSignedIn(p.email || '');
           }catch{}
         },

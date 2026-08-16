@@ -247,6 +247,26 @@ messaggio dopo il salvataggio lo dice esplicitamente.
 
 ---
 
+## Sessione da 14 giorni invece di ~1 ora (v65)
+
+Di serie (v62) Presenta tiene il login valido finché dura il token di
+Google — circa un'ora, poi si rifà da sola in silenzio se il browser ha
+ancora una sessione Google attiva. Per farla durare **14 giorni come
+Preventivi** (cookie `li_session`), serve un passo:
+
+1. Genera una stringa casuale lunga, diversa da quella usata per
+   `CRON_SECRET` (stesso comando: `openssl rand -hex 32`).
+2. Su Vercel: **Settings → Environment Variables**, aggiungi
+   `SESSION_SECRET` con quel valore, su Production.
+3. Ridistribuisci.
+
+Da quel deploy, dopo il primo accesso il server tiene la sessione con un
+cookie firmato che dura 14 giorni — nessuna chiamata a Google finché non
+scade o si preme "Cambia account". Senza `SESSION_SECRET` il comportamento
+resta quello di v62 (nessuna regressione, solo niente sessione lunga).
+
+---
+
 ## Svuotamento automatico del cestino presentazioni (v64)
 
 Cancellare una presentazione dall'archivio (§4.4/v62) non la toglie subito da

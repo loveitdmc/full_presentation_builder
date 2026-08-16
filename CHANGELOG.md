@@ -8,6 +8,33 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v65 — 2026-08-16 — Sessione da 14 giorni, come Preventivi (non più solo ~1h)
+- Marco ha segnalato che Preventivi regge il login 14 giorni con un cookie
+  di sessione (`li_session`), mentre Presenta (v62) si appoggiava solo alla
+  scadenza del token Google — circa un'ora, poi ripartiva silenziosamente
+  ma comunque ogni ora. Stesso schema adottato qui, non uno diverso: dopo il
+  primo accesso, il server emette un cookie `li_session` firmato che dura
+  **14 giorni** (`HttpOnly`, `Secure`, `SameSite=Lax` — JavaScript nel
+  browser non può leggerlo né manometterlo). Ad ogni richiesta successiva
+  il server verifica quel cookie prima di chiedere qualunque cosa a Google:
+  zero chiamate esterne, zero prompt, finché non scade davvero.
+- Firma HMAC-SHA256 con una chiave propria (`SESSION_SECRET`, nuova
+  variabile) — non riusa `GOOGLE_CLIENT_ID` né altri segreti esistenti.
+  Verificata con confronto a tempo costante (`crypto.timingSafeEqual`)
+  contro la manomissione del cookie lato client.
+- **Spento finché `SESSION_SECRET` non è configurato**, stesso principio di
+  `GOOGLE_CLIENT_ID`/`BLOB_READ_WRITE_TOKEN`/`CRON_SECRET`: senza quella
+  variabile Presenta si comporta esattamente come in v62 (cache
+  `localStorage` da ~1h) — nessuna regressione nel frattempo. Vedi
+  `SETUP.md` per l'attivazione.
+- Nuovi endpoint su `acts.js` (`{login:{idToken}}` scambia il token Google
+  col cookie di sessione; `{logout:true}` lo cancella) e su `acts-list.js`
+  (`?auth=session` — controllo istantaneo del cookie, usato ad ogni
+  caricamento pagina prima di toccare Google). `handleSavePresentation` e
+  `handleDeletePresentation` ora accettano sia il cookie di sessione sia il
+  token Google della singola richiesta (compatibilità con la v62 durante il
+  passaggio).
+
 ## v64 — 2026-08-16 — Svuotamento automatico del cestino dopo 30 giorni
 - Le presentazioni cancellate (v62, "Deleted At" impostato) restavano su
   Airtable per sempre — nascoste, ma mai tolte davvero. Controllato prima di

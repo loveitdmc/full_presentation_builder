@@ -1,3 +1,34 @@
+import crypto from "crypto";
+
+// v65 — stessa verifica del cookie di sessione di acts.js (che lo emette).
+// Duplicata invece di condivisa: ogni funzione serverless resta autonoma,
+// stessa scelta già fatta per PROJECTS_BASE_ID/TABLE_PRESENTATIONS altrove
+// in questo file.
+const AUTH_DOMAIN    = "loveit-dmc.com";
+const SESSION_COOKIE = "li_session";
+
+function parseSession(cookieValue) {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || !cookieValue) return null;
+  const [p, sig] = String(cookieValue).split(".");
+  if (!p || !sig) return null;
+  const expectedSig = crypto.createHmac("sha256", secret).update(p).digest("base64url");
+  const a = Buffer.from(sig), b = Buffer.from(expectedSig);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  let data;
+  try { data = JSON.parse(Buffer.from(p, "base64url").toString("utf8")); } catch { return null; }
+  if (!data?.email || !data?.exp || data.exp < Date.now()) return null;
+  if (!data.email.endsWith("@" + AUTH_DOMAIN)) return null;
+  return { email: data.email };
+}
+
+function readCookie(req, name) {
+  const raw = req.headers?.cookie;
+  if (!raw) return null;
+  const m = raw.split(";").map(s => s.trim()).find(s => s.startsWith(name + "="));
+  return m ? decodeURIComponent(m.slice(name.length + 1)) : null;
+}
+
 // ─── AIRTABLE CONSTANTS ───────────────────────────────────────────────────────
 const TABLE_ACTS       = "tblbCAthb1HXfc13i";   // Artists & Shows
 const TABLE_ACTIVITIES = "tblPIbMu1UDjOLYIK";   // Activities
@@ -208,10 +239,20 @@ export default async function handler(req, res) {
   // configurato su Vercel risponde {enabled:false} e l'app resta com'è oggi.
   if (req.query?.auth === "config") {
     return res.status(200).json({
-      enabled:  !!process.env.GOOGLE_CLIENT_ID,
-      clientId: process.env.GOOGLE_CLIENT_ID || null,
-      domain:   "loveit-dmc.com",
+      enabled:        !!process.env.GOOGLE_CLIENT_ID,
+      clientId:       process.env.GOOGLE_CLIENT_ID || null,
+      domain:         "loveit-dmc.com",
+      // v65 — se spento, il client ricade sulla cache localStorage da ~1h
+      // (comportamento precedente) invece di aspettarsi un cookie di sessione.
+      sessionEnabled: !!process.env.SESSION_SECRET,
     });
+  }
+
+  // ── v65 — Sessione persistente (?auth=session) ───────────────────────────────
+  // Controllo istantaneo del cookie li_session, nessuna chiamata a Google.
+  if (req.query?.auth === "session") {
+    const session = parseSession(readCookie(req, SESSION_COOKIE));
+    return res.status(200).json({ email: session?.email || null });
   }
 
   // ── v64 — Svuotamento cestino presentazioni (?purge=presentations) ──────────
