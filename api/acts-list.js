@@ -108,6 +108,63 @@ async function handleArchiveProjects(res) {
   }
 }
 
+// v64 — svuotamento del cestino: le presentazioni cancellate (Deleted At
+// impostato, v62) restano indefinitamente su Airtable finché nessuno le
+// tocca — nessuna Automation Airtable ha un'azione "cancella record" nativa
+// (verificato: solo create/update/find/sort/email/AI), quindi la cancellazione
+// vera passa da qui, su cron giornaliero di Vercel. Protetto da CRON_SECRET:
+// senza quella variabile l'endpoint rifiuta sempre, quindi non fa nulla finché
+// qualcuno non lo attiva esplicitamente (stesso pattern "spento di default"
+// di GOOGLE_CLIENT_ID e BLOB_READ_WRITE_TOKEN).
+async function handlePurgePresentations(req, res) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return res.status(200).json({ ok: false, skipped: "CRON_SECRET non configurato — nessuna cancellazione automatica attiva." });
+  const auth = req.headers.authorization || "";
+  if (auth !== `Bearer ${secret}`) return res.status(401).json({ error: "Non autorizzato." });
+
+  const token = process.env.AIRTABLE_PROJECTS_TOKEN || process.env.AIRTABLE_TOKEN;
+  if (!token) return res.status(500).json({ error: "Configurazione Airtable mancante." });
+
+  // Cancellate da più di 30 giorni: formula Airtable, non calcolata in JS,
+  // così il fuso e "adesso" sono sempre quelli del server Airtable.
+  const formula = encodeURIComponent(`IS_BEFORE({Deleted At}, DATEADD(NOW(), -30, 'days'))`);
+  const fields = ["Deleted At", "File"].map(f => `fields[]=${encodeURIComponent(f)}`).join("&");
+  const url = `https://api.airtable.com/v0/${PROJECTS_BASE_ID}/${TABLE_PRESENTATIONS}?${fields}&filterByFormula=${formula}&maxRecords=200`;
+
+  let records;
+  try {
+    const data = await airtableFetch(url, token);
+    records = data.records || [];
+  } catch (e) {
+    return res.status(502).json({ error: `Lettura fallita: ${e.message}` });
+  }
+  if (!records.length) return res.status(200).json({ ok: true, purged: 0 });
+
+  // Blob associato: cancellazione migliore-sforzo, non blocca la cancellazione
+  // del record se fallisce (uno storage abbandonato non è pericoloso).
+  try {
+    const { del } = await import("@vercel/blob");
+    const fileUrls = records.map(r => r.fields["File"]).filter(Boolean);
+    if (fileUrls.length) await Promise.allSettled(fileUrls.map(u => del(u)));
+  } catch { /* Blob non collegato o cancellazione fallita — si prosegue comunque */ }
+
+  // Cancellazione vera dei record, a blocchi di 10 (limite Airtable per richiesta).
+  let purged = 0;
+  for (let i = 0; i < records.length; i += 10) {
+    const batch = records.slice(i, i + 10);
+    const qs = batch.map(r => `records[]=${encodeURIComponent(r.id)}`).join("&");
+    try {
+      const r = await fetch(`https://api.airtable.com/v0/${PROJECTS_BASE_ID}/${TABLE_PRESENTATIONS}?${qs}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(9000),
+      });
+      if (r.ok) purged += batch.length;
+    } catch { /* un blocco fallito non blocca gli altri */ }
+  }
+  return res.status(200).json({ ok: true, purged, found: records.length });
+}
+
 // Suppliers filtered by category — thumbnails come straight from the Photos attachments
 const TABLE_SUPPLIERS = "tbl3rEBd03iC29uNb";
 const SUPPLIER_KINDS = { restaurants: "Restaurant", hotels: "Hotel", venues: "Venue" };
@@ -155,6 +212,12 @@ export default async function handler(req, res) {
       clientId: process.env.GOOGLE_CLIENT_ID || null,
       domain:   "loveit-dmc.com",
     });
+  }
+
+  // ── v64 — Svuotamento cestino presentazioni (?purge=presentations) ──────────
+  // Chiamato dal cron di Vercel (vercel.json), mai dall'interfaccia.
+  if (req.query?.purge === "presentations") {
+    return handlePurgePresentations(req, res);
   }
 
   // ── §4.4/v61-v62 — Archivio presentazioni (?archive=list|projects) ──────────

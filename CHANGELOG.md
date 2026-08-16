@@ -8,6 +8,30 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v64 — 2026-08-16 — Svuotamento automatico del cestino dopo 30 giorni
+- Le presentazioni cancellate (v62, "Deleted At" impostato) restavano su
+  Airtable per sempre — nascoste, ma mai tolte davvero. Controllato prima di
+  scrivere codice: le Automation di Airtable non hanno un'azione "cancella
+  record" nativa (solo create/update/find/sort/email/AI), quindi non si
+  poteva fare interamente dentro Airtable.
+- Aggiunto un **cron di Vercel** (1 volta al giorno, alle 3:00 UTC — dentro
+  al limite di una esecuzione/giorno del piano Hobby) che chiama un nuovo
+  endpoint su `acts-list.js` (`?purge=presentations`): trova le presentazioni
+  cancellate da più di 30 giorni e le cancella per davvero da Airtable,
+  cancellando anche il file su Vercel Blob (migliore sforzo — se fallisce non
+  blocca la cancellazione del record).
+- **Spento finché non lo si attiva esplicitamente**, stesso principio di
+  `GOOGLE_CLIENT_ID` e `BLOB_READ_WRITE_TOKEN`: senza la variabile
+  `CRON_SECRET` l'endpoint risponde "nessuna cancellazione automatica attiva"
+  e non tocca nulla. Protetto anche lato autenticazione: senza il token
+  giusto nell'header (quello che Vercel manda da solo al proprio cron)
+  risponde 401. Vedi `SETUP.md` per il passo di attivazione.
+
+## v63 — 2026-08-16 — Titolo modificabile in archivio
+- Prima di "Salva in archivio" c'è ora un campo di testo col titolo
+  proposto (fornitore/cliente + destinazione, come prima) ma modificabile:
+  chi salva può scrivere il titolo che preferisce per l'elenco.
+
 ## v62 — 2026-08-16 — Cancellazione, collegamento a un progetto, login che non chiede più ogni volta
 - **Cancellare una presentazione salvata.** Nel modal "Le mie presentazioni"
   ogni voce ha ora un cestino. Cancellare non fa una DELETE vera su Airtable:

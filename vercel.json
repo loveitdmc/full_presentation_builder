@@ -6,10 +6,13 @@
     "api/supplier.js":         { "maxDuration": 30 },
     "api/supplier-spaces.js":  { "maxDuration": 20 },
     "api/acts.js":             { "maxDuration": 30 },
-    "api/acts-list.js":        { "maxDuration": 20 }
+    "api/acts-list.js":        { "maxDuration": 40 }
   },
   "rewrites": [
     { "source": "/(.*)", "destination": "/public/index.html" }
+  ],
+  "crons": [
+    { "path": "/api/acts-list?purge=presentations", "schedule": "0 3 * * *" }
   ],
   "headers": [
     {

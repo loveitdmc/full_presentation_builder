@@ -283,9 +283,12 @@ textarea:focus,#program-text:focus,.supplier-field input:focus{ border-color:var
   color:var(--muted);padding:.55rem .7rem;font-size:.85rem;cursor:pointer;transition:all .15s;margin-left:.4rem}
 .arc-del:hover{border-color:var(--amber);color:var(--amber)}
 
-/* ── v62 — progetto (facoltativo) al momento del salvataggio ── */
-#archive-project-row{display:inline-flex;align-items:center;gap:.5rem;margin:.9rem 0 0;width:100%;justify-content:center}
-#archive-project-row label{color:var(--muted);font-size:.8rem}
+/* ── v63 — titolo modificabile + v62 progetto (facoltativo), prima del salvataggio ── */
+#archive-title-row,#archive-project-row{display:inline-flex;align-items:center;gap:.5rem;margin:.9rem 0 0;width:100%;justify-content:center;flex-wrap:wrap}
+#archive-title-row label,#archive-project-row label{color:var(--muted);font-size:.8rem}
+#archive-title{background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--ink);
+  font-family:var(--sans);font-size:.82rem;padding:.4rem .6rem;width:100%;max-width:340px}
+#archive-title:focus{border-color:var(--teal);outline:none;box-shadow:0 0 0 3px var(--teal-wash)}
 #archive-project{background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--ink);
   font-family:var(--sans);font-size:.82rem;padding:.4rem .6rem;max-width:280px}
 
@@ -487,11 +490,15 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
     <p id="result-info">Pronta per il download</p>
     <a id="btn-download" href="#" download>⬇ Scarica HTML</a>
     <a id="btn-preview" href="#">⊡ Anteprima</a>
-    <button id="btn-archive" type="button">☐ Salva in archivio</button>
+    <div id="archive-title-row">
+      <label for="archive-title">Titolo in archivio</label>
+      <input type="text" id="archive-title" maxlength="200" placeholder="Titolo della presentazione"/>
+    </div>
     <div id="archive-project-row">
       <label for="archive-project">Progetto (facoltativo)</label>
       <select id="archive-project"><option value="">Nessun progetto</option></select>
     </div>
+    <button id="btn-archive" type="button">☐ Salva in archivio</button>
     <p id="archive-msg"></p>
     <button id="btn-new">Genera un'altra presentazione</button>
   </div>
@@ -788,6 +795,10 @@ function showResult(data, title, badge = '') {
     data.client || data.supplier || data.act || (window._lastSuppliers || [])[0] || '',
     data.city || data.destination || ''
   ].filter(Boolean).join(' — ') || (data.filename || '').replace(/\.html?$/i,'').replace(/_/g,' ');
+  // v63 — titolo modificabile: precompilato con lo stesso testo di prima,
+  // ma l'utente può cambiarlo prima di salvare in archivio.
+  const archiveTitleInput = document.getElementById('archive-title');
+  if (archiveTitleInput) archiveTitleInput.value = window._lastTitle;
   if (window._resetArchiveBtn) window._resetArchiveBtn();
   generatedHtml = data.html;
   generatedFilename = data.filename ?? 'presentazione.html';
@@ -1133,6 +1144,7 @@ function _authClearCache(){
   const btn = document.getElementById('btn-archive');
   const msg = document.getElementById('archive-msg');
   const projSel = document.getElementById('archive-project');
+  const titleInput = document.getElementById('archive-title');
   if (!btn) return;
   let savedFor = null;   // filename già archiviato: evita il doppio salvataggio
   let projectsLoaded = false;
@@ -1182,7 +1194,7 @@ function _authClearCache(){
         body: JSON.stringify({
           savePresentation: {
             idToken:   window._authToken || undefined,
-            title:     (window._lastTitle || fname.replace(/\.html?$/i,'').replace(/_/g,' ')),
+            title:     ((titleInput && titleInput.value.trim()) || window._lastTitle || fname.replace(/\.html?$/i,'').replace(/_/g,' ')),
             template:  (typeof deckTemplate !== 'undefined' ? deckTemplate : 'dark'),
             suppliers,
             filename:  fname,

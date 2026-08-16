@@ -247,6 +247,33 @@ messaggio dopo il salvataggio lo dice esplicitamente.
 
 ---
 
+## Svuotamento automatico del cestino presentazioni (v64)
+
+Cancellare una presentazione dall'archivio (§4.4/v62) non la toglie subito da
+Airtable — la marca solo come cancellata, così uno scatto involontario non
+perde nulla. Da v64 un cron giornaliero può svuotare per davvero, dopo 30
+giorni, quelle marcate. È spento finché non lo attivi:
+
+1. Genera una stringa casuale lunga (es. `openssl rand -hex 32`, o qualunque
+   password generator — non deve essere memorabile, solo imprevedibile).
+2. Su Vercel: **Settings → Environment Variables**, aggiungi `CRON_SECRET`
+   con quel valore, su Production.
+3. Ridistribuisci. Da quel deploy in poi, ogni notte alle 3:00 UTC Vercel
+   chiama l'endpoint di svuotamento da solo — non c'è altro da configurare,
+   Vercel manda già l'header di autorizzazione giusto usando quella stessa
+   variabile.
+
+Senza `CRON_SECRET` l'endpoint risponde sempre "nessuna cancellazione
+automatica attiva" e non tocca nulla: le presentazioni cancellate restano
+nell'archivio (nascoste, non nell'elenco) finché non attivi questo passo o le
+cancelli a mano da Airtable.
+
+**Nota sul piano Vercel:** i cron su piano Hobby possono girare al massimo
+una volta al giorno — questo cron gira esattamente una volta al giorno,
+quindi va bene così com'è, non serve upgrade.
+
+---
+
 ## Troubleshooting
 
 **"Template file not found"** → Verifica che `template/loveit_template.html` sia nel repository.
