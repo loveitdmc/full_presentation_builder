@@ -6,8 +6,18 @@
 <title>Love IT DMC · Genera Presentazione</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
 :root{
+  /* v66 — token "Studio" condivisi, stesso aggiornamento fatto su Capybara e
+     in corso su Vault/Preventivi: indicatori a tinta chiara + testo scuro,
+     invece di colore pieno. Valori esatti da ISTRUZIONI_ING_C_presenta_restyle.md. */
+  --good:#7FC9A0;  --good-wash:#EAF7F0;  --good-deep:#3D8C63;
+  --warn:#F0BE6C;  --warn-wash:#FCF3E3;  --warn-deep:#A9791E;
+  --bad:#E58176;   --bad-wash:#FBEAE7;   --bad-deep:#C34A3B;
+  --info:#86AEDD;  --info-wash:#EDF3FB;  --info-deep:#3E71B0;
+  --gold-tint:#C9A96A; --gold-tint-wash:#F7F0E2; --gold-tint-deep:#93762F;
+  --dark-tint:#EAEAEC; --dark-tint-deep:#4A4E57;
   /* §4.3 — token "Studio", gli stessi di Vault e Preventivi.
      Raggi, ombre e accent-deep sono i valori ESATTI di Styles.html del Vault
      (blocco "Studio", riga 429), passati da Ing. A il 15/08 — non stime. */
@@ -36,7 +46,7 @@
   --warm-white:var(--ink); --gold:var(--coral); --gold-dim:#CF4B3B;
   --stone:var(--muted);
   --serif:'Cormorant Garamond',Georgia,serif;
-  --sans:'Montserrat',sans-serif;
+  --sans:'Manrope','Montserrat',sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{min-height:100vh;background:var(--nero);color:var(--warm-white);font-family:var(--sans);font-weight:300}
@@ -253,35 +263,46 @@ textarea:focus,#program-text:focus,.supplier-field input:focus{ border-color:var
 #error,.error-box{ background:var(--amber-wash)!important;border:1px solid var(--amber)!important;
   border-radius:var(--radius-sm)!important;color:#7A5A1E!important; }
 
-/* ── v61 — "Le mie presentazioni" (archivio) ── */
-#btn-archive-open{background:none;border:1px solid var(--border);border-radius:99px;color:var(--muted);
-  font-family:var(--sans);font-size:.78rem;padding:.45rem .95rem;cursor:pointer;transition:all .15s;margin-left:.9rem}
-#btn-archive-open:hover{border-color:var(--teal);color:var(--teal)}
-#archive-overlay{display:none;position:fixed;inset:0;z-index:1000;background:rgba(20,20,20,.55);
-  align-items:flex-start;justify-content:center;padding:4vh 1.2rem}
-#archive-overlay.open{display:flex}
-#archive-modal{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-pop);
-  width:min(640px,100%);max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
-#archive-head{display:flex;align-items:center;justify-content:space-between;padding:1.2rem 1.5rem;border-bottom:1px solid var(--border)}
-#archive-head h2{font-family:var(--serif);font-size:1.3rem;font-weight:400;color:var(--ink)}
-#archive-close{background:none;border:none;font-size:1.2rem;color:var(--muted);cursor:pointer;padding:.2rem .5rem}
-#archive-close:hover{color:var(--ink)}
-#archive-list{overflow-y:auto;padding:.6rem 1.5rem 1.5rem}
-.arc-empty,.arc-loading,.arc-error{color:var(--muted);font-size:.88rem;padding:2rem 0;text-align:center}
+/* ── v66 — "Archivio presentazioni" in homepage (sostituisce il modal v61) ── */
+#archive-home{max-width:960px;margin:0 auto;padding:2.4rem 1.5rem 1rem}
+.arc-head-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1.3rem}
+.arc-head-row h1{font-family:var(--serif);font-size:clamp(1.4rem,3vw,1.8rem);font-weight:400;color:var(--ink)}
+#btn-archive-new{background:var(--ink);color:#fff;border:none;border-radius:var(--radius-sm);
+  padding:.7rem 1.3rem;font-family:var(--sans);font-size:.82rem;font-weight:700;cursor:pointer;transition:opacity .15s}
+#btn-archive-new:hover{opacity:.85}
+.arc-empty,.arc-loading,.arc-error{color:var(--muted);font-size:.88rem;padding:2rem 0;text-align:center;
+  background:#fff;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:1.6rem}
 .arc-error{color:var(--amber)}
-.arc-item{display:flex;align-items:center;gap:.9rem;padding:.9rem 0;border-bottom:1px solid var(--border)}
-.arc-item:last-child{border-bottom:none}
-.arc-info{flex:1;min-width:0}
-.arc-title{color:var(--ink);font-size:.92rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.arc-meta{color:var(--muted);font-size:.76rem;margin-top:.2rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
-.arc-tpl{background:var(--teal-wash);color:var(--teal);border-radius:99px;padding:.1rem .55rem;font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
-.arc-open{flex-shrink:0;background:var(--coral);color:#fff;border:none;border-radius:var(--radius-sm);
-  padding:.55rem 1rem;font-size:.8rem;font-weight:600;text-decoration:none;cursor:pointer;transition:background .15s}
-.arc-open:hover{background:var(--accent-deep)}
-.arc-open.disabled{background:var(--border);color:var(--muted);pointer-events:none}
-.arc-del{flex-shrink:0;background:none;border:1px solid var(--border);border-radius:var(--radius-sm);
-  color:var(--muted);padding:.55rem .7rem;font-size:.85rem;cursor:pointer;transition:all .15s;margin-left:.4rem}
-.arc-del:hover{border-color:var(--amber);color:var(--amber)}
+.arc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;margin-bottom:1.8rem}
+.deck-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow);
+  overflow:hidden;position:relative;transition:box-shadow .15s,transform .1s}
+.deck-card:hover{box-shadow:var(--shadow-hover);transform:translateY(-2px)}
+.deck-thumb{height:64px;background:linear-gradient(135deg,var(--gold-tint-wash),var(--info-wash))}
+.deck-body{padding:.9rem 1rem 1rem}
+.deck-body .arc-title{color:var(--ink);font-size:.9rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:.25rem}
+.deck-body .arc-meta{color:var(--muted);font-size:.72rem;margin-bottom:.6rem;line-height:1.5;
+  overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.deck-foot{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.template-pill{font-size:.65rem;font-weight:700;padding:.2rem .6rem;border-radius:99px;text-transform:uppercase;letter-spacing:.03em}
+.template-pill.tpl-dark{background:var(--dark-tint);color:var(--dark-tint-deep)}
+.template-pill.tpl-gold{background:var(--gold-tint-wash);color:var(--gold-tint-deep)}
+.template-pill.tpl-good{background:var(--good-wash);color:var(--good-deep)}
+.template-pill.tpl-warn{background:var(--warn-wash);color:var(--warn-deep)}
+.template-pill.tpl-bad{background:var(--bad-wash);color:var(--bad-deep)}
+.template-pill.tpl-info{background:var(--info-wash);color:var(--info-deep)}
+.deck-actions{display:flex;align-items:center;gap:.35rem}
+.arc-open{color:var(--coral);font-size:.72rem;font-weight:600;text-decoration:none}
+.arc-open:hover{color:var(--accent-deep)}
+.arc-open.disabled{color:var(--muted);pointer-events:none}
+.arc-del{background:none;border:none;color:var(--muted);font-size:.85rem;cursor:pointer;padding:.1rem .3rem;transition:color .15s}
+.arc-del:hover{color:var(--amber)}
+.arc-section-title{font-weight:800;font-size:.85rem;color:var(--ink);margin-bottom:.8rem}
+.tmpl-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.9rem;margin-bottom:.5rem}
+.tmpl-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.1rem;
+  cursor:pointer;text-align:left;transition:box-shadow .15s,transform .1s,border-color .15s}
+.tmpl-card:hover{border-color:#D8D5D1;box-shadow:var(--shadow-hover);transform:translateY(-2px)}
+.tmpl-card .tmpl-name{font-weight:700;font-size:.85rem;color:var(--ink);margin-bottom:.2rem}
+.tmpl-card .tmpl-use{font-size:.74rem;color:var(--muted)}
 
 /* ── v63 — titolo modificabile + v62 progetto (facoltativo), prima del salvataggio ── */
 #archive-title-row,#archive-project-row{display:inline-flex;align-items:center;gap:.5rem;margin:.9rem 0 0;width:100%;justify-content:center;flex-wrap:wrap}
@@ -305,20 +326,40 @@ textarea:focus,#program-text:focus,.supplier-field input:focus{ border-color:var
     <div class="logo-mark">L</div>
     <div class="logo-text">Love IT DMC</div>
   </div>
-  <nav>Presenta<button id="btn-archive-open" type="button">📂 Le mie presentazioni</button></nav>
+  <nav>Presenta</nav>
 </header>
 
-<!-- v61 — Archivio: elenco delle presentazioni salvate in Love IT Projects › Presentations -->
-<div id="archive-overlay">
-  <div id="archive-modal">
-    <div id="archive-head">
-      <h2>Le mie presentazioni</h2>
-      <button id="archive-close" type="button">✕</button>
-    </div>
-    <div id="archive-list"><div class="arc-loading">Caricamento…</div></div>
+<!-- v66 — Archivio presentazioni in homepage (sostituisce il modal v61), come
+     da concept: la home mostra prima l'archivio, poi i template disponibili. -->
+<div id="archive-home">
+  <div class="arc-head-row">
+    <h1>Archivio presentazioni</h1>
+    <button id="btn-archive-new" type="button">+ Genera nuova</button>
+  </div>
+  <div id="archive-grid"><div class="arc-loading">Caricamento…</div></div>
+
+  <div class="arc-section-title">Scegli un template</div>
+  <div class="tmpl-row" id="tmpl-row">
+    <button type="button" class="tmpl-card" data-tpl="dark">
+      <div class="tmpl-name">Dark Journey</div>
+      <div class="tmpl-use">Narrazione multi-giorno con più opzioni</div>
+    </button>
+    <button type="button" class="tmpl-card" data-tpl="venues">
+      <div class="tmpl-name">Venue Options</div>
+      <div class="tmpl-use">Venue raggruppate per stato di conferma</div>
+    </button>
+    <button type="button" class="tmpl-card" data-tpl="hotel">
+      <div class="tmpl-name">Hotel Proposal</div>
+      <div class="tmpl-use">Confronto solo hotel/alloggi</div>
+    </button>
+    <button type="button" class="tmpl-card" data-tpl="quotation">
+      <div class="tmpl-name">Quotazione Venue</div>
+      <div class="tmpl-use">Quotazione finale su UNA venue già decisa</div>
+    </button>
   </div>
 </div>
 
+<section id="generate-section">
 <div class="hero">
   <h1>Genera una <em>presentazione</em></h1>
   <p>Dal preventivo PDF · scheda fornitore, artista/show o attività</p>
@@ -504,6 +545,8 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
   </div>
 
 </main>
+
+</section>
 
 <footer>Love IT DMC · Strumento interno · Solo uso professionale</footer>
 
@@ -1231,6 +1274,7 @@ function _authClearCache(){
       if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
       savedFor = fname;
       btn.textContent = '✓ In archivio';
+      if (window._reloadArchiveHome) window._reloadArchiveHome();  // v66 — mostra subito la nuova card in homepage
       if (data.warning) {
         msg.className = 'err';
         msg.textContent = data.warning;
@@ -1247,19 +1291,20 @@ function _authClearCache(){
   });
 })();
 
-/* ═══ v61 — "Le mie presentazioni" ════════════════════════════════════════
-   Elenca gli indici salvati in Love IT Projects › Presentations (§4.4) e
-   apre il link a Vercel Blob — che è la presentazione stessa, già
-   modificabile nell'editor incorporato, non solo una copia statica. */
+/* ═══ v66 — "Archivio presentazioni" in homepage ═══════════════════════════
+   Sostituisce il modal v61: la griglia è sempre visibile in homepage, non più
+   dietro un pulsante. Stesso endpoint (?archive=list, esclude già i cestinati
+   via {Deleted At}=BLANK() lato server) e stesso flusso di cancellazione. */
 (function(){
-  const openBtn  = document.getElementById('btn-archive-open');
-  const overlay  = document.getElementById('archive-overlay');
-  const closeBtn = document.getElementById('archive-close');
-  const listEl   = document.getElementById('archive-list');
-  if (!openBtn || !overlay) return;
+  const gridEl = document.getElementById('archive-grid');
+  if (!gridEl) return;
 
-  const TPL_LABELS = { dark: 'Dark Journey', venues: 'Venue Options', hotel: 'Hotel Proposal', quotation: 'Quotazione Venue' };
-  let loaded = false;
+  // v66 — un colore diverso per template, solo per distinguere a colpo
+  // d'occhio (non è uno stato buono/cattivo). "gold" è riservato al template
+  // Elegante Cream/Gold, non ancora presente in Presenta: se/quando verrà
+  // aggiunto, associare quel deckTemplate a tpl-gold qui sotto.
+  const TPL_LABELS   = { dark: 'Dark Journey', venues: 'Venue Options', hotel: 'Hotel Proposal', quotation: 'Quotazione Venue' };
+  const TPL_TAGCLASS = { dark: 'tpl-dark', venues: 'tpl-good', hotel: 'tpl-warn', quotation: 'tpl-info' };
 
   function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function fmtDate(iso){
@@ -1270,47 +1315,55 @@ function _authClearCache(){
 
   function render(items){
     if (!items.length) {
-      listEl.innerHTML = '<div class="arc-empty">Nessuna presentazione salvata finora.<br>Usa "☐ Salva in archivio" dopo aver generato una presentazione.</div>';
+      gridEl.innerHTML = '<div class="arc-empty">Nessuna presentazione salvata finora.<br>Usa "☐ Salva in archivio" dopo aver generato una presentazione.</div>';
       return;
     }
-    listEl.innerHTML = items.map(it => {
+    gridEl.innerHTML = `<div class="arc-grid">${items.map(it => {
       const tplLabel = TPL_LABELS[it.template] || it.template;
-      const meta = [fmtDate(it.createdAt), it.createdBy, it.projectName, it.suppliers.slice(0,3).join(', ') + (it.suppliers.length>3 ? '…' : '')]
+      const tplClass = TPL_TAGCLASS[it.template] || 'tpl-dark';
+      const meta = [fmtDate(it.createdAt), it.projectName, it.suppliers.slice(0,2).join(', ') + (it.suppliers.length>2 ? '…' : '')]
         .filter(Boolean).map(esc).join(' · ');
       const openHtml = it.fileUrl
-        ? `<a class="arc-open" href="${esc(it.fileUrl)}" target="_blank" rel="noopener">Apri</a>`
+        ? `<a class="arc-open" href="${esc(it.fileUrl)}" target="_blank" rel="noopener">Apri →</a>`
         : `<span class="arc-open disabled" title="Salvata senza file (vedi messaggio al momento del salvataggio)">Non disponibile</span>`;
-      return `<div class="arc-item" data-id="${esc(it.id)}">
-        <div class="arc-info">
+      return `<div class="deck-card" data-id="${esc(it.id)}">
+        <div class="deck-thumb"></div>
+        <div class="deck-body">
           <div class="arc-title">${esc(it.title)}</div>
-          <div class="arc-meta"><span class="arc-tpl">${esc(tplLabel)}</span>${meta ? ' · ' + meta : ''}</div>
+          <div class="arc-meta">${meta}</div>
+          <div class="deck-foot">
+            <span class="template-pill ${tplClass}">${esc(tplLabel)}</span>
+            <div class="deck-actions">
+              ${openHtml}
+              <button type="button" class="arc-del" data-del="${esc(it.id)}" title="Cancella">🗑</button>
+            </div>
+          </div>
         </div>
-        ${openHtml}
-        <button type="button" class="arc-del" data-del="${esc(it.id)}" title="Cancella">🗑</button>
       </div>`;
-    }).join('');
+    }).join('')}</div>`;
   }
 
   async function load(){
-    listEl.innerHTML = '<div class="arc-loading">Caricamento…</div>';
+    gridEl.innerHTML = '<div class="arc-loading">Caricamento…</div>';
     try {
       const resp = await fetch('/api/acts-list?archive=list');
       const data = await resp.json();
       if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
       render(data.items || []);
     } catch (e) {
-      listEl.innerHTML = `<div class="arc-error">Non riesco a caricare l'archivio: ${esc(e.message)}</div>`;
+      gridEl.innerHTML = `<div class="arc-error">Non riesco a caricare l'archivio: ${esc(e.message)}</div>`;
     }
   }
+  window._reloadArchiveHome = load;
 
-  // Cancellazione (v62): un solo listener delegato, l'elenco viene ridisegnato
-  // ad ogni salvataggio/apertura quindi i pulsanti cambiano di continuo.
-  listEl.addEventListener('click', async e => {
+  // Cancellazione: un solo listener delegato, la griglia viene ridisegnata
+  // ad ogni salvataggio quindi i pulsanti cambiano di continuo.
+  gridEl.addEventListener('click', async e => {
     const btn = e.target.closest('[data-del]');
     if (!btn) return;
     const id = btn.dataset.del;
-    const item = btn.closest('.arc-item');
-    const titleEl = item?.querySelector('.arc-title');
+    const card = btn.closest('.deck-card');
+    const titleEl = card?.querySelector('.arc-title');
     const title = titleEl ? titleEl.textContent : 'questa presentazione';
     if (!confirm(`Cancellare "${title}" dall'archivio?\n\nIl file resta scaricabile finché il link è aperto altrove, ma sparisce da questo elenco.`)) return;
     btn.disabled = true;
@@ -1323,8 +1376,8 @@ function _authClearCache(){
       });
       const data = await resp.json();
       if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
-      item.remove();
-      if (!listEl.querySelector('.arc-item')) render([]);
+      card.remove();
+      if (!gridEl.querySelector('.deck-card')) render([]);
     } catch (err) {
       btn.disabled = false;
       btn.textContent = '🗑';
@@ -1332,12 +1385,31 @@ function _authClearCache(){
     }
   });
 
-  openBtn.addEventListener('click', () => {
-    overlay.classList.add('open');
-    if (!loaded) { loaded = true; load(); } else { load(); } // ricarica sempre: elenco può essere cambiato
+  load();
+})();
+
+/* ═══ v66 — "+ Genera nuova" e card-template: portano al generatore ════════
+   Restano nella stessa pagina (niente rewrite dell'architettura): un click
+   scorre fino alla sezione di generazione già esistente, e se parte da una
+   card-template preseleziona anche quel template (riusa il click handler
+   già presente su .tpl-card, così costLayout resta sincronizzato). */
+(function(){
+  const newBtn = document.getElementById('btn-archive-new');
+  const genSection = document.getElementById('generate-section');
+  if (!newBtn || !genSection) return;
+
+  function goToGenerate(tpl){
+    if (tpl) {
+      const card = document.querySelector(`#panel-preventivo .tpl-card[data-tpl="${tpl}"]`);
+      if (card) card.click();
+    }
+    genSection.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+
+  newBtn.addEventListener('click', () => goToGenerate());
+  document.querySelectorAll('#tmpl-row .tmpl-card').forEach(card => {
+    card.addEventListener('click', () => goToGenerate(card.dataset.tpl));
   });
-  closeBtn.addEventListener('click', () => overlay.classList.remove('open'));
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
 })();
 </script>
 </body>

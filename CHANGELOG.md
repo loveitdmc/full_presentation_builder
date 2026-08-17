@@ -8,6 +8,34 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v66 — 2026-08-17 — Restyle "Studio": archivio in homepage + tag a tinta chiara
+- Stesso aggiornamento visivo fatto su Capybara e in corso su Vault/Preventivi
+  (istruzioni ricevute via `ISTRUZIONI_ING_C_presenta_restyle.md` +
+  `presenta-concept.html`): nuovi token condivisi `--good/--warn/--bad/--info`
+  (+ `-wash`/`-deep`) e `--gold-tint` (riservato al futuro template "Elegante
+  Cream/Gold"), font Manrope al posto di Montserrat per l'interfaccia dello
+  strumento (i template delle presentazioni restano invariati, §4.3).
+- L'archivio "Le mie presentazioni" non è più un modal dietro un pulsante:
+  è ora la home stessa, come da concept — griglia di card con titolo,
+  progetto, fornitori e un tag colorato per template, seguita da "Scegli un
+  template" con le 4 card dei template realmente disponibili in Presenta
+  oggi (Dark Journey, Venue Options, Hotel Proposal, Quotazione Venue).
+  Il generatore (tab "Da Preventivo" / "Cerca nel Database") resta nella
+  stessa pagina più sotto: "+ Genera nuova" e le card-template ci scorrono
+  sopra, preselezionando il template scelto.
+- Le istruzioni citavano 6 template reali (Standard Corporate ed Elegante
+  Cream/Gold in più rispetto ai 4 già in Presenta): non essendo ancora
+  implementati nel codice, non compaiono nella griglia "Scegli un template"
+  — nessuna card finta/disabilitata, solo quelli davvero generabili oggi.
+  I due tag colorati riservati (`good`/`bad`/`gold-tint` avanzati) restano
+  liberi per quando arriveranno.
+- Il filtro che esclude le presentazioni cestinate (`{Deleted At}=BLANK()`,
+  v62/v64) non è cambiato: la nuova griglia usa lo stesso `?archive=list`.
+- Testato con jsdom: caricamento griglia da `?archive=list` con 2 elementi
+  finti, colori-tag corretti per template, cancellazione con rimozione della
+  card dal DOM, click su card-template → scroll a `#generate-section` +
+  preselezione del `.tpl-card` corrispondente nel tab "Da Preventivo".
+
 ## v65 — 2026-08-16 — Sessione da 14 giorni, come Preventivi (non più solo ~1h)
 - Marco ha segnalato che Preventivi regge il login 14 giorni con un cookie
   di sessione (`li_session`), mentre Presenta (v62) si appoggiava solo alla
