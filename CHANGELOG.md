@@ -35,6 +35,12 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
   finti, colori-tag corretti per template, cancellazione con rimozione della
   card dal DOM, click su card-template → scroll a `#generate-section` +
   preselezione del `.tpl-card` corrispondente nel tab "Da Preventivo".
+- Aggiustamento subito dopo il primo giro (stesso v66): su indicazione di
+  Marco, l'archivio è stato spostato SOTTO al generatore invece che sopra
+  (il generatore resta la prima cosa che si vede, come prima del restyle),
+  e la riga "Scegli un template" è stata tolta dall'archivio — è già nel
+  generatore appena sopra, ridondante qui. "+ Genera nuova" ora scorre
+  semplicemente su fino al generatore.
 
 ## v65 — 2026-08-16 — Sessione da 14 giorni, come Preventivi (non più solo ~1h)
 - Marco ha segnalato che Preventivi regge il login 14 giorni con un cookie

@@ -296,13 +296,6 @@ textarea:focus,#program-text:focus,.supplier-field input:focus{ border-color:var
 .arc-open.disabled{color:var(--muted);pointer-events:none}
 .arc-del{background:none;border:none;color:var(--muted);font-size:.85rem;cursor:pointer;padding:.1rem .3rem;transition:color .15s}
 .arc-del:hover{color:var(--amber)}
-.arc-section-title{font-weight:800;font-size:.85rem;color:var(--ink);margin-bottom:.8rem}
-.tmpl-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.9rem;margin-bottom:.5rem}
-.tmpl-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.1rem;
-  cursor:pointer;text-align:left;transition:box-shadow .15s,transform .1s,border-color .15s}
-.tmpl-card:hover{border-color:#D8D5D1;box-shadow:var(--shadow-hover);transform:translateY(-2px)}
-.tmpl-card .tmpl-name{font-weight:700;font-size:.85rem;color:var(--ink);margin-bottom:.2rem}
-.tmpl-card .tmpl-use{font-size:.74rem;color:var(--muted)}
 
 /* ── v63 — titolo modificabile + v62 progetto (facoltativo), prima del salvataggio ── */
 #archive-title-row,#archive-project-row{display:inline-flex;align-items:center;gap:.5rem;margin:.9rem 0 0;width:100%;justify-content:center;flex-wrap:wrap}
@@ -328,36 +321,6 @@ textarea:focus,#program-text:focus,.supplier-field input:focus{ border-color:var
   </div>
   <nav>Presenta</nav>
 </header>
-
-<!-- v66 — Archivio presentazioni in homepage (sostituisce il modal v61), come
-     da concept: la home mostra prima l'archivio, poi i template disponibili. -->
-<div id="archive-home">
-  <div class="arc-head-row">
-    <h1>Archivio presentazioni</h1>
-    <button id="btn-archive-new" type="button">+ Genera nuova</button>
-  </div>
-  <div id="archive-grid"><div class="arc-loading">Caricamento…</div></div>
-
-  <div class="arc-section-title">Scegli un template</div>
-  <div class="tmpl-row" id="tmpl-row">
-    <button type="button" class="tmpl-card" data-tpl="dark">
-      <div class="tmpl-name">Dark Journey</div>
-      <div class="tmpl-use">Narrazione multi-giorno con più opzioni</div>
-    </button>
-    <button type="button" class="tmpl-card" data-tpl="venues">
-      <div class="tmpl-name">Venue Options</div>
-      <div class="tmpl-use">Venue raggruppate per stato di conferma</div>
-    </button>
-    <button type="button" class="tmpl-card" data-tpl="hotel">
-      <div class="tmpl-name">Hotel Proposal</div>
-      <div class="tmpl-use">Confronto solo hotel/alloggi</div>
-    </button>
-    <button type="button" class="tmpl-card" data-tpl="quotation">
-      <div class="tmpl-name">Quotazione Venue</div>
-      <div class="tmpl-use">Quotazione finale su UNA venue già decisa</div>
-    </button>
-  </div>
-</div>
 
 <section id="generate-section">
 <div class="hero">
@@ -547,6 +510,17 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
 </main>
 
 </section>
+
+<!-- v66 — Archivio presentazioni sotto al generatore (spostato dall'alto su
+     richiesta di Marco: "Scegli un template" toglierla, c'è già nel
+     generatore sopra). Sostituisce il modal v61. -->
+<div id="archive-home">
+  <div class="arc-head-row">
+    <h1>Archivio presentazioni</h1>
+    <button id="btn-archive-new" type="button">+ Genera nuova</button>
+  </div>
+  <div id="archive-grid"><div class="arc-loading">Caricamento…</div></div>
+</div>
 
 <footer>Love IT DMC · Strumento interno · Solo uso professionale</footer>
 
@@ -1388,28 +1362,13 @@ function _authClearCache(){
   load();
 })();
 
-/* ═══ v66 — "+ Genera nuova" e card-template: portano al generatore ════════
-   Restano nella stessa pagina (niente rewrite dell'architettura): un click
-   scorre fino alla sezione di generazione già esistente, e se parte da una
-   card-template preseleziona anche quel template (riusa il click handler
-   già presente su .tpl-card, così costLayout resta sincronizzato). */
+/* ═══ v66 — "+ Genera nuova" riporta al generatore (spostato sopra l'archivio,
+   la scelta del template è già lì — niente da duplicare qui sotto). ═══════ */
 (function(){
   const newBtn = document.getElementById('btn-archive-new');
   const genSection = document.getElementById('generate-section');
   if (!newBtn || !genSection) return;
-
-  function goToGenerate(tpl){
-    if (tpl) {
-      const card = document.querySelector(`#panel-preventivo .tpl-card[data-tpl="${tpl}"]`);
-      if (card) card.click();
-    }
-    genSection.scrollIntoView({ behavior:'smooth', block:'start' });
-  }
-
-  newBtn.addEventListener('click', () => goToGenerate());
-  document.querySelectorAll('#tmpl-row .tmpl-card').forEach(card => {
-    card.addEventListener('click', () => goToGenerate(card.dataset.tpl));
-  });
+  newBtn.addEventListener('click', () => genSection.scrollIntoView({ behavior:'smooth', block:'start' }));
 })();
 </script>
 </body>
