@@ -696,6 +696,38 @@ body.deck-venues .slide-split .counter,body.deck-hotel .slide-split .counter{ co
 body.deck-venues .slide-datatable #dots,body.deck-hotel .slide-datatable #dots{}
 /* pulsanti editor sulle slide crema: restano leggibili (fondo scuro proprio) */
 
+/* ══ v68 — Hotel Proposal v2, da MAX_Hotel_Proposal_Elegant_v2.pptx ═════════
+   Solo per il deck "hotel": Venue Options (deck-venues) resta esattamente
+   come prima, su richiesta esplicita. Eyebrow coral (fedele al pptx
+   originale) invece dell'oro condiviso con Venue Options, tabella tariffe
+   compatta nello spread di ogni hotel, e la nuova slide "Good to Know". */
+body.deck-hotel .slide-datatable .eyebrow,
+body.deck-hotel .gallery-cards .eyebrow,
+body.deck-hotel .split-content .eyebrow{ color:#FF5149; }
+body.deck-hotel .slide-hotelspread .hp-avail{ font-family:'Calibri',var(--sans);font-size:.68rem;color:rgba(43,50,58,.6);margin-bottom:1rem;line-height:1.5; }
+body.deck-hotel .slide-hotelspread .data-table{ margin-top:0;margin-bottom:.9rem; }
+body.deck-hotel .slide-hotelspread .data-table th,
+body.deck-hotel .slide-hotelspread .data-table td{ padding:.4rem .55rem;font-size:.72rem; }
+body.deck-hotel .slide-hotelspread .data-table td.dt-cell:first-child{ font-family:'Calibri',var(--sans);font-style:normal;font-size:.72rem; }
+body.deck-hotel .slide-hotelspread .data-table th.num,
+body.deck-hotel .slide-hotelspread .data-table td.num{ text-align:right; }
+body.deck-hotel .slide-hotelspread .add-dtrow-btn{ margin-top:0;margin-bottom:1rem; }
+body.deck-hotel .slide-hotelspread .hp-note{ font-family:'Calibri',var(--sans);font-size:.7rem;color:rgba(43,50,58,.78);line-height:1.6;margin-bottom:.25rem; }
+body.deck-hotel .slide-hotelspread .hp-note b{ font-weight:700; }
+/* Good to Know: stessa base di slide-flow (serve per l'export PPTX, che sa
+   già leggere i .flow-item), ma ritinta crema/coral come il resto del deck. */
+body.deck-hotel .slide-goodtoknow{ background:#F7F4EF; }
+body.deck-hotel .slide-goodtoknow .eyebrow{ color:#FF5149; }
+body.deck-hotel .slide-goodtoknow .headline{ color:#2B323A; }
+body.deck-hotel .slide-goodtoknow .rule{ background:#C9A96A; }
+body.deck-hotel .slide-goodtoknow .flow-item-text{ color:rgba(43,50,58,.85); }
+body.deck-hotel .slide-goodtoknow .flow-item-text b{ color:#2B323A; }
+body.deck-hotel .slide-goodtoknow .flow-dot{ background:#FF5149; }
+body.deck-hotel .slide-goodtoknow .del-flowitem-btn{ background:rgba(255,255,255,.85);border-color:rgba(220,80,80,.4); }
+body.deck-hotel .slide-goodtoknow .add-flowitem-btn{ color:#346E74;border-color:rgba(52,110,116,.4); }
+body.deck-hotel .slide-goodtoknow .add-flowitem-btn:hover{ border-color:#346E74;background:rgba(52,110,116,.07); }
+body.deck-hotel .slide-goodtoknow .counter{ color:rgba(43,50,58,.45); }
+
 /* ══ Layout dai template pptx LoveIT (v45) ══════════════════════════════════ */
 /* ── Tabelle dati (Hotel At-a-Glance / Venue per stato) ───────────────────── */
 .slide-datatable{ background:var(--notte); }
@@ -971,19 +1003,21 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
       <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
     </section>`;
   }
+  // v68 — colonne fedeli a MAX_Hotel_Proposal_Elegant_v2.pptx: Hotel / Location /
+  // Category / From (per room/night), non più Hotel/Categoria/Camera/Tariffa/Note.
   function buildRateTable(trip, num, total){
     const rows=[];
     trip.days.forEach(d=>d.activities.forEach(a=>{
       if(a.showSlide===false) return;
-      rows.push(`<tr><td class="dt-cell">${_actName(a)}</td><td class="dt-cell">${a.type||'—'}</td><td class="dt-cell">Camera doppia</td><td class="dt-cell">da € — / notte</td><td class="dt-cell">Day ${d.number}</td><td class="dt-del"><button type="button" class="del-dtrow-btn" title="Rimuovi riga">×</button></td></tr>`);
+      rows.push(`<tr><td class="dt-cell">${_actName(a)}</td><td class="dt-cell">${a.location || trip.destination || '—'}</td><td class="dt-cell">${a.category || a.type || '—'}</td><td class="dt-cell">${a.priceFrom || 'da € — / notte'}</td><td class="dt-del"><button type="button" class="del-dtrow-btn" title="Rimuovi riga">×</button></td></tr>`);
     }));
     return `
     <section class="slide-datatable">
       <div class="content-dark datatable-content">
-        <div class="eyebrow">Hotels — At a Glance</div>
-        <h2 class="headline">Confronto hotel</h2>
+        <div class="eyebrow">At a Glance</div>
+        <h2 class="headline">Hotel Options Overview</h2>
         <div class="rule"></div>
-        <table class="data-table"><thead><tr><th>Hotel</th><th>Categoria</th><th>Camera</th><th>Tariffa</th><th>Note</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>
+        <table class="data-table"><thead><tr><th>Hotel</th><th>Location</th><th>Category</th><th>From (per room/night)</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>
         <button type="button" class="add-dtrow-btn" data-kind="hotel">+ Aggiungi riga</button>
       </div>
       <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
@@ -1016,6 +1050,76 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
       <div class="bg" style="${bgStyle(second)}"></div>
       <div class="ov-dark"></div>
       <div class="content"><div class="eyebrow">${_actName(act)}</div><h2 class="headline">${act.title}</h2></div>
+      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
+    </section>`;
+  }
+
+  // ── v68: deck "Hotel Proposal" — da MAX_Hotel_Proposal_Elegant_v2.pptx ──────
+  // Sostituisce lo spread generico (buildDeckSpread) per il solo deck "hotel":
+  // stessa foto-sinistra, ma a destra una tabella tariffe per tipo di camera
+  // (editabile con lo stesso meccanismo add/del-dtrow già usato altrove) invece
+  // di un paragrafo descrittivo, più le note Included/Excluded. Venue Options
+  // (DECK==='venues') non cambia — resta su buildDeckSpread come prima.
+  function buildHotelSpread(trip, act, day, num, total, dayIdx, actIdx){
+    const { main } = _actPhotoSets(act);
+    const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
+    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
+    const rates = (act.roomRates && act.roomRates.length) ? act.roomRates : [
+      { type: 'Camera doppia', rate: 'da € — / notte' },
+      { type: 'Camera singola', rate: 'da € — / notte' },
+    ];
+    const rateRows = rates.map(r =>
+      `<tr><td class="dt-cell">${r.type}</td><td class="dt-cell num">${r.rate}</td><td class="dt-del"><button type="button" class="del-dtrow-btn" title="Rimuovi riga">×</button></td></tr>`
+    ).join('');
+    const avail = act.availability || `Day ${day.number}${day.date?` · ${day.date}`:''}`;
+    const included = act.included || 'Da specificare';
+    const excluded = act.excluded || 'City tax, se applicabile';
+    // Riepilogo testuale nascosto, solo per l'export PPTX (che legge .body-text):
+    // la tabella tariffe e le note Included/Excluded altrimenti andrebbero perse.
+    const exportSummary = [
+      avail,
+      ...rates.map(r=>`${r.type}: ${r.rate}`),
+      `Included: ${included}`,
+      `Excluded: ${excluded}`,
+    ].join('\n');
+    return `
+    <section class="slide-split slide-split-photo-left slide-hotelspread"${dataAttrs}>
+      <div class="split-photo"${main?` style="background-image:url('${main}')"`:''}></div>
+      <div class="split-content">
+        <div class="eyebrow">${act.location || trip.destination || ''}</div>
+        <h2 class="headline">${_actName(act)}</h2>
+        <p class="hp-export-summary body-text" style="display:none">${exportSummary}</p>
+        <p class="hp-avail">${avail}</p>
+        <table class="data-table"><thead><tr><th>Room Type</th><th class="num">Rate / night</th><th></th></tr></thead>
+          <tbody>${rateRows}</tbody></table>
+        <button type="button" class="add-dtrow-btn" data-kind="roomrate">+ Aggiungi tariffa</button>
+        <p class="hp-note"><b>Included:</b> ${included}</p>
+        <p class="hp-note"><b>Excluded:</b> ${excluded}</p>
+      </div>
+      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
+    </section>`;
+  }
+  // ── v68: slide "Good to Know" (termini di prenotazione) — solo deck hotel ──
+  // Riusa esattamente il meccanismo dei "flow-item" (punto + testo + cancella,
+  // già usato per le slide "Flusso/Concept"): stesso HTML, stesso listener
+  // delegato (.add-flowitem-btn / .del-flowitem-btn), zero JS nuovo da wire.
+  function _gtkItemHtml(label, text){
+    return `<div class="flow-item"><span class="flow-dot"></span><div class="body-text flow-item-text"><b>${label}:</b> ${text}</div><button type="button" class="del-flowitem-btn" title="Rimuovi punto">×</button></div>`;
+  }
+  function buildGoodToKnow(trip, num, total){
+    const items = (trip.goodToKnow && trip.goodToKnow.length) ? trip.goodToKnow : [
+      { label: 'Availability', text: 'Le disponibilità indicate sono soggette a riconferma più vicino alla data del sopralluogo.' },
+      { label: 'City Tax', text: 'Esclusa da tutte le tariffe sopra indicate, salvo diversa indicazione.' },
+      { label: 'Special Conditions', text: 'Eventuali condizioni particolari per fornitore vanno riportate qui.' },
+    ];
+    return `
+    <section class="slide-flow slide-goodtoknow">
+      <div class="content-dark flow-content">
+        <div class="eyebrow">Good to Know</div>
+        <h2 class="headline">Booking Terms &amp; Next Steps</h2>
+        <div class="flow-items">${items.map(it => _gtkItemHtml(it.label, it.text)).join('')}</div>
+        <button type="button" class="add-flowitem-btn">+ Aggiungi punto</button>
+      </div>
       <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
     </section>`;
   }
@@ -1306,8 +1410,9 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
           if(sets.second) slideBuilders.push((num, total) => buildDeckHero(act, day, num, total, dayIdx, actIdx));
           if(sets.gallery.length > 0) slideBuilders.push((num, total) => buildGallery(act, day, num, total, dayIdx, actIdx));
         } else if(DECK==='hotel'){
-          // Template 04: spread scheda hotel → galleria (include la seconda foto)
-          slideBuilders.push((num, total) => buildDeckSpread(act, day, num, total, dayIdx, actIdx));
+          // v68: spread scheda hotel (tabella tariffe, Included/Excluded — da
+          // MAX_Hotel_Proposal_Elegant_v2.pptx) → galleria (include la seconda foto)
+          slideBuilders.push((num, total) => buildHotelSpread(TRIP, act, day, num, total, dayIdx, actIdx));
           const hotelGallery=[sets.second, ...sets.gallery].filter(Boolean).slice(0,6);
           if(hotelGallery.length > 0) slideBuilders.push((num, total) => buildGallery(act, day, num, total, dayIdx, actIdx, hotelGallery));
         } else {
@@ -1329,6 +1434,11 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
     });
   });
 
+  // v68 — "Good to Know" (termini di prenotazione): una sola slide per tutto
+  // il deck, dopo l'ultimo hotel e prima della chiusura, solo per DECK==='hotel'.
+  if(DECK==='hotel'){
+    slideBuilders.push((num, total) => buildGoodToKnow(TRIP, num, total));
+  }
   slideBuilders.push((num, total) => buildClosing(TRIP, num, total));
   } // fine deck non-quotation
 
@@ -1716,7 +1826,7 @@ try{ LoveitEditor=(function(){
   let photoMode=false, textMode=false, editMode=false;
   const zones=[], addBtns=[], deleteBtns=[];
   let currentTarget=null;
-  const TEXT_SEL='.headline,.display,.body-text,.tagline,.eyebrow,.gallery-title-small,.gallery-label,.meta-pill,.room-cap-label,.room-cap-value,.day-num-col,.day-label-col,.optcompare-sub,.opt-card-direction,.gallery-cell-caption,.dt-cell,.pc-label,.pc-price,.pc-unit,.pc-note,.tl-title,.tl-text,.menu-course,.menu-item-name,.menu-item-desc,.menu-price,.q-eyebrow,.q-title,.q-body,.q-note,.qcover-eyebrow,.qcover-title,.qcover-sub,.qfact-label,.qfact-value,.qcost-cell,.qcost-total-label,.qcost-total-value,.qcost-pp,.qcost-foot';
+  const TEXT_SEL='.headline,.display,.body-text,.tagline,.eyebrow,.gallery-title-small,.gallery-label,.meta-pill,.room-cap-label,.room-cap-value,.day-num-col,.day-label-col,.optcompare-sub,.opt-card-direction,.gallery-cell-caption,.dt-cell,.pc-label,.pc-price,.pc-unit,.pc-note,.tl-title,.tl-text,.menu-course,.menu-item-name,.menu-item-desc,.menu-price,.q-eyebrow,.q-title,.q-body,.q-note,.qcover-eyebrow,.qcover-title,.qcover-sub,.qfact-label,.qfact-value,.qcost-cell,.qcost-total-label,.qcost-total-value,.qcost-pp,.qcost-foot,.hp-avail,.hp-note';
 
   // ── Protezione modifiche non salvate (autosave + avviso prima di uscire) ───
   // localStorage è condiviso con la pagina che genera l'anteprima (stesso
@@ -2391,7 +2501,11 @@ try{ LoveitEditor=(function(){
   const _STATUS_LABELS={confirmed:'Confirmed',tbc:'TBC',new:'New'};
   function _dtRowHtml(kind){
     if(kind==='venue') return `<tr><td class="dt-cell">Nome venue</td><td class="dt-cell">Zona</td><td class="dt-cell">Capacità</td><td class="dt-cell">Note</td><td class="dt-status-cell"><span class="status-badge" data-status="tbc">TBC</span></td><td class="dt-del"><button type="button" class="del-dtrow-btn" title="Rimuovi riga">×</button></td></tr>`;
-    return `<tr><td class="dt-cell">Nome hotel</td><td class="dt-cell">Categoria</td><td class="dt-cell">Camera</td><td class="dt-cell">da € — / notte</td><td class="dt-cell">Note</td><td class="dt-del"><button type="button" class="del-dtrow-btn" title="Rimuovi riga">×</button></td></tr>`;
+    // v68 — riga tariffa camera (tabella compatta nello spread di ogni hotel,
+    // non più la tabella globale "Hotels — At a Glance").
+    if(kind==='roomrate') return `<tr><td class="dt-cell">Tipo camera</td><td class="dt-cell num">da € — / notte</td><td class="dt-del"><button type="button" class="del-dtrow-btn" title="Rimuovi riga">×</button></td></tr>`;
+    // "hotel" — riga della tabella "At a Glance" (Hotel/Location/Category/From)
+    return `<tr><td class="dt-cell">Nome hotel</td><td class="dt-cell">Location</td><td class="dt-cell">Categoria</td><td class="dt-cell">da € — / notte</td><td class="dt-del"><button type="button" class="del-dtrow-btn" title="Rimuovi riga">×</button></td></tr>`;
   }
   function _wireNewRow(tr){
     if(textMode) tr.querySelectorAll('.dt-cell').forEach(el=>{ el.contentEditable='true';el.spellcheck=false; });

@@ -393,11 +393,11 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
         <button type="button" class="tpl-card" data-tpl="hotel">
           <span class="tpl-swatch tpl-swatch-cream"></span>
           <span class="tpl-name">Hotel Proposal</span>
-          <span class="tpl-desc">Crema/oro — tabella tariffe + scheda e galleria per hotel</span>
+          <span class="tpl-desc">Crema/coral — At a Glance, tariffe per tipo camera, galleria e booking terms</span>
         </button>
         <button type="button" class="tpl-card" data-tpl="quotation">
           <span class="tpl-swatch tpl-swatch-quote"></span>
-          <span class="tpl-name">Quotazione Venue</span>
+          <span class="tpl-name">Standard Template</span>
           <span class="tpl-desc">Crema/teal — 5 slide per UN venue: cover, scheda, planimetria, gallery, costi</span>
         </button>
       </div>
@@ -443,7 +443,7 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
         </button>
         <button type="button" class="tpl-card" data-tpl="quotation">
           <span class="tpl-swatch tpl-swatch-quote"></span>
-          <span class="tpl-name">Quotazione Venue</span>
+          <span class="tpl-name">Standard Template</span>
           <span class="tpl-desc">Crema/teal — cover, scheda, planimetria, gallery, costi</span>
         </button>
       </div>
@@ -1277,7 +1277,10 @@ function _authClearCache(){
   // d'occhio (non è uno stato buono/cattivo). "gold" è riservato al template
   // Elegante Cream/Gold, non ancora presente in Presenta: se/quando verrà
   // aggiunto, associare quel deckTemplate a tpl-gold qui sotto.
-  const TPL_LABELS   = { dark: 'Dark Journey', venues: 'Venue Options', hotel: 'Hotel Proposal', quotation: 'Quotazione Venue' };
+  // v67 — "Standard Template" è solo l'etichetta visibile: la chiave interna
+  // resta 'quotation' (URL param ?tpl=quotation dal Vault, deckTemplate nel
+  // salvataggio in archivio ecc. — nessun collegamento tra app tocca il nome).
+  const TPL_LABELS   = { dark: 'Dark Journey', venues: 'Venue Options', hotel: 'Hotel Proposal', quotation: 'Standard Template' };
   const TPL_TAGCLASS = { dark: 'tpl-dark', venues: 'tpl-good', hotel: 'tpl-warn', quotation: 'tpl-info' };
 
   function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

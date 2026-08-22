@@ -8,6 +8,66 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v68 — 2026-08-22 — Hotel Proposal v2, da MAX_Hotel_Proposal_Elegant_v2.pptx
+- Marco ha notato che Venue Options e Hotel Proposal sembravano lo stesso
+  template — verificato: usano lo stesso codice, differiscono solo per la
+  tabella iniziale (stato conferma vs tariffe) e per una slide hero in più
+  su Venue Options. Su richiesta, Venue Options resta ESATTAMENTE com'era;
+  Hotel Proposal è stato ricostruito seguendo la struttura reale di
+  `MAX_Hotel_Proposal_Elegant_v2.pptx` (caricato da Marco), dopo una bozza
+  HTML approvata prima di toccare il motore.
+- `template/loveit_template.html`, solo `DECK==='hotel'` (deckTemplate
+  invariato — nessun link tra app si rompe):
+  - Tabella "At a Glance" (`buildRateTable`) ora ha le colonne del pptx —
+    Hotel / Location / Category / From (per room/night) — invece di
+    Hotel/Categoria/Camera/Tariffa/Note.
+  - Nuova `buildHotelSpread`: sostituisce lo spread generico per il deck
+    hotel — stessa foto a sinistra, ma a destra una tabella tariffe per
+    tipo di camera (editabile, stesso meccanismo add/del-riga già usato
+    altrove — nuovo `data-kind="roomrate"` su `_dtRowHtml`) invece di un
+    paragrafo descrittivo, più le note Included/Excluded.
+  - La galleria 6-foto per hotel esisteva già (v46) e non è cambiata —
+    corrisponde già esattamente alla griglia 3×2 del pptx, comprese le
+    didascalie automatiche. Gli hotel senza foto verificate saltano
+    automaticamente la slide-galleria, come nel pptx originale (Santa
+    Lucia, Bonart Napoli).
+  - Nuova `buildGoodToKnow`: una sola slide a fine deck (prima della
+    chiusura) con i termini di prenotazione — riusa integralmente il
+    meccanismo "flow-item" già esistente per le slide Flusso/Concept
+    (stesso HTML, stesso listener add/del-punto delegato) quindi zero
+    JS nuovo da collegare; solo ritinta crema/coral per il deck hotel.
+  - Eyebrow del deck hotel passato da oro (condiviso con Venue Options) a
+    coral #FF5149, fedele al pptx originale.
+  - Export PPTX: la tabella tariffe e le note Included/Excluded finirebbero
+    perse dall'esportatore generico (che legge solo `.body-text` per le
+    slide-split) — aggiunto un riepilogo testuale nascosto
+    (`.hp-export-summary`, `display:none`) letto solo in fase di export.
+- Nessuna modifica a `api/supplier.js` o `api/generate.js`: i nuovi campi
+  (`roomRates`, `included`, `excluded`, `location`, `category`,
+  `availability`, `trip.goodToKnow`) non esistono oggi in Airtable, quindi
+  seguono la stessa convenzione già in uso per Hotel Proposal e Quotazione
+  Venue — placeholder editabili a mano nel browser dopo la generazione, non
+  dati auto-popolati.
+- Testato con jsdom: 2 hotel finti (uno con tutti i campi, uno senza per
+  verificare i default), tabella tariffe e note popolate correttamente,
+  slide Good to Know con 3 voci di default, aggiunta/cancellazione riga
+  tariffa e voce Good to Know verificate in edit mode. Verificato anche che
+  Venue Options generi esattamente le stesse slide di prima (nessuna
+  regressione).
+
+## v67 — 2026-08-17 — Rinominato "Quotazione Venue" in "Standard Template"
+- Marco ha chiarito che il template più usato in pratica è "Quotazione Venue"
+  (deckTemplate `quotation`) — lo usano come standard per presentare di
+  tutto, non solo venue. Rinominata SOLO l'etichetta visibile nell'interfaccia
+  ("Quotazione Venue" → "Standard Template") in 3 punti di `public/index.html`:
+  le due card template (tab "Da Preventivo" e "Cerca nel Database") e la
+  mappa `TPL_LABELS` usata dai tag colorati nell'archivio.
+- La chiave interna `quotation` NON è cambiata — resta invariata ovunque sia
+  referenziata: `deckTemplate` nel salvataggio in archivio, il parametro
+  `?tpl=quotation` usato nell'handoff dal Vault (§4.2), l'endpoint
+  `?archive=list`. Nessun collegamento tra app si rompe, cambia solo il
+  testo che si vede.
+
 ## v66 — 2026-08-17 — Restyle "Studio": archivio in homepage + tag a tinta chiara
 - Stesso aggiornamento visivo fatto su Capybara e in corso su Vault/Preventivi
   (istruzioni ricevute via `ISTRUZIONI_ING_C_presenta_restyle.md` +
