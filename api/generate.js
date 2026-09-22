@@ -58,7 +58,10 @@ SCHEMA:
             {
               "label":         string,  // "Option A"
               "title":         string,
-              "supplierName":  string,  // exact supplier/venue name as written in the quote (used to search supplier database)
+              "supplierName":  string,  // ONLY the exact supplier/venue name (used to search the supplier
+                                         // database) — e.g. "Chorus Cafe". NEVER include "Option 1)",
+                                         // "Option A -", or any option-number prefix inside this field:
+                                         // that prefix belongs ONLY in the "label" field above.
               "description":   string,  // 2-3 sentences, luxury travel tone, in English
               "photo":         string,  // Unsplash search keyword for main photo
               "photoPosition": string,  // CSS background-position
@@ -90,7 +93,8 @@ RULES (strict):
    restaurants, alternative activities) → one activity with an options[] array, NOT separate
    top-level activities. NEVER silently pick a "winning" option and drop the rest: preserve
    every option the quote lists, each with its own supplierName, description, photo/photos
-   and costLines, exactly as if it were its own activity
+   and costLines, exactly as if it were its own activity. supplierName must be the bare
+   supplier name with no "Option 1)"/"Option A -" prefix — that prefix goes only in label
 3. Max 12–14 activities total with showSlide: true
 4. photo / photos[] fields → concise English Unsplash search terms (e.g. "colosseum rome night", "roman forum sunset")
 5. description → luxury travel copywriting, in English, 2-3 sentences
@@ -212,10 +216,21 @@ async function searchByNameField(name, tableId, nameField, notesField, mediaFiel
   }
 }
 
+// v70b — l'AI a volte lascia un prefisso "Option 1) "/"Option A - " dentro
+// supplierName invece di metterlo solo in label: questo rompe il match esatto
+// su Airtable (SEARCH su LOWER(Name)) e fa ricadere tutto sulle foto stock
+// generiche di Unsplash. Ripulito qui, indipendentemente da quanto bene il
+// prompt viene rispettato.
+function stripOptionPrefix(name) {
+  if (!name) return name;
+  return name.replace(/^\s*option\s*[a-z0-9]+\s*[).:-]\s*/i, "").trim();
+}
+
 // Cerca il match Airtable per un nome fornitore (venue → act → attività), stessa
 // cascata usata per le activity di primo livello. Riusata sia per l'activity
 // stessa sia per ciascuna delle sue options[] (v70).
-async function matchSupplier(supplierName) {
+async function matchSupplier(rawSupplierName) {
+  const supplierName = stripOptionPrefix(rawSupplierName);
   if (!supplierName) return null;
   let match = await searchAirtable(supplierName);
   if (!match) {
@@ -245,14 +260,16 @@ async function enrichFromAirtable(tripObj) {
           const enrichedOptions = activity.options && activity.options.length
             ? await Promise.all(
                 activity.options.map(async (opt) => {
+                  const cleanName = stripOptionPrefix(opt.supplierName);
                   const match = await matchSupplier(opt.supplierName);
-                  if (!match) return opt;
-                  console.log(`Airtable match for option "${opt.supplierName}":`, {
+                  if (!match) return { ...opt, supplierName: cleanName || opt.supplierName };
+                  console.log(`Airtable match for option "${cleanName}":`, {
                     hasDescription: !!match.description,
                     photoCount: match.photos?.length ?? 0,
                   });
                   return {
                     ...opt,
+                    supplierName: cleanName || opt.supplierName,
                     costLines:   opt.costLines || [],
                     description: match.description || opt.description,
                     photo:       match.photos?.[0] || opt.photo,

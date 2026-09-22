@@ -8,6 +8,34 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v70b — 2026-09-22 — Le opzioni ora ci sono, ma alcune prendevano foto stock generiche
+- Rigenerato il Rome 200pax con v70: tutte le Option A/B/C ora compaiono come
+  slide piene (fix confermato) — ma Marco segnala che alcune non hanno la foto
+  reale del fornitore, solo foto stock Unsplash generiche.
+- Causa: l'AI a volte scrive il prefisso number/lettera DENTRO il campo
+  `supplierName` invece di lasciarlo solo in `label` (es. `supplierName:
+  "Option 1) Golf Cart Tour"` invece di `"Golf Cart Tour"`). La ricerca
+  Airtable fa un match esatto su `SEARCH("...", LOWER(Name))`, quindi
+  "option 1) golf cart tour" non trova mai "My Best Tour S.r.l." (record
+  Golf Cart Tour) — l'opzione ricade sul fallback Unsplash anche se il
+  fornitore è a database con foto vere. Colpiva Golf Cart Tour, Vatican
+  Insider Tour (comunque assente da Airtable), Baja, Chorus Cafe, La
+  Ménagère Roma; Beef Bazaar/Antéla/ALTO non erano toccati perché l'AI li
+  aveva scritti puliti.
+- Fix:
+  - `api/generate.js`: nuova `stripOptionPrefix()` che ripulisce
+    `"Option N) "/"Option A - "` da `supplierName` PRIMA di ogni ricerca
+    Airtable (in `matchSupplier`, usata sia per l'attività sia per le
+    options) — indipendente da quanto bene l'AI rispetti il prompt.
+  - Il nome ripulito viene anche riscritto sull'option restituita (così il
+    titolo mostrato in slide non ripete più "Option A · Option 1) Golf Cart
+    Tour" ma "Option A · Golf Cart Tour").
+  - Rafforzata la spiegazione del campo `supplierName` nello schema del
+    prompt: deve essere SOLO il nome del fornitore, mai con prefisso
+    "Option N)" (quello va solo in `label`).
+- Verificato via test Node isolato: tutti i nomi con prefisso vengono
+  ripuliti correttamente; i nomi già puliti restano invariati.
+
 ## v70 — 2026-09-22 — Le alternative (Option A/B/C) non vengono più scartate
 - Diagnosi (confronto preventivo Rome sorgente → HTML generato → PDF di
   riferimento `Prochaine_Escale_Rome_Feb2027.pdf`): il prompt AI istruiva
