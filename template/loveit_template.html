@@ -1377,21 +1377,48 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
     TRIP.days.forEach((d,di)=>d.activities.forEach((a,ai)=>{
       if(a.showSlide!==false) qActs.push({act:a,dayIdx:di,actIdx:ai});
     }));
-    if(qActs.length){
-      const first=qActs[0].act;
+    // v70 — Quando un'attività ha options[] (Option A/B/C con fornitori diversi
+    // per lo stesso slot, es. 3 ristoranti alternativi per la cena di gala),
+    // ciascuna opzione riceve il proprio blocco COMPLETO Venue+Gallery+Cost,
+    // esattamente come un'attività a sé — nessuna alternativa viene più scartata
+    // o ridotta a un badge. L'attività "contenitore" (che di solito non ha un
+    // proprio fornitore/foto quando esistono options) non genera più una sua
+    // slide Venue separata in quel caso.
+    function expandOptions({act,dayIdx,actIdx}){
+      if(!act.options || !act.options.length) return [{act,dayIdx,actIdx,isOption:false}];
+      return act.options.map(opt=>({
+        act:{
+          ...act,
+          title:        opt.title || act.title,
+          supplierName: (opt.label ? `${opt.label} · ` : '') + (opt.supplierName || opt.title || act.supplierName || act.title),
+          description:  opt.description || act.description,
+          photo:        opt.photo  || act.photo,
+          photoPosition:opt.photoPosition || act.photoPosition,
+          photos:       (opt.photos && opt.photos.length) ? opt.photos : act.photos,
+          costLines:    opt.costLines || [],
+          floorplans:   [],
+        },
+        dayIdx, actIdx, isOption:true,
+      }));
+    }
+    const qBlocks = qActs.flatMap(expandOptions);
+    if(qBlocks.length){
+      const first=qBlocks[0].act;
       slideBuilders.push((n,t)=>buildQCover(TRIP,first,n,t));
       const CL=['both','per-supplier','grouped'].includes(TRIP.costLayout)?TRIP.costLayout:'both';
-      qActs.forEach(({act,dayIdx,actIdx})=>{
+      qBlocks.forEach(({act,dayIdx,actIdx})=>{
         slideBuilders.push((n,t)=>buildQVenue(TRIP,act,n,t,dayIdx,actIdx));
         if((act.floorplans||[]).length) slideBuilders.push((n,t)=>buildQPlan(TRIP,act,n,t));
         slideBuilders.push((n,t)=>buildQGallery(TRIP,act,n,t,dayIdx,actIdx));
         // Cost breakdown del singolo fornitore, subito dopo le sue slide
         if(CL!=='grouped') slideBuilders.push((n,t)=>buildQCost(TRIP,[act],n,t));
       });
-      // Riepilogo finale raggruppato per fornitore (salta se c'è un solo
-      // fornitore e la sua tabella è già stata inserita qui sopra)
-      if(CL!=='per-supplier' && !(CL==='both' && qActs.length===1)){
-        slideBuilders.push((n,t)=>buildQCost(TRIP,qActs.map(q=>q.act),n,t));
+      // Riepilogo finale raggruppato per fornitore — SOLO le voci confermate
+      // (esclude le alternative Option A/B/C, che sono mutuamente esclusive e
+      // non vanno sommate nel totale del programma).
+      const confirmedActs = qBlocks.filter(b=>!b.isOption).map(b=>b.act);
+      if(CL!=='per-supplier' && confirmedActs.length && !(CL==='both' && qBlocks.length===1)){
+        slideBuilders.push((n,t)=>buildQCost(TRIP,confirmedActs,n,t));
       }
     }
   } else {

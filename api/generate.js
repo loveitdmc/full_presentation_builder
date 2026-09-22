@@ -50,12 +50,25 @@ SCHEMA:
               "amount": string    // line total (qty × unit) as written, e.g. "€ 14.274,00"
             }
           ],
-          "options": [              // fill ONLY if quote has Option A / B / C for same service
+          "options": [              // fill when the quote offers Option A / B / C with DIFFERENT
+                                     // suppliers/venues for the SAME slot (e.g. 3 alternative
+                                     // restaurants for a gala dinner, 2 alternative activities).
+                                     // Treat EACH option like its own mini-activity: never drop or
+                                     // merge its supplier name, description, photos or cost lines.
             {
-              "label":       string,  // "Option A"
-              "title":       string,
-              "price":       string,  // optional, e.g. "€ 45 pp"
-              "description": string   // optional, 1 sentence
+              "label":         string,  // "Option A"
+              "title":         string,
+              "supplierName":  string,  // exact supplier/venue name as written in the quote (used to search supplier database)
+              "description":   string,  // 2-3 sentences, luxury travel tone, in English
+              "photo":         string,  // Unsplash search keyword for main photo
+              "photoPosition": string,  // CSS background-position
+              "photos": [string, string, string],  // 3 Unsplash search keywords for gallery
+              "price":         string,  // optional summary price, e.g. "€ 45 pp", "" if none
+              "costLines": [            // cost lines of THIS option's supplier, exactly as in the quote (same shape as costLines above); [] if the quote shows no prices for this option
+                {
+                  "label":  string, "detail": string, "qty": string, "vat": string, "unit": string, "amount": string
+                }
+              ]
             }
           ]
         }
@@ -73,7 +86,11 @@ SCHEMA:
 
 RULES (strict):
 1. Airport arrival/departure transfers → showSlide: false, type: "transfer"
-2. Option A / B / C of the SAME service → one activity with options[] array, NOT separate activities
+2. Option A / B / C offering DIFFERENT suppliers/venues for the SAME slot (e.g. alternative
+   restaurants, alternative activities) → one activity with an options[] array, NOT separate
+   top-level activities. NEVER silently pick a "winning" option and drop the rest: preserve
+   every option the quote lists, each with its own supplierName, description, photo/photos
+   and costLines, exactly as if it were its own activity
 3. Max 12–14 activities total with showSlide: true
 4. photo / photos[] fields → concise English Unsplash search terms (e.g. "colosseum rome night", "roman forum sunset")
 5. description → luxury travel copywriting, in English, 2-3 sentences
@@ -195,6 +212,27 @@ async function searchByNameField(name, tableId, nameField, notesField, mediaFiel
   }
 }
 
+// Cerca il match Airtable per un nome fornitore (venue → act → attività), stessa
+// cascata usata per le activity di primo livello. Riusata sia per l'activity
+// stessa sia per ciascuna delle sue options[] (v70).
+async function matchSupplier(supplierName) {
+  if (!supplierName) return null;
+  let match = await searchAirtable(supplierName);
+  if (!match) {
+    match = await searchByNameField(
+      supplierName, TABLE_ACTS_ID, "Artist or Show Name",
+      "Description and Operational Notes", "Consolidated Media"
+    );
+  }
+  if (!match) {
+    match = await searchByNameField(
+      supplierName, TABLE_ACTIVITIES_ID, "Activity or Service Name",
+      "Description and Operational Notes", "Media"
+    );
+  }
+  return match;
+}
+
 async function enrichFromAirtable(tripObj) {
   if (!tripObj.days) return tripObj;
 
@@ -202,23 +240,39 @@ async function enrichFromAirtable(tripObj) {
     tripObj.days.map(async (day) => {
       const enrichedActivities = await Promise.all(
         (day.activities || []).map(async (activity) => {
-          if (!activity.showSlide || !activity.supplierName) return activity;
+          // v70: arricchisci anche ogni option[] (Option A/B/C), non solo l'activity
+          // principale — altrimenti le alternative restano senza foto/descrizione reali.
+          const enrichedOptions = activity.options && activity.options.length
+            ? await Promise.all(
+                activity.options.map(async (opt) => {
+                  const match = await matchSupplier(opt.supplierName);
+                  if (!match) return opt;
+                  console.log(`Airtable match for option "${opt.supplierName}":`, {
+                    hasDescription: !!match.description,
+                    photoCount: match.photos?.length ?? 0,
+                  });
+                  return {
+                    ...opt,
+                    costLines:   opt.costLines || [],
+                    description: match.description || opt.description,
+                    photo:       match.photos?.[0] || opt.photo,
+                    photos:      match.photos?.slice(1, 4) || opt.photos,
+                    allPhotos:   match.allPhotos || [],
+                    allPhotosMeta: match.allPhotosMeta || [],
+                    _airtable:   true,
+                  };
+                })
+              )
+            : activity.options;
 
-          // 1) Suppliers (venue/vendor), 2) Artists & Shows (performer), 3) Activities (service)
-          let match = await searchAirtable(activity.supplierName);
-          if (!match) {
-            match = await searchByNameField(
-              activity.supplierName, TABLE_ACTS_ID, "Artist or Show Name",
-              "Description and Operational Notes", "Consolidated Media"
-            );
+          if (!activity.showSlide || !activity.supplierName) {
+            return enrichedOptions ? { ...activity, options: enrichedOptions } : activity;
           }
+
+          const match = await matchSupplier(activity.supplierName);
           if (!match) {
-            match = await searchByNameField(
-              activity.supplierName, TABLE_ACTIVITIES_ID, "Activity or Service Name",
-              "Description and Operational Notes", "Media"
-            );
+            return enrichedOptions ? { ...activity, options: enrichedOptions } : activity;
           }
-          if (!match) return activity;
 
           console.log(`Airtable match for "${activity.supplierName}":`, {
             hasDescription: !!match.description,
@@ -234,6 +288,7 @@ async function enrichFromAirtable(tripObj) {
             allPhotos:   match.allPhotos || [],
             allPhotosMeta: match.allPhotosMeta || [],
             _airtable:   true,
+            ...(enrichedOptions ? { options: enrichedOptions } : {}),
           };
         })
       );

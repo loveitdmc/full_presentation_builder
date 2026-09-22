@@ -8,6 +8,53 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v70 — 2026-09-22 — Le alternative (Option A/B/C) non vengono più scartate
+- Diagnosi (confronto preventivo Rome sorgente → HTML generato → PDF di
+  riferimento `Prochaine_Escale_Rome_Feb2027.pdf`): il prompt AI istruiva
+  esplicitamente a collassare Option A/B/C dello stesso slot (es. 3
+  ristoranti alternativi per la cena di gala) in un unico oggetto
+  `options[]` leggero (solo label/title/price/description), senza
+  supplierName, foto o costLines propri. Risultato: 5 fornitori reali su 9
+  del preventivo Rome sparivano del tutto (Vatican Insider Tour, Chorus
+  Cafe, La Ménagère Roma, Antéla Restaurant, ALTO Ristorante & Cocktail
+  Bar), mostrati solo come piccoli badge testuali sotto la slide scelta.
+  Verificato su Airtable: 8 di questi 9 fornitori esistono già a database
+  con dati ricchi (indirizzo, descrizione, sito, alcuni con gallery foto)
+  — solo Vatican Insider Tour è assente e andrà cercato/aggiunto a parte.
+- Fix (solo estrazione dati + deck "Standard Template"/quotation, come da
+  scelta di Marco — divider, cost-per-day e overview arricchita restano
+  fasi successive):
+  - `api/generate.js`: `options[]` nello schema del prompt ora porta
+    `supplierName`, `description`, `photo`/`photos`, `costLines` proprie —
+    ogni opzione viene trattata come una mini-attività a sé, mai scartata
+    o fusa con le altre (Regola 2 riscritta di conseguenza).
+  - `api/generate.js`: `enrichFromAirtable` ora arricchisce anche ogni
+    `options[]` di ogni attività (stessa cascata Suppliers → Artists&Shows
+    → Activities usata per l'attività principale), non solo l'attività
+    contenitore. `resolvePhotos` non ha richiesto modifiche: è già
+    ricorsivo su tutto l'albero, incluse le options.
+  - `template/loveit_template.html`, deck `quotation`: quando un'attività
+    ha `options[]`, ciascuna opzione genera ora il proprio blocco COMPLETO
+    Venue + Gallery + Cost (riusando `buildQVenue`/`buildQGallery`/
+    `buildQCost` esistenti, zero nuovo CSS/slide-type), con il titolo
+    prefissato dal label ("Option A · Chorus Cafe"). L'attività
+    "contenitore" (che di solito non ha foto/fornitore propri quando ha
+    options) non genera più una sua slide Venue vuota in quel caso.
+  - Il riepilogo finale dei costi (Cost Breakdown raggruppato) ora somma
+    SOLO le attività confermate, escludendo le Option A/B/C: sono
+    alternative reciprocamente esclusive, sommarle avrebbe gonfiato il
+    totale del programma. Ogni opzione mantiene comunque la propria slide
+    di costo individuale.
+  - Verificato con test jsdom sintetico (3 opzioni gala dinner + 1 hotel
+    confermato): 4 slide Venue generate (una per opzione + hotel), 5 slide
+    Cost (una per opzione + una per hotel + riepilogo finale), riepilogo
+    finale corretto a solo il costo dell'hotel confermato.
+- Non toccato in questo giro: `api/generate-text.js` (flusso testo libero,
+  ha ancora `options: []` sempre vuoto nel prompt — nessun preventivo lo
+  usa con opzioni multiple al momento); deck `dark`/`venues`/`hotel`
+  (mantengono ancora i badge leggeri `optionBadges`, non le slide piene —
+  da valutare se serve anche lì).
+
 ## v69c — 2026-09-22 — maxDuration alzato a 180s (Marco passa a Vercel Pro)
 - Marco ha deciso di fare l'upgrade del progetto a Vercel Pro per risolvere
   il timeout dei preventivi grandi (v69b). Alzato `maxDuration` di
