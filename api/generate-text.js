@@ -310,7 +310,8 @@ async function extractProgramme(text, apiKey) {
   const client = new Anthropic({ apiKey });
   const resp = await client.messages.create({
     model:      "claude-sonnet-4-6",
-    max_tokens: 4096,
+    // v69 — stesso fix di generate.js: 4096 troncava i programmi lunghi/multi-day.
+    max_tokens: 8192,
     system:     EXTRACT_PROMPT,
     messages:   [{ role: "user", content: `Parse this event programme and return the JSON:\n\n${text}` }],
   });

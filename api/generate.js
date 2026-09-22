@@ -391,7 +391,12 @@ export default async function handler(req, res) {
   try {
     const response = await client.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 4096,
+      // v69 — 4096 era troppo stretto per preventivi grandi (multi-day, 200+ pax):
+      // la risposta JSON veniva troncata a metà e falliva il parse ("Claude
+      // returned invalid JSON"). Non è legato al template scelto (il deckTemplate
+      // non tocca questo prompt) — succedeva con qualunque template su un
+      // preventivo abbastanza lungo.
+      max_tokens: 8192,
       system: SYSTEM_PROMPT,
       messages: [{
         role: "user",

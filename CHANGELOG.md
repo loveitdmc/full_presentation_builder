@@ -8,6 +8,22 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v69 — 2026-09-22 — Fix "Claude returned invalid JSON" su preventivi grandi
+- Marco ha segnalato l'errore generando da PDF ("Prochaine Escale - Rome -
+  200pax - February 2027"), template Hotel Proposal — sembrava legato al
+  nuovo template ma non lo è: il deckTemplate non tocca in alcun modo il
+  prompt che estrae il JSON dal PDF, sarebbe successo con qualsiasi
+  template su un preventivo abbastanza lungo (multi-day, 200+ pax).
+- Causa reale: `api/generate.js` e `api/generate-text.js` limitavano la
+  risposta di Claude a `max_tokens: 4096` per l'estrazione del TRIP JSON.
+  Su un programma lungo (molti giorni/attività, descrizioni per ciascuna)
+  la risposta veniva troncata a metà JSON → parse fallito → "Claude
+  returned invalid JSON. Try again."
+- Alzato a `max_tokens: 8192` in entrambi i file — stesso modello, stesso
+  prompt, solo più margine per non troncare su preventivi grandi.
+  `vercel.json` (maxDuration 60s su entrambi gli endpoint) è già
+  sufficiente, nessuna modifica necessaria lì.
+
 ## v68 — 2026-08-22 — Hotel Proposal v2, da MAX_Hotel_Proposal_Elegant_v2.pptx
 - Marco ha notato che Venue Options e Hotel Proposal sembravano lo stesso
   template — verificato: usano lo stesso codice, differiscono solo per la
