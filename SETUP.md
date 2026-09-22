@@ -294,12 +294,34 @@ quindi va bene così com'è, non serve upgrade.
 
 ---
 
+## Upgrade a Vercel Pro (v69 — preventivi grandi che andavano in timeout)
+
+Su preventivi molto grandi (multi-day, 200+ pax), la generazione da PDF può
+impiegare più dei 60 secondi che il piano **Hobby** di Vercel concede a una
+function — e su Hobby quel tetto è fisso, non si alza scrivendolo in
+`vercel.json`. Da v69c `vercel.json` chiede 180s per `api/generate.js` e
+`api/generate-text.js`, ma Vercel applica comunque il tetto REALE del piano
+attivo finché non fai l'upgrade.
+
+1. Vai su **vercel.com** → il tuo progetto (o il team che lo possiede) → **Settings → Billing** (oppure il banner "Upgrade to Pro" che Vercel mostra in alto)
+2. Scegli il piano **Pro** e completa il pagamento (è un piano a pagamento, a differenza di Hobby)
+3. Una volta attivo, il prossimo deploy applica automaticamente il `maxDuration: 180` già presente in `vercel.json` — non serve nessun'altra modifica
+4. Verifica: genera una presentazione da un preventivo grande come prima (quello che dava HTTP 504) e controlla che vada a buon fine
+
+Se anche a 180s un preventivo dovesse ancora scadere (preventivi ancora più
+grandi in futuro), i log della function (Deployments → la deploy → Functions
+→ api/generate) mostrano quanto impiega ogni step — utile per capire se
+serve alzare ulteriormente `maxDuration` (Pro arriva fino a 300s) o
+ripensare il flusso.
+
 ## Troubleshooting
 
 **"Template file not found"** → Verifica che `template/loveit_template.html` sia nel repository.
 
 **"Claude API error"** → Verifica che `ANTHROPIC_API_KEY` sia impostata correttamente in Vercel e che l'account Anthropic abbia credito.
 
-**"Claude returned invalid JSON"** → Prova a rigenerare. A volte Claude aggiunge testo extra attorno al JSON — il sistema prova a ripulirlo ma in rari casi fallisce.
+**"Claude returned invalid JSON"** → Prova a rigenerare. A volte Claude aggiunge testo extra attorno al JSON — il sistema prova a ripulirlo ma in rari casi fallisce. Se succede spesso su preventivi grandi, potrebbe invece essere il segnale di un timeout mascherato — controlla i log della function.
+
+**HTTP 504 (timeout) generando da un preventivo grande** → Vedi "Upgrade a Vercel Pro" qui sopra.
 
 **Foto di bassa qualità** → Aggiungi `UNSPLASH_ACCESS_KEY` per ottenere foto specifiche per ogni attività.

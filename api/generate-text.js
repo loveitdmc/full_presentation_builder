@@ -308,6 +308,7 @@ Important rules:
 
 async function extractProgramme(text, apiKey) {
   const client = new Anthropic({ apiKey });
+  const _t0 = Date.now();
   const resp = await client.messages.create({
     model:      "claude-sonnet-4-6",
     // v69 — stesso fix di generate.js: 4096 troncava i programmi lunghi/multi-day.
@@ -315,6 +316,8 @@ async function extractProgramme(text, apiKey) {
     system:     EXTRACT_PROMPT,
     messages:   [{ role: "user", content: `Parse this event programme and return the JSON:\n\n${text}` }],
   });
+  // Stesso timing diagnostico di generate.js — piano Hobby, tetto 60s fisso.
+  console.log(`[generate-text.js] Claude extractProgramme done: ${Date.now() - _t0}ms, ${resp.usage?.output_tokens ?? "?"} output tokens`);
   const raw = resp.content[0].text.trim()
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```\s*$/i, "");

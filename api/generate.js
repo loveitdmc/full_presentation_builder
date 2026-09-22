@@ -385,6 +385,14 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Template file not found" });
   }
 
+  // v69 — timing diagnostico: il piano Vercel è Hobby (tetto fisso 60s, non
+  // alzabile da vercel.json), quindi su un preventivo grande bisogna sapere
+  // ESATTAMENTE quale step mangia il tempo prima di poter intervenire nel
+  // punto giusto. Questi log finiscono nei log della function su Vercel
+  // (Deployments → la deploy in corso → Functions → api/generate).
+  const _t0 = Date.now();
+  const _lap = (label) => console.log(`[generate.js] ${label}: ${Date.now() - _t0}ms`);
+
   // Step 1: Claude reads PDF
   const client = new Anthropic({ apiKey });
   let tripJson;
@@ -415,6 +423,7 @@ export default async function handler(req, res) {
     tripJson = response.content[0].text.trim()
       .replace(/^```(?:json)?\s*/i, "")
       .replace(/\s*```\s*$/i, "");
+    _lap(`Step 1 (Claude PDF→JSON) done — ${response.usage?.output_tokens ?? "?"} output tokens`);
   } catch (e) {
     console.error("Claude API error:", e);
     return res.status(502).json({ error: `Claude API error: ${e.message}` });
@@ -424,6 +433,7 @@ export default async function handler(req, res) {
   let tripObj;
   try {
     tripObj = extractJsonObject(tripJson);
+    _lap("Step 2 (parse JSON) done");
   } catch (e) {
     console.error("JSON parse error. Raw:", tripJson.slice(0, 300));
     return res.status(502).json({ error: "Claude returned invalid JSON. Try again.", raw: tripJson.slice(0, 500) });
@@ -431,10 +441,12 @@ export default async function handler(req, res) {
 
   // Step 3: Enrich with Airtable
   const enrichedTrip = await enrichFromAirtable(tripObj);
+  _lap("Step 3 (Airtable enrichment) done");
 
   // Step 4: Resolve Unsplash keywords
   fallbackIndex = 0;
   const resolvedTrip = await resolvePhotos(enrichedTrip);
+  _lap("Step 4 (Unsplash resolve) done");
 
   // Step 5: Inject into template
   let finalHtml;
@@ -442,6 +454,7 @@ export default async function handler(req, res) {
     resolvedTrip.deckTemplate = deckTemplate;
     resolvedTrip.costLayout = costLayout;
     finalHtml = injectTrip(template, resolvedTrip);
+    _lap("Step 5 (template inject) done — request complete");
   } catch (e) {
     return res.status(500).json({ error: `Template error: ${e.message}` });
   }

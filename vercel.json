@@ -1,8 +1,8 @@
 {
   "version": 2,
   "functions": {
-    "api/generate.js":         { "maxDuration": 60 },
-    "api/generate-text.js":    { "maxDuration": 60 },
+    "api/generate.js":         { "maxDuration": 180 },
+    "api/generate-text.js":    { "maxDuration": 180 },
     "api/supplier.js":         { "maxDuration": 30 },
     "api/supplier-spaces.js":  { "maxDuration": 20 },
     "api/acts.js":             { "maxDuration": 30 },

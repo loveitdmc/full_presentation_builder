@@ -8,6 +8,43 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v69c — 2026-09-22 — maxDuration alzato a 180s (Marco passa a Vercel Pro)
+- Marco ha deciso di fare l'upgrade del progetto a Vercel Pro per risolvere
+  il timeout dei preventivi grandi (v69b). Alzato `maxDuration` di
+  `api/generate.js` e `api/generate-text.js` da 60 a 180s in `vercel.json`
+  — ben dentro il tetto standard di Pro (300s), largo margine sopra i 60s
+  che stavano scadendo. Gli altri endpoint (supplier/supplier-spaces/
+  acts/acts-list) restano invariati, non hanno mai avuto questo problema.
+- Il timing diagnostico aggiunto in v69b resta comunque utile: se un
+  preventivo ancora più grande dovesse avvicinarsi anche ai 180s, i log
+  dicono subito dove intervenire.
+- Passo mancante, da fare su vercel.com (non lato codice): Marco deve
+  effettivamente completare l'upgrade del progetto/team a Pro — vedi
+  istruzioni in chat. Finché non è fatto, Vercel applica comunque il
+  tetto reale del piano attivo, indipendentemente da cosa scrive
+  `vercel.json`.
+
+## v69b — 2026-09-22 — Il fix precedente sposta il problema: HTTP 504 (timeout)
+- Dopo l'alzata a `max_tokens: 8192`, lo stesso PDF grande (Rome 200pax) ora
+  fallisce con HTTP 504 invece di "invalid JSON" — il JSON non è più
+  troncato, ma generarne 8192 token può richiedere più dei 60s che il piano
+  **Vercel Hobby** di questo progetto concede a una function (confermato da
+  Marco) — e su Hobby quel tetto è fisso, non alzabile da `vercel.json`.
+- Non ho toccato di nuovo `max_tokens` alla cieca: sarebbe solo spostare il
+  compromesso tra "tronca il JSON" e "va in timeout" senza sapere davvero
+  dove va il tempo. Aggiunto invece un timing diagnostico (`console.log`,
+  visibile nei log della function su Vercel → Deployments → Functions →
+  api/generate o api/generate-text) su ogni step: chiamata a Claude (con i
+  token realmente generati), parse JSON, enrichment Airtable, risoluzione
+  foto Unsplash, injection nel template. Al prossimo tentativo su un
+  preventivo grande, i log dicono esattamente quale step mangia il tempo.
+- Le due strade reali per risolvere davvero, spiegate a Marco in chat:
+  (1) upgrade a Vercel Pro su questo progetto — il tetto sale ben oltre 60s,
+  nessuna modifica di codice necessaria; (2) restare su Hobby e spezzare la
+  generazione in due chiamate più corte (bozza JSON dal PDF in una request,
+  arricchimento Airtable/foto in una seconda) — più lavoro, cambia anche il
+  flusso lato client. Decisione in sospeso, in attesa di Marco.
+
 ## v69 — 2026-09-22 — Fix "Claude returned invalid JSON" su preventivi grandi
 - Marco ha segnalato l'errore generando da PDF ("Prochaine Escale - Rome -
   200pax - February 2027"), template Hotel Proposal — sembrava legato al
