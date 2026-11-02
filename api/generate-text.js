@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { generateOfferTrip, offerResponse, parseMargin } from "../lib/offer.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -591,6 +592,18 @@ export default async function handler(req, res) {
     template = fs.readFileSync(templatePath, "utf8");
   } catch {
     return res.status(500).json({ error: "Template file not found" });
+  }
+
+  // v72 — Offerta complessa: pipeline multi-day (hotel, giorni, alternative,
+  // costi per fornitore, pacchetto con differenze) — vedi lib/offer.js
+  if (deckTemplate === "quotation") {
+    try {
+      const trip = await generateOfferTrip({ apiKey, text: programText.trim(), margin: parseMargin(_body.margin) });
+      return res.status(200).json(offerResponse({ template, trip, req }));
+    } catch (e) {
+      console.error("[generate-text.js] offer failed:", e);
+      return res.status(502).json({ error: `Generazione offerta non riuscita: ${e.message}` });
+    }
   }
 
   // Step 1: AI extracts programme structure

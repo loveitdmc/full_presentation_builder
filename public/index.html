@@ -145,6 +145,12 @@ main{max-width:680px;margin:0 auto;padding:0 1.5rem 6rem}
 .tpl-desc{font-size:.6rem;line-height:1.5;color:var(--stone)}
 .cost-opt{display:none;margin-top:.2rem}
 .cost-opt.show{display:block}
+.margin-row{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.margin-row input{width:5rem;padding:.45rem .6rem;border:1px solid var(--border,#ddd);border-radius:8px;font-size:.9rem}
+.margin-row small{flex-basis:100%;color:var(--muted,#888);font-size:.72rem;line-height:1.4}
+#staff-notes{display:none;text-align:left;margin:1rem auto;max-width:640px;background:#FFF8E6;border:1px solid #F0D68A;border-radius:10px;padding:.8rem 1rem;font-size:.8rem;color:#5a4a1a}
+#staff-notes b{display:block;margin-bottom:.35rem}
+#staff-notes ul{margin:0;padding-left:1.1rem}
 .cost-btns{display:flex;gap:.4rem;flex-wrap:wrap}
 .cost-btn{background:var(--card);border:1px solid #2a2a2a;border-radius:3px;padding:.5rem .8rem;cursor:pointer;color:var(--stone);font-family:var(--sans);font-size:.62rem;letter-spacing:.06em;transition:all .2s}
 .cost-btn:hover{border-color:rgba(201,169,110,.55);color:#eee}
@@ -388,15 +394,12 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
         <button type="button" class="tpl-card active" data-tpl="quotation">
           <span class="tpl-swatch tpl-swatch-quote"></span>
           <span class="tpl-name">Offerta complessa</span>
-          <span class="tpl-desc">Più fornitori e opzioni A/B/C — schede, gallery e costi per ciascuno + riepilogo</span>
+          <span class="tpl-desc">Multi-day: hotel, giorni con opzioni A/B, costi per fornitore e pacchetto con alternative</span>
         </button>
-      </div>      <div class="cost-opt" data-costopt>
-        <p class="tpl-select-label" style="margin:.9rem 0 .5rem">Cost breakdown</p>
-        <div class="cost-btns">
-          <button type="button" class="cost-btn active" data-cost="both">Per fornitore + riepilogo</button>
-          <button type="button" class="cost-btn" data-cost="per-supplier">Solo per fornitore</button>
-          <button type="button" class="cost-btn" data-cost="grouped">Solo riepilogo unico</button>
-        </div>
+      </div>      <div class="cost-opt margin-opt" data-costopt>
+        <p class="tpl-select-label" style="margin:.9rem 0 .5rem">Margine Love IT sui costi netti Airtable</p>
+        <div class="margin-row"><input type="number" id="offer-margin" min="0" max="200" step="1" value="25"/><span>%</span>
+          <small>Applicato ai prezzi netti del database (poi IVA). Non compare mai nella presentazione. Se il PDF è già un preventivo con prezzi di vendita, restano quelli.</small></div>
       </div>
     </div>
 
@@ -423,7 +426,7 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
         <button type="button" class="tpl-card active" data-tpl="quotation">
           <span class="tpl-swatch tpl-swatch-quote"></span>
           <span class="tpl-name">Offerta complessa</span>
-          <span class="tpl-desc">Più fornitori e opzioni A/B/C — schede, gallery e costi per ciascuno + riepilogo</span>
+          <span class="tpl-desc">Multi-day: hotel, giorni con opzioni A/B, costi per fornitore e pacchetto con alternative</span>
         </button>
       </div>      <div class="cost-opt" data-costopt>
         <p class="tpl-select-label" style="margin:.9rem 0 .5rem">Cost breakdown</p>
@@ -470,6 +473,7 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
     <div class="success-icon">✦</div>
     <h3 id="result-title">Presentazione pronta</h3>
     <p id="result-info">Pronta per il download</p>
+    <div id="staff-notes"></div>
     <a id="btn-download" href="#" download>⬇ Scarica HTML</a>
     <a id="btn-preview" href="#">⊡ Anteprima</a>
     <div id="archive-title-row">
@@ -526,6 +530,7 @@ document.querySelectorAll('.tpl-card').forEach(card=>{
   });
 });
 let costLayout = 'both'; // 'both' | 'per-supplier' | 'grouped'
+function _offerMargin(){ const v=parseFloat((document.getElementById('offer-margin')||{}).value); return isFinite(v)?v:25; }
 function syncCostBtns(){
   document.querySelectorAll('.cost-btn').forEach(b=>b.classList.toggle('active', b.dataset.cost===costLayout));
 }
@@ -651,7 +656,7 @@ async function generateFromPdf() {
   try {
     const resp = await fetch('/api/generate', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ pdf: pdfBase64, filename: selectedFile.name, deckTemplate, costLayout })
+      body: JSON.stringify({ pdf: pdfBase64, filename: selectedFile.name, deckTemplate, costLayout, margin: _offerMargin() })
     });
     clearTimeout(t); setStep(4);
     if (!resp.ok) { const e = await resp.json().catch(() => ({error:`HTTP ${resp.status}`})); throw new Error(e.error); }
@@ -679,7 +684,7 @@ async function generateFromText() {
   try {
     const resp = await fetch('/api/generate-text', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ programText: text, deckTemplate, costLayout })
+      body: JSON.stringify({ programText: text, deckTemplate, costLayout, margin: _offerMargin() })
     });
     clearTimeout(t1); clearTimeout(t2); setStep(4);
     if (!resp.ok) { const e = await resp.json().catch(() => ({error:`HTTP ${resp.status}`})); throw new Error(e.error); }
@@ -806,6 +811,13 @@ function showResult(data, title, badge = '') {
   const info = [generatedFilename, data.client||data.supplier||data.act||'', data.city||data.destination||''].filter(Boolean).join(' · ') + badge;
   resultTitle.textContent = title;
   resultInfo.textContent = info;
+  // v72 — note per lo staff (prezzi mancanti, IVA assunta, stagione…): solo qui, mai nel deck
+  const notesEl = document.getElementById('staff-notes');
+  if (notesEl) {
+    const notes = Array.isArray(data.staffNotes) ? data.staffNotes.filter(Boolean) : [];
+    notesEl.innerHTML = notes.length ? '<b>Da verificare prima di inviare</b><ul>' + notes.map(n => '<li>' + String(n).replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</li>').join('') + '</ul>' : '';
+    notesEl.style.display = notes.length ? 'block' : 'none';
+  }
   doneAllSteps();
   setTimeout(() => { progressEl.style.display = 'none'; resultEl.style.display = 'block'; }, 600);
 }
@@ -898,7 +910,9 @@ function setStepLabels(mode) {
     (document.getElementById('step-3-label').textContent =
       mode === 'text' ? 'Generazione presentazione' : 'Elaborazione slides');
   document.getElementById('progress-note').textContent =
-    mode === 'pdf' || mode === 'text'
+    (mode === 'pdf' || mode === 'text') && deckTemplate === 'quotation'
+      ? 'Offerta complessa: hotel, opzioni, prezzi e foto dal database — circa 1–3 minuti…'
+      : mode === 'pdf' || mode === 'text'
       ? 'La generazione richiede circa 20–40 secondi…'
       : 'La generazione richiede circa 10–20 secondi…';
 }

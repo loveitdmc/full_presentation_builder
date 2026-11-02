@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { generateOfferTrip, offerResponse, parseMargin } from "../lib/offer.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -455,6 +456,18 @@ export default async function handler(req, res) {
     template = fs.readFileSync(templatePath, "utf8");
   } catch {
     return res.status(500).json({ error: "Template file not found" });
+  }
+
+  // v72 — Offerta complessa da preventivo PDF: stessa pipeline multi-day del
+  // testo libero; i prezzi del preventivo restano prezzi di vendita.
+  if (deckTemplate === "quotation") {
+    try {
+      const trip = await generateOfferTrip({ apiKey, pdfBase64: pdf, margin: parseMargin(_body.margin) });
+      return res.status(200).json(offerResponse({ template, trip, req, filenameBase: filename }));
+    } catch (e) {
+      console.error("[generate.js] offer failed:", e);
+      return res.status(502).json({ error: `Generazione offerta non riuscita: ${e.message}` });
+    }
   }
 
   // v69 — timing diagnostico: il piano Vercel è Hobby (tetto fisso 60s, non

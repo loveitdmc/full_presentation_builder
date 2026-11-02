@@ -8,6 +8,51 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v72 — 2026-11-02 — "Offerta complessa" = struttura multi-day della skill loveit-multiday-offer
+- Problema (brief "50 persone a Roma, hotel A o B, Day 1 pranzo X o Y…"):
+  il flusso testo libero non aveva mai gestito le alternative (`options: []`
+  fisso nel prompt), quindi l'AI ne sceglieva una e scartava le altre; in più
+  nessun prezzo veniva letto da Airtable e il deck era il vecchio blocco
+  venue/gallery/costi vuoti. Riferimento richiesto da Marco:
+  `Rome_Incentive_50_Guests_October_2027.pdf` (30 slide).
+- Nuovo `lib/offer.js` (fuori da `api/`, regola §2), usato da
+  `api/generate-text.js` e `api/generate.js` quando il template è
+  "Offerta complessa" (`quotation`):
+  1. **plan** (Claude): hotel, giorni, slot pranzo/attività/cena con TUTTE le
+     alternative, ospiti, notti, extra; per un PDF anche le righe quotate.
+  2. **gather** (Airtable): indice dei nomi di Suppliers/Activities/Artists
+     letto una volta e confrontato in locale, poi dettagli, prezzi (tabella
+     Prices: Amount/Net Price, VAT Rate, Unit, Terms, validità…) e foto
+     (Photos + Media) a blocchi — ~10 chiamate totali, coda con max 3 in
+     parallelo e retry sui 429 (limite Airtable 5 req/s).
+  3. **compose** (Claude): sceglie il record giusto per città, testi in
+     inglese senza fatti inventati, facts, righe costo con quantità per il
+     gruppo (minimi garantiti, sessioni), RECOMMENDED per slot, note staff in
+     italiano.
+  4. **build**: prezzo cliente = netto × (1 + margine) × (1 + IVA), city tax
+     esente e senza margine; i prezzi di un preventivo PDF restano prezzi di
+     vendita. Foto reali del fornitore (mai riusate), Unsplash solo per
+     cover/destinazione/divisori giorno; senza foto → "PHOTO TO FOLLOW".
+- Template: nuovo renderer `buildOfferSlides` (TRIP.offer) con cover,
+  destinazione, at a glance, hotel a confronto, profilo + box costi per ogni
+  opzione, gallery 2×2, divisori giorno, cost breakdown per fornitore
+  impaginato (RECOMMENDED/ALTERNATIVE), pacchetto con totale, a persona e
+  differenze delle alternative, termini, chiusura teal. Misure in container
+  query: schermo e stampa PDF 16×9 identici. Testi e celle editabili, foto
+  sostituibili. Export PPTX dedicato (`_ofPptx`) che legge il DOM.
+- UI: nel tab "Da Preventivo", con Offerta complessa, campo **Margine %**
+  (default 25, non compare mai nel deck); dopo la generazione un riquadro
+  "Da verificare prima di inviare" mostra le note per lo staff (prezzi
+  mancanti, IVA assunta, stagione delle tariffe, nomi non trovati).
+- `vercel.json`: maxDuration 300s per generate/generate-text (due chiamate AI).
+- Verificato: test del deck ricostruito con i dati del PDF di riferimento →
+  30 slide nella stessa sequenza, totale €74,817.25 e tutte le differenze
+  identiche al riferimento; pipeline con Airtable simulato → 8 chiamate,
+  prezzi 348.88 / 162.50 / 82.50 / 137.25 / 7.50 come nel riferimento;
+  export PPTX OK; editor OK. Non testabile qui: le due chiamate reali a
+  Claude (va provato dopo il deploy).
+- Invariati: "Fornitore singolo" e la ricerca dal database.
+
 ## v71b — 2026-11-02 — Fix sfondo nero nel template "Fornitore singolo"
 - Con il template `single` il body riceveva solo la classe `deck-single`, ma
   tutto il tema crema (sfondo slide, gallery, tabella costi) è scritto su
