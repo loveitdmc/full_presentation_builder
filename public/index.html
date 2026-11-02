@@ -380,28 +380,17 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
     <div class="tpl-select">
       <p class="tpl-select-label">Template della presentazione</p>
       <div class="tpl-cards">
-        <button type="button" class="tpl-card active" data-tpl="dark">
-          <span class="tpl-swatch tpl-swatch-dark"></span>
-          <span class="tpl-name">Dark Journey</span>
-          <span class="tpl-desc">Tema scuro attuale — programma giorno per giorno</span>
-        </button>
-        <button type="button" class="tpl-card" data-tpl="venues">
-          <span class="tpl-swatch tpl-swatch-cream"></span>
-          <span class="tpl-name">Venue Options</span>
-          <span class="tpl-desc">Crema/oro — tabella stati + scheda, hero e galleria per venue</span>
-        </button>
-        <button type="button" class="tpl-card" data-tpl="hotel">
-          <span class="tpl-swatch tpl-swatch-cream"></span>
-          <span class="tpl-name">Hotel Proposal</span>
-          <span class="tpl-desc">Crema/coral — At a Glance, tariffe per tipo camera, galleria e booking terms</span>
-        </button>
-        <button type="button" class="tpl-card" data-tpl="quotation">
+        <button type="button" class="tpl-card" data-tpl="single">
           <span class="tpl-swatch tpl-swatch-quote"></span>
-          <span class="tpl-name">Standard Template</span>
-          <span class="tpl-desc">Crema/teal — 5 slide per UN venue: cover, scheda, planimetria, gallery, costi</span>
+          <span class="tpl-name">Fornitore singolo</span>
+          <span class="tpl-desc">Cover, scheda, planimetria, gallery e costi di un solo fornitore</span>
         </button>
-      </div>
-      <div class="cost-opt" data-costopt>
+        <button type="button" class="tpl-card active" data-tpl="quotation">
+          <span class="tpl-swatch tpl-swatch-quote"></span>
+          <span class="tpl-name">Offerta complessa</span>
+          <span class="tpl-desc">Più fornitori e opzioni A/B/C — schede, gallery e costi per ciascuno + riepilogo</span>
+        </button>
+      </div>      <div class="cost-opt" data-costopt>
         <p class="tpl-select-label" style="margin:.9rem 0 .5rem">Cost breakdown</p>
         <div class="cost-btns">
           <button type="button" class="cost-btn active" data-cost="both">Per fornitore + riepilogo</button>
@@ -426,28 +415,17 @@ Il sistema riconoscerà i fornitori e aggiungerà foto e descrizioni reali."></t
     <div class="tpl-select">
       <p class="tpl-select-label">Template della presentazione</p>
       <div class="tpl-cards">
-        <button type="button" class="tpl-card active" data-tpl="dark">
-          <span class="tpl-swatch tpl-swatch-dark"></span>
-          <span class="tpl-name">Scheda semplice</span>
-          <span class="tpl-desc">Tema scuro — solo la scheda, senza copertina/chiusura</span>
-        </button>
-        <button type="button" class="tpl-card" data-tpl="venues">
-          <span class="tpl-swatch tpl-swatch-cream"></span>
-          <span class="tpl-name">Venue Options</span>
-          <span class="tpl-desc">Crema/oro — copertina + tabella stati + scheda e galleria</span>
-        </button>
-        <button type="button" class="tpl-card" data-tpl="hotel">
-          <span class="tpl-swatch tpl-swatch-cream"></span>
-          <span class="tpl-name">Hotel Proposal</span>
-          <span class="tpl-desc">Crema/oro — copertina + tabella tariffe + scheda e galleria</span>
-        </button>
-        <button type="button" class="tpl-card" data-tpl="quotation">
+        <button type="button" class="tpl-card" data-tpl="single">
           <span class="tpl-swatch tpl-swatch-quote"></span>
-          <span class="tpl-name">Standard Template</span>
-          <span class="tpl-desc">Crema/teal — cover, scheda, planimetria, gallery, costi</span>
+          <span class="tpl-name">Fornitore singolo</span>
+          <span class="tpl-desc">Cover, scheda, planimetria, gallery e costi di un solo fornitore</span>
         </button>
-      </div>
-      <div class="cost-opt" data-costopt>
+        <button type="button" class="tpl-card active" data-tpl="quotation">
+          <span class="tpl-swatch tpl-swatch-quote"></span>
+          <span class="tpl-name">Offerta complessa</span>
+          <span class="tpl-desc">Più fornitori e opzioni A/B/C — schede, gallery e costi per ciascuno + riepilogo</span>
+        </button>
+      </div>      <div class="cost-opt" data-costopt>
         <p class="tpl-select-label" style="margin:.9rem 0 .5rem">Cost breakdown</p>
         <div class="cost-btns">
           <button type="button" class="cost-btn active" data-cost="both">Per fornitore + riepilogo</button>
@@ -536,7 +514,7 @@ let programMode = 'pdf'; // 'pdf' | 'text'
 // propria copia delle card (v61): un solo stato condiviso (deckTemplate/
 // costLayout), tenuto sincronizzato su ENTRAMBE le copie così che passando
 // da un tab all'altro la scelta resti visibile e coerente.
-let deckTemplate = 'dark'; // 'dark' | 'venues' | 'hotel' | 'quotation'
+let deckTemplate = 'quotation'; // 'single' (fornitore singolo) | 'quotation' (offerta complessa)
 function syncTplCards(){
   document.querySelectorAll('.tpl-card').forEach(c=>c.classList.toggle('active', c.dataset.tpl===deckTemplate));
   document.querySelectorAll('[data-costopt]').forEach(el=>el.classList.toggle('show', deckTemplate==='quotation'));
@@ -587,6 +565,9 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('panel-' + activeTab).classList.add('active');
+    // default coerente col tab: preventivo → offerta complessa, database → fornitore singolo
+    deckTemplate = activeTab === 'fornitore' ? 'single' : 'quotation';
+    syncTplCards();
     hideError(); hideFuzzyConfirm(); resetResult(); resetProgress();
   });
 });
@@ -1133,7 +1114,7 @@ function _authClearCache(){
    si leggono una volta sola e si rimuovono dall'indirizzo, così un F5 non
    sovrascrive quello che l'utente ha scritto nel frattempo. */
 (function(){
-  const VALID_TPL = ['dark','venues','hotel','quotation'];
+  const VALID_TPL = ['single','quotation'];
   const qs = new URLSearchParams(location.search);
   const one  = (qs.get('supplier')  || '').trim();
   const many = (qs.get('suppliers') || '').trim();
@@ -1144,6 +1125,7 @@ function _authClearCache(){
   history.replaceState(null, '', location.pathname);
 
   const selectTpl = t => {
+    if (['dark','venues','hotel'].includes(t)) t = 'single';   // template legacy rimossi
     if (!VALID_TPL.includes(t)) return;
     const card = document.querySelector(`.tpl-card[data-tpl="${t}"]`);
     if (card) card.click();   // riusa il gestore esistente (aggiorna anche costLayout)
@@ -1236,7 +1218,7 @@ function _authClearCache(){
           savePresentation: {
             idToken:   window._authToken || undefined,
             title:     ((titleInput && titleInput.value.trim()) || window._lastTitle || fname.replace(/\.html?$/i,'').replace(/_/g,' ')),
-            template:  (typeof deckTemplate !== 'undefined' ? deckTemplate : 'dark'),
+            template:  (typeof deckTemplate !== 'undefined' ? deckTemplate : 'quotation'),
             suppliers,
             filename:  fname,
             html:      window.generatedHtml || generatedHtml || '',
@@ -1280,8 +1262,8 @@ function _authClearCache(){
   // v67 — "Standard Template" è solo l'etichetta visibile: la chiave interna
   // resta 'quotation' (URL param ?tpl=quotation dal Vault, deckTemplate nel
   // salvataggio in archivio ecc. — nessun collegamento tra app tocca il nome).
-  const TPL_LABELS   = { dark: 'Dark Journey', venues: 'Venue Options', hotel: 'Hotel Proposal', quotation: 'Standard Template' };
-  const TPL_TAGCLASS = { dark: 'tpl-dark', venues: 'tpl-good', hotel: 'tpl-warn', quotation: 'tpl-info' };
+  const TPL_LABELS   = { single: 'Fornitore singolo', quotation: 'Offerta complessa', dark: 'Fornitore singolo', venues: 'Fornitore singolo', hotel: 'Fornitore singolo' };
+  const TPL_TAGCLASS = { single:'tpl-good', quotation:'tpl-info', dark:'tpl-good', venues:'tpl-good', hotel:'tpl-good' };
 
   function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function fmtDate(iso){

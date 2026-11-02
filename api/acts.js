@@ -187,7 +187,7 @@ async function resolveAuth(req, idToken) {
 // copia fra basi (§0.1).
 const PROJECTS_BASE_ID   = "appdvIG3LsRARALRP";
 const TABLE_PRESENTATIONS = "tblqE4NEkpj28xH8f";
-const VALID_TEMPLATES     = new Set(["dark", "venues", "hotel", "quotation"]);
+const VALID_TEMPLATES     = new Set(["single", "quotation"]);
 
 async function handleSavePresentation(payload, res, token, req) {
   const auth = await resolveAuth(req, payload?.idToken);
@@ -196,7 +196,7 @@ async function handleSavePresentation(payload, res, token, req) {
   const title = String(payload?.title || "").trim().slice(0, 200);
   if (!title) return res.status(400).json({ error: "Manca il titolo della presentazione." });
 
-  const template = VALID_TEMPLATES.has(payload?.template) ? payload.template : "dark";
+  const template = VALID_TEMPLATES.has(payload?.template) ? payload.template : "single";
   const suppliers = Array.isArray(payload?.suppliers)
     ? [...new Set(payload.suppliers.map(x => String(x || "").trim()).filter(Boolean))].slice(0, 60)
     : [];
@@ -823,7 +823,7 @@ export default async function handler(req, res) {
   const jsonOnly = format === "json";
   // v61 — template scelto anche per la ricerca nel database (§ "Cerca nel
   // Database" nell'UI). Stesso allow-list di generate.js/generate-text.js.
-  const deckTemplate = VALID_TEMPLATES.has(_body.deckTemplate) ? _body.deckTemplate : "dark";
+  const deckTemplate = VALID_TEMPLATES.has(_body.deckTemplate) ? _body.deckTemplate : "single";
   const costLayout = ["both", "per-supplier", "grouped"].includes(_body.costLayout) ? _body.costLayout : "both";
 
   const token  = process.env.AIRTABLE_TOKEN;
@@ -901,7 +901,7 @@ export default async function handler(req, res) {
 // ─── FULL-PAGE GENERATORS (shared by legacy `act`/`activity` params and by the
 //     unified search below) ────────────────────────────────────────────────────
 
-async function generateActFullPage(selectedName, token, baseId, template, req, jsonOnly, deckTemplate = "dark", costLayout = "both") {
+async function generateActFullPage(selectedName, token, baseId, template, req, jsonOnly, deckTemplate = "single", costLayout = "both") {
   const actRecord = await searchAct(selectedName, token, baseId);
   if (!actRecord) throw new Error(`"${selectedName}" not found.`);
 
@@ -1047,9 +1047,7 @@ async function generateActFullPage(selectedName, token, baseId, template, req, j
   // hotel, quotation) sono decks veri e propri: la copertina resta visibile.
   const proto = req.headers["x-forwarded-proto"] || "https";
   const apiBase = `${proto}://${req.headers.host}`;
-  const actCss = deckTemplate === "dark"
-    ? `<style>.slide-cover, .slide-overview, .slide-closing { display: none !important; }</style>`
-    : "";
+  const actCss = "";
   const apiScript = `<script>window.LOVEIT_API_BASE="${apiBase}";</script>`;
   finalHtml = finalHtml.replace("</head>", actCss + "\n" + apiScript + "\n</head>");
 
@@ -1067,7 +1065,7 @@ async function generateActFullPage(selectedName, token, baseId, template, req, j
 
 // Full standalone page for an Activities-table record (no equivalent existed before —
 // handleActivity() above only ever returns JSON for the in-presentation picker).
-async function generateActivityFullPage(selectedName, token, baseId, template, req, deckTemplate = "dark", costLayout = "both") {
+async function generateActivityFullPage(selectedName, token, baseId, template, req, deckTemplate = "single", costLayout = "both") {
   const rec = await searchActivity(selectedName, token, baseId);
   if (!rec) throw new Error(`"${selectedName}" not found in Activities.`);
 
@@ -1158,9 +1156,7 @@ async function generateActivityFullPage(selectedName, token, baseId, template, r
 
   const proto = req.headers["x-forwarded-proto"] || "https";
   const apiBase = `${proto}://${req.headers.host}`;
-  const css = deckTemplate === "dark"
-    ? `<style>.slide-cover, .slide-overview, .slide-closing { display: none !important; }</style>`
-    : "";
+  const css = "";
   const apiScript = `<script>window.LOVEIT_API_BASE="${apiBase}";</script>`;
   finalHtml = finalHtml.replace("</head>", css + "\n" + apiScript + "\n</head>");
 

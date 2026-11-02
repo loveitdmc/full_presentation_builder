@@ -8,6 +8,28 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v71 — 2026-11-02 — Solo 2 template: Fornitore singolo / Offerta complessa
+- Pulizia richiesta da Marco: restano solo due template di presentazione.
+  - `single` = "Fornitore singolo": cover + scheda + planimetria + gallery +
+    costi di UN solo fornitore (il primo del programma).
+  - `quotation` = "Offerta complessa": più fornitori e opzioni A/B/C, un
+    blocco per fornitore/opzione + riepilogo (ex "Standard Template").
+    La chiave interna resta `quotation`: nessun link Vault/Preventivi rotto.
+- Rimossi: Dark Journey ("Scheda semplice"), Venue Options, Hotel Proposal.
+  Template: eliminati tutti i builder non più usati (cover/overview/activity/
+  gallery/venue status/rate table/deck spread/hero/hotel spread/good to
+  know/video/floorplan grid/closing) e il CSS crema/coral venues-hotel.
+  API (acts, supplier, acts-list, generate, generate-text): valori validi solo
+  `single`/`quotation`; default `single` per le ricerche da database,
+  `quotation` per PDF/testo. Eliminato il CSS che nascondeva la cover nella
+  "scheda semplice". UI: 2 card nei due tab (default: Da Preventivo → Offerta
+  complessa, Cerca nel Database → Fornitore singolo).
+- Rimozione totale (scelta di Marco): i deck vecchi dark/venues/hotel
+  riaperti dall'archivio vengono renderizzati come "Offerta complessa";
+  parametri `?tpl=dark|venues|hotel` dal Vault → `single`.
+- Test jsdom: single = 4 slide (1 fornitore); quotation = 11 slide con
+  opzioni; valore legacy → quotation; nessun errore JS.
+
 ## v70b — 2026-09-22 — Le opzioni ora ci sono, ma alcune prendevano foto stock generiche
 - Rigenerato il Rome 200pax con v70: tutte le Option A/B/C ora compaiono come
   slide piene (fix confermato) — ma Marco segnala che alcune non hanno la foto

@@ -102,7 +102,7 @@ async function handleArchiveList(res) {
       return {
         id:          r.id,
         title:       r.fields["Title"] || "(senza titolo)",
-        template:    r.fields["Template"] || "dark",
+        template:    r.fields["Template"] || "single",
         suppliers:   (r.fields["Suppliers"] || "").split("\n").map(s => s.trim()).filter(Boolean),
         createdAt:   r.fields["Created At"] || null,
         createdBy:   r.fields["Created By"] || null,

@@ -25,8 +25,8 @@ const TRIP = {
   quoteRef:    "202607002-Q",
 
   /* ── Template deck ────────────────────────────────────── */
-  // "dark" (journey attuale) | "venues" (crema, tabella stati) | "hotel" (crema, tariffe)
-  deckTemplate: "dark",
+  // "single" (fornitore singolo) | "quotation" (offerta complessa multi-fornitore)
+  deckTemplate: "quotation",
   // Solo per deckTemplate "quotation": "both" | "per-supplier" | "grouped"
   costLayout: "both",
 
@@ -671,63 +671,6 @@ body.edit-mode .qcost-table .del-dtrow-btn{ color:rgba(220,80,80,.6); }
 body.deck-quotation .counter{ color:rgba(43,50,58,.45); }
 body.deck-quotation .slide-qcover .counter{ color:rgba(255,255,255,.5); }
 
-/* ══ Deck theme crema/oro (v46 — template Venue Options / Hotel Proposal) ═══
-   Le slide con foto full-bleed restano scure (testo bianco su overlay);
-   le slide "di carta" (tabelle, spread, gallerie, closing testo) diventano
-   crema #F7F4EF con testo scuro #2B323A, come nei pptx originali. */
-body.deck-venues,body.deck-hotel{ background:#F7F4EF; }
-body.deck-venues .slide-datatable,body.deck-hotel .slide-datatable,
-body.deck-venues .slide-gallery.gallery-cards,body.deck-hotel .slide-gallery.gallery-cards{ background:#F7F4EF; }
-body.deck-venues .slide-split .split-content,body.deck-hotel .slide-split .split-content{ background:#F7F4EF; }
-body.deck-venues .slide-datatable .headline,body.deck-hotel .slide-datatable .headline,
-body.deck-venues .gallery-cards .headline,body.deck-hotel .gallery-cards .headline,
-body.deck-venues .split-content .headline,body.deck-hotel .split-content .headline{ color:#2B323A; }
-body.deck-venues .split-content .body-text,body.deck-hotel .split-content .body-text{ color:rgba(43,50,58,.72); }
-body.deck-venues .slide-datatable .eyebrow,body.deck-hotel .slide-datatable .eyebrow,
-body.deck-venues .gallery-cards .eyebrow,body.deck-hotel .gallery-cards .eyebrow,
-body.deck-venues .split-content .eyebrow,body.deck-hotel .split-content .eyebrow{ color:#a8854f; }
-body.deck-venues .data-table th,body.deck-hotel .data-table th{ color:#a8854f;border-bottom-color:rgba(43,50,58,.3); }
-body.deck-venues .data-table td,body.deck-hotel .data-table td{ color:rgba(43,50,58,.82);border-bottom-color:rgba(43,50,58,.12); }
-body.deck-venues .data-table td.dt-cell:first-child,body.deck-hotel .data-table td.dt-cell:first-child{ color:#2B323A; }
-body.deck-venues .slide-datatable .rule,body.deck-hotel .slide-datatable .rule{ background:#C9A96A; }
-body.deck-venues .slide-datatable .counter,body.deck-hotel .slide-datatable .counter,
-body.deck-venues .gallery-cards .counter,body.deck-hotel .gallery-cards .counter,
-body.deck-venues .slide-split .counter,body.deck-hotel .slide-split .counter{ color:rgba(43,50,58,.45); }
-body.deck-venues .slide-datatable #dots,body.deck-hotel .slide-datatable #dots{}
-/* pulsanti editor sulle slide crema: restano leggibili (fondo scuro proprio) */
-
-/* ══ v68 — Hotel Proposal v2, da MAX_Hotel_Proposal_Elegant_v2.pptx ═════════
-   Solo per il deck "hotel": Venue Options (deck-venues) resta esattamente
-   come prima, su richiesta esplicita. Eyebrow coral (fedele al pptx
-   originale) invece dell'oro condiviso con Venue Options, tabella tariffe
-   compatta nello spread di ogni hotel, e la nuova slide "Good to Know". */
-body.deck-hotel .slide-datatable .eyebrow,
-body.deck-hotel .gallery-cards .eyebrow,
-body.deck-hotel .split-content .eyebrow{ color:#FF5149; }
-body.deck-hotel .slide-hotelspread .hp-avail{ font-family:'Calibri',var(--sans);font-size:.68rem;color:rgba(43,50,58,.6);margin-bottom:1rem;line-height:1.5; }
-body.deck-hotel .slide-hotelspread .data-table{ margin-top:0;margin-bottom:.9rem; }
-body.deck-hotel .slide-hotelspread .data-table th,
-body.deck-hotel .slide-hotelspread .data-table td{ padding:.4rem .55rem;font-size:.72rem; }
-body.deck-hotel .slide-hotelspread .data-table td.dt-cell:first-child{ font-family:'Calibri',var(--sans);font-style:normal;font-size:.72rem; }
-body.deck-hotel .slide-hotelspread .data-table th.num,
-body.deck-hotel .slide-hotelspread .data-table td.num{ text-align:right; }
-body.deck-hotel .slide-hotelspread .add-dtrow-btn{ margin-top:0;margin-bottom:1rem; }
-body.deck-hotel .slide-hotelspread .hp-note{ font-family:'Calibri',var(--sans);font-size:.7rem;color:rgba(43,50,58,.78);line-height:1.6;margin-bottom:.25rem; }
-body.deck-hotel .slide-hotelspread .hp-note b{ font-weight:700; }
-/* Good to Know: stessa base di slide-flow (serve per l'export PPTX, che sa
-   già leggere i .flow-item), ma ritinta crema/coral come il resto del deck. */
-body.deck-hotel .slide-goodtoknow{ background:#F7F4EF; }
-body.deck-hotel .slide-goodtoknow .eyebrow{ color:#FF5149; }
-body.deck-hotel .slide-goodtoknow .headline{ color:#2B323A; }
-body.deck-hotel .slide-goodtoknow .rule{ background:#C9A96A; }
-body.deck-hotel .slide-goodtoknow .flow-item-text{ color:rgba(43,50,58,.85); }
-body.deck-hotel .slide-goodtoknow .flow-item-text b{ color:#2B323A; }
-body.deck-hotel .slide-goodtoknow .flow-dot{ background:#FF5149; }
-body.deck-hotel .slide-goodtoknow .del-flowitem-btn{ background:rgba(255,255,255,.85);border-color:rgba(220,80,80,.4); }
-body.deck-hotel .slide-goodtoknow .add-flowitem-btn{ color:#346E74;border-color:rgba(52,110,116,.4); }
-body.deck-hotel .slide-goodtoknow .add-flowitem-btn:hover{ border-color:#346E74;background:rgba(52,110,116,.07); }
-body.deck-hotel .slide-goodtoknow .counter{ color:rgba(43,50,58,.45); }
-
 /* ══ Layout dai template pptx LoveIT (v45) ══════════════════════════════════ */
 /* ── Tabelle dati (Hotel At-a-Glance / Venue per stato) ───────────────────── */
 .slide-datatable{ background:var(--notte); }
@@ -827,78 +770,10 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
     return `background-image:url('${photo}');background-position:${pos||'center center'};background-size:cover;`;
   }
 
-  function optionBadges(options){
-    if(!options || !options.length) return '';
-    return `<div class="options-row">
-      ${options.map(o=>`
-        <div class="opt-badge">
-          <span class="opt-label">${o.label}</span>
-          <span class="opt-title">${o.title}</span>
-        </div>`).join('')}
-    </div>`;
-  }
-
   // ── Slide builders ────────────────────────────────────────────────────────
 
-  function buildCover(trip, num, total){
-    const cPhoto = trip.cityPhoto || trip.coverPhoto || '';
-    const cPos   = trip.cityPhoto ? (trip.cityPhotoPosition||'center center') : (trip.coverPhotoPosition||'center center');
-    return `
-    <section class="slide-cover">
-      <div class="bg" style="${bgStyle(cPhoto, cPos)}"></div>
-      <div class="ov-dark"></div>
-      <div class="content-center">
-        <div class="eyebrow">${trip.client || 'Private Proposal'}</div>
-        <h1 class="display">${trip.title}<br><em>${trip.destination}</em></h1>
-        <p class="tagline">${trip.tagline || ''}</p>
-        <div class="meta-row">
-          <span class="meta-pill">${trip.dates}</span>
-          <span class="meta-pill">${trip.pax} guests</span>
-          <span class="meta-pill">${trip.country}</span>
-        </div>
-      </div>
-      <span class="counter">01 / ${String(total).padStart(2,'0')}</span>
-    </section>`;
-  }
 
-  function buildOverview(trip, num, total){
-    const rows = trip.days.map(d => `
-      <tr>
-        <td class="day-num-col">Day ${d.number} · ${d.date}</td>
-        <td class="day-label-col">${d.label}</td>
-        <td class="day-row-del"><button type="button" class="del-day-row-btn" title="Rimuovi riga">×</button></td>
-      </tr>`).join('');
-    return `
-    <section class="slide-overview">
-      <div class="content-dark">
-        <div class="eyebrow">The Programme</div>
-        <h2 class="headline">Your journey<br><em>at a glance</em></h2>
-        <div class="rule"></div>
-        <table class="days-table"><tbody>${rows}</tbody></table>
-        <button type="button" class="add-day-row-btn">+ Aggiungi giorno</button>
-      </div>
-      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
-    </section>`;
-  }
 
-  function buildActivity(act, day, num, total, dayIdx, actIdx){
-    const hasPhoto = !!act.photo;
-    const ovClass  = hasPhoto ? 'ov-dark' : 'ov-full';
-    const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
-    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
-    return `
-    <section${dataAttrs}>
-      <div class="bg" style="${bgStyle(act.photo, act.photoPosition)}"></div>
-      <div class="${ovClass}"></div>
-      <div class="content">
-        <div class="eyebrow">Day ${day.number} · ${day.date}</div>
-        <h2 class="headline">${act.title}</h2>
-        <p class="body-text">${act.description}</p>
-        ${optionBadges(act.options)}
-      </div>
-      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
-    </section>`;
-  }
 
   // ── Nomi foto → didascalie automatiche ─────────────────────────────────────
   // Mappa globale url→nome (da Airtable: Asset Name / Description / filename),
@@ -947,182 +822,9 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
   }
 
   // Seconda slide full-page: solo nome + "Vista d'insieme", volutamente leggera.
-  function buildActivitySecond(act, day, num, total, dayIdx, actIdx){
-    const { second } = _actPhotoSets(act);
-    const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
-    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
-    return `
-    <section${dataAttrs}>
-      <div class="bg" style="${bgStyle(second)}"></div>
-      <div class="ov-dark"></div>
-      <div class="content">
-        <div class="eyebrow">${act.title}</div>
-        <h2 class="headline">Vista d'insieme</h2>
-      </div>
-      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
-    </section>`;
-  }
 
-  function buildGallery(act, day, num, total, dayIdx, actIdx, photosOverride){
-    const photos = photosOverride || _actPhotoSets(act).gallery;
-    if(!photos.length) return '';
-    const cols = photos.length===1 ? 1 : (photos.length===2||photos.length===4 ? 2 : 3);
-    const cells = photos.map((url, i) =>
-      `<div class="gallery-cell" style="background-image:url('${url}')"><div class="gallery-cell-caption">${window._photoCaption(url,i,act.supplierName||act.title)}</div></div>`
-    ).join('');
-    const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
-    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
-    return `
-    <section class="slide-gallery gallery-cards"${dataAttrs}>
-      <div class="gc-header">
-        <div class="eyebrow">${act.supplierName || 'Day '+day.number}</div>
-        <h2 class="headline">${act.title}</h2>
-      </div>
-      <div class="gallery-grid gc-cols-${cols}">${cells}</div>
-      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
-    </section>`;
-  }
 
-  // ── v46: builder per i deck "venues" / "hotel" (crema/oro) ─────────────────
   function _actName(act){ return act.supplierName || act.title; }
-  function buildVenueStatusTable(trip, num, total){
-    const rows=[];
-    trip.days.forEach(d=>d.activities.forEach(a=>{
-      if(a.showSlide===false) return;
-      rows.push(`<tr><td class="dt-cell">${_actName(a)}</td><td class="dt-cell">${trip.destination||''}</td><td class="dt-cell">—</td><td class="dt-cell">Day ${d.number}${a.type?` · ${a.type}`:''}</td><td class="dt-status-cell"><span class="status-badge" data-status="tbc">TBC</span></td><td class="dt-del"><button type="button" class="del-dtrow-btn" title="Rimuovi riga">×</button></td></tr>`);
-    }));
-    return `
-    <section class="slide-datatable">
-      <div class="content-dark datatable-content">
-        <div class="eyebrow">Venues — At a Glance</div>
-        <h2 class="headline">Le location proposte</h2>
-        <div class="rule"></div>
-        <table class="data-table"><thead><tr><th>Venue</th><th>Zona</th><th>Capacità</th><th>Note</th><th>Status</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>
-        <button type="button" class="add-dtrow-btn" data-kind="venue">+ Aggiungi riga</button>
-      </div>
-      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
-    </section>`;
-  }
-  // v68 — colonne fedeli a MAX_Hotel_Proposal_Elegant_v2.pptx: Hotel / Location /
-  // Category / From (per room/night), non più Hotel/Categoria/Camera/Tariffa/Note.
-  function buildRateTable(trip, num, total){
-    const rows=[];
-    trip.days.forEach(d=>d.activities.forEach(a=>{
-      if(a.showSlide===false) return;
-      rows.push(`<tr><td class="dt-cell">${_actName(a)}</td><td class="dt-cell">${a.location || trip.destination || '—'}</td><td class="dt-cell">${a.category || a.type || '—'}</td><td class="dt-cell">${a.priceFrom || 'da € — / notte'}</td><td class="dt-del"><button type="button" class="del-dtrow-btn" title="Rimuovi riga">×</button></td></tr>`);
-    }));
-    return `
-    <section class="slide-datatable">
-      <div class="content-dark datatable-content">
-        <div class="eyebrow">At a Glance</div>
-        <h2 class="headline">Hotel Options Overview</h2>
-        <div class="rule"></div>
-        <table class="data-table"><thead><tr><th>Hotel</th><th>Location</th><th>Category</th><th>From (per room/night)</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>
-        <button type="button" class="add-dtrow-btn" data-kind="hotel">+ Aggiungi riga</button>
-      </div>
-      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
-    </section>`;
-  }
-  // Spread foto-sinistra / info-destra (usato da entrambi i deck crema)
-  function buildDeckSpread(act, day, num, total, dayIdx, actIdx){
-    const { main } = _actPhotoSets(act);
-    const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
-    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
-    return `
-    <section class="slide-split slide-split-photo-left"${dataAttrs}>
-      <div class="split-photo"${main?` style="background-image:url('${main}')"`:''}></div>
-      <div class="split-content">
-        <div class="eyebrow">Day ${day.number}${day.date?` · ${day.date}`:''}</div>
-        <h2 class="headline">${act.title}</h2>
-        <p class="body-text">${act.description||''}</p>
-        ${optionBadges(act.options)}
-      </div>
-      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
-    </section>`;
-  }
-  // Hero full-page (deck venues): seconda inquadratura con solo il nome
-  function buildDeckHero(act, day, num, total, dayIdx, actIdx){
-    const { second } = _actPhotoSets(act);
-    const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
-    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
-    return `
-    <section${dataAttrs}>
-      <div class="bg" style="${bgStyle(second)}"></div>
-      <div class="ov-dark"></div>
-      <div class="content"><div class="eyebrow">${_actName(act)}</div><h2 class="headline">${act.title}</h2></div>
-      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
-    </section>`;
-  }
-
-  // ── v68: deck "Hotel Proposal" — da MAX_Hotel_Proposal_Elegant_v2.pptx ──────
-  // Sostituisce lo spread generico (buildDeckSpread) per il solo deck "hotel":
-  // stessa foto-sinistra, ma a destra una tabella tariffe per tipo di camera
-  // (editabile con lo stesso meccanismo add/del-dtrow già usato altrove) invece
-  // di un paragrafo descrittivo, più le note Included/Excluded. Venue Options
-  // (DECK==='venues') non cambia — resta su buildDeckSpread come prima.
-  function buildHotelSpread(trip, act, day, num, total, dayIdx, actIdx){
-    const { main } = _actPhotoSets(act);
-    const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
-    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
-    const rates = (act.roomRates && act.roomRates.length) ? act.roomRates : [
-      { type: 'Camera doppia', rate: 'da € — / notte' },
-      { type: 'Camera singola', rate: 'da € — / notte' },
-    ];
-    const rateRows = rates.map(r =>
-      `<tr><td class="dt-cell">${r.type}</td><td class="dt-cell num">${r.rate}</td><td class="dt-del"><button type="button" class="del-dtrow-btn" title="Rimuovi riga">×</button></td></tr>`
-    ).join('');
-    const avail = act.availability || `Day ${day.number}${day.date?` · ${day.date}`:''}`;
-    const included = act.included || 'Da specificare';
-    const excluded = act.excluded || 'City tax, se applicabile';
-    // Riepilogo testuale nascosto, solo per l'export PPTX (che legge .body-text):
-    // la tabella tariffe e le note Included/Excluded altrimenti andrebbero perse.
-    const exportSummary = [
-      avail,
-      ...rates.map(r=>`${r.type}: ${r.rate}`),
-      `Included: ${included}`,
-      `Excluded: ${excluded}`,
-    ].join('\n');
-    return `
-    <section class="slide-split slide-split-photo-left slide-hotelspread"${dataAttrs}>
-      <div class="split-photo"${main?` style="background-image:url('${main}')"`:''}></div>
-      <div class="split-content">
-        <div class="eyebrow">${act.location || trip.destination || ''}</div>
-        <h2 class="headline">${_actName(act)}</h2>
-        <p class="hp-export-summary body-text" style="display:none">${exportSummary}</p>
-        <p class="hp-avail">${avail}</p>
-        <table class="data-table"><thead><tr><th>Room Type</th><th class="num">Rate / night</th><th></th></tr></thead>
-          <tbody>${rateRows}</tbody></table>
-        <button type="button" class="add-dtrow-btn" data-kind="roomrate">+ Aggiungi tariffa</button>
-        <p class="hp-note"><b>Included:</b> ${included}</p>
-        <p class="hp-note"><b>Excluded:</b> ${excluded}</p>
-      </div>
-      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
-    </section>`;
-  }
-  // ── v68: slide "Good to Know" (termini di prenotazione) — solo deck hotel ──
-  // Riusa esattamente il meccanismo dei "flow-item" (punto + testo + cancella,
-  // già usato per le slide "Flusso/Concept"): stesso HTML, stesso listener
-  // delegato (.add-flowitem-btn / .del-flowitem-btn), zero JS nuovo da wire.
-  function _gtkItemHtml(label, text){
-    return `<div class="flow-item"><span class="flow-dot"></span><div class="body-text flow-item-text"><b>${label}:</b> ${text}</div><button type="button" class="del-flowitem-btn" title="Rimuovi punto">×</button></div>`;
-  }
-  function buildGoodToKnow(trip, num, total){
-    const items = (trip.goodToKnow && trip.goodToKnow.length) ? trip.goodToKnow : [
-      { label: 'Availability', text: 'Le disponibilità indicate sono soggette a riconferma più vicino alla data del sopralluogo.' },
-      { label: 'City Tax', text: 'Esclusa da tutte le tariffe sopra indicate, salvo diversa indicazione.' },
-      { label: 'Special Conditions', text: 'Eventuali condizioni particolari per fornitore vanno riportate qui.' },
-    ];
-    return `
-    <section class="slide-flow slide-goodtoknow">
-      <div class="content-dark flow-content">
-        <div class="eyebrow">Good to Know</div>
-        <h2 class="headline">Booking Terms &amp; Next Steps</h2>
-        <div class="flow-items">${items.map(it => _gtkItemHtml(it.label, it.text)).join('')}</div>
-        <button type="button" class="add-flowitem-btn">+ Aggiungi punto</button>
-      </div>
-      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
-    </section>`;
-  }
 
   // ── v53: deck "Quotazione Venue" — 5 slide fedeli al template pptx 06 ──────
   function _qFacts(act, trip){
@@ -1295,95 +997,27 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
     </section>`;
   }
 
-  function buildVideosGrid(act, day, num, total, dayIdx, actIdx){
-    const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
-    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
-    const vids = (act.videos || []).slice(0,6);
-    const cols = vids.length===1?1:(vids.length===2||vids.length===4?2:3);
-    const cells = vids.map(v=>{
-      const yt = v.embedUrl.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/);
-      const thumb = yt ? `https://img.youtube.com/vi/${yt[1]}/hqdefault.jpg` : '';
-      const openUrl = (v.sourceUrl || (yt ? `https://www.youtube.com/watch?v=${yt[1]}` : v.embedUrl)).replace(/'/g,'%27').replace(/"/g,'&quot;');
-      return `<div class="video-card">
-        <div class="video-card-thumb" onclick="window.open('${openUrl}','_blank')" style="${thumb?`background-image:url('${thumb}')`:''}">
-          <div class="video-card-play"><svg viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="38" fill="rgba(0,0,0,.55)" stroke="rgba(255,255,255,.6)" stroke-width="2"/><polygon points="32,24 32,56 60,40" fill="white"/></svg></div>
-        </div>
-        <div class="video-card-caption">${v.title || 'Performance'}</div>
-      </div>`;
-    }).join('');
-    return `
-    <section class="slide-videos"${dataAttrs}>
-      <div class="videos-inner">
-        <div class="eyebrow">Video</div>
-        <h2 class="headline">${act.title}</h2>
-        <div class="videos-grid videos-grid-${cols}">${cells}</div>
-      </div>
-      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
-    </section>`;
-  }
 
-  function buildFloorplansGrid(act, day, num, total, dayIdx, actIdx){
-    const supAttr  = act.supplierName ? ` data-supplier="${act.supplierName.replace(/"/g,'&quot;')}"` : '';
-    const dataAttrs = (dayIdx!==undefined) ? ` data-day="${dayIdx}" data-act="${actIdx}"${supAttr}` : '';
-    const fps = (act.floorplans || []).slice(0,6);
-    const cols = fps.length===1?1:(fps.length===2||fps.length===4?2:3);
-    const cells = fps.map(p=>{
-      const safeUrl = (p.fileUrl||'').replace(/'/g,'%27').replace(/"/g,'&quot;');
-      const safeName = (p.filename||'planimetria.pdf').replace(/"/g,'&quot;');
-      return `<div class="video-card">
-        <a class="video-card-thumb" href="${safeUrl}" target="_blank" rel="noopener" style="${p.thumb?`background-image:url('${p.thumb}')`:''}">
-          <div class="video-card-play video-card-download"><svg viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="38" fill="rgba(0,0,0,.55)" stroke="rgba(255,255,255,.6)" stroke-width="2"/><path d="M40 24 L40 46 M30 38 L40 48 L50 38 M28 54 L52 54" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div>
-        </a>
-        <div class="video-card-caption">${p.name||'Planimetria'}${p.description?`<span class="video-card-sub">${p.description}</span>`:''}</div>
-        <a class="fp-download-link" href="${safeUrl}" download="${safeName}" target="_blank" rel="noopener">&#8595; Scarica</a>
-      </div>`;
-    }).join('');
-    return `
-    <section class="slide-videos slide-floorplans"${dataAttrs}>
-      <div class="videos-inner">
-        <div class="eyebrow">Planimetrie</div>
-        <h2 class="headline">${act.title}</h2>
-        <div class="videos-grid videos-grid-${cols}">${cells}</div>
-      </div>
-      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
-    </section>`;
-  }
 
-  function buildClosing(trip, num, total){
-    const c = trip.closing || {};
-    return `
-    <section class="slide-closing">
-      <div class="bg" style="${bgStyle(c.photo, c.photoPosition)}"></div>
-      <div class="ov-dark"></div>
-      <div class="content">
-        <div class="eyebrow">Love IT DMC · ${trip.projectRef || ''}</div>
-        <h2 class="headline">${c.headline || "Let's make it happen."}</h2>
-        <p class="body-text">${c.subline || 'Your dedicated Love IT team is ready.'}</p>
-        ${c.contact ? `<p class="contact">${c.contact}</p>` : ''}
-      </div>
-      <span class="counter">${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
-    </section>`;
-  }
 
   // ── Collect all slides ────────────────────────────────────────────────────
-  const DECK = ['venues','hotel','quotation'].includes(TRIP.deckTemplate) ? TRIP.deckTemplate : 'dark';
+  // Due soli template: "single" (fornitore singolo) e "quotation" (offerta
+  // complessa multi-fornitore — la chiave resta "quotation" per non rompere
+  // i link dal Vault / app Preventivi).
+  const DECK = TRIP.deckTemplate==='single' ? 'single' : 'quotation';
   document.body.classList.add('deck-'+DECK);
   const slideBuilders = [];
 
-  // Deck "Quotazione Venue": 5 slide su UN solo venue (il primo del programma)
-  if(DECK==='quotation'){
+  {
     // Un blocco di slide per OGNI fornitore del programma (cover una sola volta).
     const qActs=[];
     TRIP.days.forEach((d,di)=>d.activities.forEach((a,ai)=>{
       if(a.showSlide!==false) qActs.push({act:a,dayIdx:di,actIdx:ai});
     }));
-    // v70 — Quando un'attività ha options[] (Option A/B/C con fornitori diversi
-    // per lo stesso slot, es. 3 ristoranti alternativi per la cena di gala),
-    // ciascuna opzione riceve il proprio blocco COMPLETO Venue+Gallery+Cost,
-    // esattamente come un'attività a sé — nessuna alternativa viene più scartata
-    // o ridotta a un badge. L'attività "contenitore" (che di solito non ha un
-    // proprio fornitore/foto quando esistono options) non genera più una sua
-    // slide Venue separata in quel caso.
+    // Fornitore singolo: solo il primo fornitore del programma.
+    const srcActs = DECK==='single' ? qActs.slice(0,1) : qActs;
+    // Option A/B/C con fornitori diversi per lo stesso slot: ogni opzione
+    // riceve il proprio blocco completo Venue+Gallery+Cost (v70).
     function expandOptions({act,dayIdx,actIdx}){
       if(!act.options || !act.options.length) return [{act,dayIdx,actIdx,isOption:false}];
       return act.options.map(opt=>({
@@ -1401,73 +1035,26 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
         dayIdx, actIdx, isOption:true,
       }));
     }
-    const qBlocks = qActs.flatMap(expandOptions);
+    const qBlocks = srcActs.flatMap(expandOptions);
     if(qBlocks.length){
       const first=qBlocks[0].act;
       slideBuilders.push((n,t)=>buildQCover(TRIP,first,n,t));
-      const CL=['both','per-supplier','grouped'].includes(TRIP.costLayout)?TRIP.costLayout:'both';
+      const CL = DECK==='single' ? 'per-supplier'
+               : (['both','per-supplier','grouped'].includes(TRIP.costLayout)?TRIP.costLayout:'both');
       qBlocks.forEach(({act,dayIdx,actIdx})=>{
         slideBuilders.push((n,t)=>buildQVenue(TRIP,act,n,t,dayIdx,actIdx));
         if((act.floorplans||[]).length) slideBuilders.push((n,t)=>buildQPlan(TRIP,act,n,t));
         slideBuilders.push((n,t)=>buildQGallery(TRIP,act,n,t,dayIdx,actIdx));
-        // Cost breakdown del singolo fornitore, subito dopo le sue slide
         if(CL!=='grouped') slideBuilders.push((n,t)=>buildQCost(TRIP,[act],n,t));
       });
-      // Riepilogo finale raggruppato per fornitore — SOLO le voci confermate
-      // (esclude le alternative Option A/B/C, che sono mutuamente esclusive e
-      // non vanno sommate nel totale del programma).
+      // Riepilogo finale: SOLO voci confermate (le alternative Option A/B/C
+      // sono mutuamente esclusive e non si sommano).
       const confirmedActs = qBlocks.filter(b=>!b.isOption).map(b=>b.act);
       if(CL!=='per-supplier' && confirmedActs.length && !(CL==='both' && qBlocks.length===1)){
         slideBuilders.push((n,t)=>buildQCost(TRIP,confirmedActs,n,t));
       }
     }
-  } else {
-  slideBuilders.push((num, total) => buildCover(TRIP, num, total));
-  if(DECK==='venues')     slideBuilders.push((num, total) => buildVenueStatusTable(TRIP, num, total));
-  else if(DECK==='hotel') slideBuilders.push((num, total) => buildRateTable(TRIP, num, total));
-  else                    slideBuilders.push((num, total) => buildOverview(TRIP, num, total));
-
-  TRIP.days.forEach((day, dayIdx) => {
-    day.activities.forEach((act, actIdx) => {
-      if(act.showSlide !== false){
-        const sets = _actPhotoSets(act);
-        if(DECK==='venues'){
-          // Template 05: spread info → hero full-page → galleria
-          slideBuilders.push((num, total) => buildDeckSpread(act, day, num, total, dayIdx, actIdx));
-          if(sets.second) slideBuilders.push((num, total) => buildDeckHero(act, day, num, total, dayIdx, actIdx));
-          if(sets.gallery.length > 0) slideBuilders.push((num, total) => buildGallery(act, day, num, total, dayIdx, actIdx));
-        } else if(DECK==='hotel'){
-          // v68: spread scheda hotel (tabella tariffe, Included/Excluded — da
-          // MAX_Hotel_Proposal_Elegant_v2.pptx) → galleria (include la seconda foto)
-          slideBuilders.push((num, total) => buildHotelSpread(TRIP, act, day, num, total, dayIdx, actIdx));
-          const hotelGallery=[sets.second, ...sets.gallery].filter(Boolean).slice(0,6);
-          if(hotelGallery.length > 0) slideBuilders.push((num, total) => buildGallery(act, day, num, total, dayIdx, actIdx, hotelGallery));
-        } else {
-          slideBuilders.push((num, total) => buildActivity(act, day, num, total, dayIdx, actIdx));
-          if(sets.second){
-            slideBuilders.push((num, total) => buildActivitySecond(act, day, num, total, dayIdx, actIdx));
-          }
-          if(sets.gallery.length > 0){
-            slideBuilders.push((num, total) => buildGallery(act, day, num, total, dayIdx, actIdx));
-          }
-        }
-        if(act.floorplans?.length){
-          slideBuilders.push((num, total) => buildFloorplansGrid(act, day, num, total, dayIdx, actIdx));
-        }
-        if(act.videos?.length){
-          slideBuilders.push((num, total) => buildVideosGrid(act, day, num, total, dayIdx, actIdx));
-        }
-      }
-    });
-  });
-
-  // v68 — "Good to Know" (termini di prenotazione): una sola slide per tutto
-  // il deck, dopo l'ultimo hotel e prima della chiusura, solo per DECK==='hotel'.
-  if(DECK==='hotel'){
-    slideBuilders.push((num, total) => buildGoodToKnow(TRIP, num, total));
   }
-  slideBuilders.push((num, total) => buildClosing(TRIP, num, total));
-  } // fine deck non-quotation
 
   // ── Render ────────────────────────────────────────────────────────────────
   const TOTAL  = slideBuilders.length;
@@ -2436,7 +2023,7 @@ try{ LoveitEditor=(function(){
   }
 
   // ── Righe "Day" nella tabella Programme (slide-overview) ────────────────────
-  // I pulsanti +/× sono renderizzati sempre nel markup (buildOverview) e nascosti
+  // I pulsanti +/× sono renderizzati sempre nel markup (overview rimosso) e nascosti
   // via CSS finché non si è in edit-mode, quindi funzionano anche dopo un
   // undo/redo che rimpiazza l'innerHTML della tabella (delegation su document,
   // niente da ri-agganciare).
@@ -4005,7 +3592,7 @@ try{ LoveitEditor=(function(){
     if(btn){ btn.disabled=true;btn.textContent='… PPT'; }
     try{
       const Pptx=await _pptxLoadLib();
-      const cream=document.body.classList.contains('deck-venues')||document.body.classList.contains('deck-hotel');
+      const cream=false;
       const C=cream
         ?{ bg:'F7F4EF', ink:'2B323A', sub:'5A6068', gold:'A8854F', photoInk:'FFFFFF' }
         :{ bg:'0A0A0A', ink:'F5F0E8', sub:'B0A895', gold:'C9A96E', photoInk:'F5F0E8' };

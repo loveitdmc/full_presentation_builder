@@ -442,7 +442,7 @@ export default async function handler(req, res) {
   if (Buffer.isBuffer(_body)) { try { _body = JSON.parse(_body.toString("utf8")); } catch { _body = {}; } }
   else if (typeof _body === "string") { try { _body = JSON.parse(_body); } catch { _body = {}; } }
   const { pdf, filename } = _body;
-  const deckTemplate = ["dark","venues","hotel","quotation"].includes(_body.deckTemplate) ? _body.deckTemplate : "dark";
+  const deckTemplate = ["single","quotation"].includes(_body.deckTemplate) ? _body.deckTemplate : "quotation";
   const costLayout = ["both","per-supplier","grouped"].includes(_body.costLayout) ? _body.costLayout : "both";
   if (!pdf) return res.status(400).json({ error: "Missing pdf field" });
 
