@@ -1005,7 +1005,9 @@ body.edit-mode .add-menuitem-btn{ display:inline-block;pointer-events:auto; }
   // complessa multi-fornitore — la chiave resta "quotation" per non rompere
   // i link dal Vault / app Preventivi).
   const DECK = TRIP.deckTemplate==='single' ? 'single' : 'quotation';
-  document.body.classList.add('deck-'+DECK);
+  // entrambi i template condividono lo stesso tema crema (selettori body.deck-quotation)
+  document.body.classList.add('deck-quotation');
+  if(DECK==='single') document.body.classList.add('deck-single');
   const slideBuilders = [];
 
   {

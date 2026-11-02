@@ -8,6 +8,13 @@ Airtable base: `app17rv8UlvfpaANc` (LoveIT Fornitori)
 > Regola 2: mai creare nuovi file in `api/` — Vercel a volte non li rileva (404).
 > Estendere sempre gli endpoint esistenti con query param o campi nel body.
 
+## v71b — 2026-11-02 — Fix sfondo nero nel template "Fornitore singolo"
+- Con il template `single` il body riceveva solo la classe `deck-single`, ma
+  tutto il tema crema (sfondo slide, gallery, tabella costi) è scritto su
+  `body.deck-quotation`: gallery e cost breakdown uscivano su nero.
+  Ora entrambi i template aggiungono sempre `deck-quotation`
+  (+ `deck-single` per il singolo).
+
 ## v71 — 2026-11-02 — Solo 2 template: Fornitore singolo / Offerta complessa
 - Pulizia richiesta da Marco: restano solo due template di presentazione.
   - `single` = "Fornitore singolo": cover + scheda + planimetria + gallery +
